@@ -1,9 +1,0 @@
-runtime: nodejs14
-env: standard
-
-handlers:
-  - url: /public
-    static_dir: public
-
-  - url: /.*
-    script: auto
