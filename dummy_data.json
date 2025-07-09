@@ -1,0 +1,112 @@
+[
+  [
+    {
+      "type": "step",
+      "data": [
+        {
+          "type": "web_search",
+          "title": "Searching the web",
+          "description": "Search for the latest news on the Iran-Israel conflict"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "data": "# Iran vs Israel Conflict\n\n## 🧭 Overview\n\nThe Iran–Israel conflict is a long-standing geopolitical rivalry rooted in ideological, strategic, and regional interests. While the two nations were allies before the 1979 Iranian Revolution, relations deteriorated sharply afterward, evolving into a tense, multifaceted confrontation involving military, cyber, political, and proxy warfare dimensions.\n"
+    },
+    {
+      "type": "source_images",
+      "data": [
+        {
+          "title": "Iran Israel Conflict",
+          "description": "A photo showing the aftermath of the conflict, with significant destruction and military presence.",
+          "source": "Al Jazeera",
+          "url": "https://www.aljazeera.com/wp-content/uploads/2025/06/AFP__20250615__62F699Z__v1__HighRes__IranIsraelConflict-1749984513.jpg?resize=730%2C410&quality=80"
+        },
+        {
+          "title": "Iran Israel Conflict",
+          "description": "A photo showing the aftermath of the conflict, with significant destruction and military presence.",
+          "source": "Al Jazeera",
+          "url": "https://www.aljazeera.com/wp-content/uploads/2025/06/AFP__20250614__62CE7BT__v1__HighRes__IsraelIranConflict-1749885439.jpg?resize=730%2C410&quality=80"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "data": "\n\n---\n\n## 📖 Background\n\nThe conflict has its roots in the Islamic Revolution of 1979, which transformed Iran from a pro-Western monarchy into an Islamic Republic. This shift led to the severing of diplomatic.\n"
+    },
+    {
+      "type": "step",
+      "data": [
+        {
+          "type": "reading_sources",
+          "title": "Reading sources",
+          "description": "Reading the latest news articles to gather more information about the Iran-Israel conflict from Al Jazeera and other sources."
+        }
+      ]
+    },
+    {
+      "type": "source",
+      "data": [
+        {
+          "from": "Al Jazeera",
+          "logo": "https://yt3.googleusercontent.com/IQJ3YwNpaJRPpOM1Gab8xBZiDhsgq2gtM3KZQKk8JCZjhxOPxuuzyUVCTWpyp9eAEyS-QQsdRA=s900-c-k-c0x00ffffff-no-rj",
+          "url": "https://www.aljazeera.com/video/newsfeed/2025/6/30/israeli-settlers-attack-israeli-soldiers-in-occupied-west-bank",
+          "headline": "Israeli settlers attack Israeli soldiers in occupied West Bank",
+          "date": "2025-06-30T12:00:00Z",
+          "summary": "Israeli settlers attacked Israeli soldiers in the occupied West Bank, highlighting the ongoing tensions and violence in the region following the recent conflict."
+        },
+        {
+          "from": "Reuters",
+          "logo": "https://s3.reutersmedia.net/resources_v2/images/favicon/favicon-96x96.png",
+          "url": "https://www.reuters.com/world/middle-east/iran-vows-retaliation-after-israel-airstrikes-2025-06-29/",
+          "headline": "Iran vows retaliation after Israeli airstrikes",
+          "date": "2025-06-29T08:30:00Z",
+          "summary": "Following a series of Israeli airstrikes on Iranian positions in Syria, Iran has vowed a 'measured response' while international actors urge de-escalation."
+        },
+        {
+          "from": "BBC News",
+          "logo": "https://news.bbcimg.co.uk/nol/shared/img/bbc_news_120x60.gif",
+          "url": "https://www.bbc.com/news/world-middle-east-67654789",
+          "headline": "Ceasefire holds as humanitarian aid enters Gaza",
+          "date": "2025-06-28T14:00:00Z",
+          "summary": "A fragile ceasefire between Iran and Israel has allowed humanitarian aid to enter the Gaza Strip, with UN agencies emphasizing the urgent need for medical and food supplies."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "data": "\n\n---\n\n## 📊 Key Statistics\n\n- **Casualties**: Over 1,500 civilians killed, with thousands more injured.\n- **Infrastructure Damage**: Estimated in the billions of dollars.\n- **Displacement**: Hundreds of thousands displaced from their homes.\n- **International Response**: Calls for ceasefire and humanitarian aid from various global leaders and organizations."
+    },
+    {
+      "type": "source",
+      "data": [
+        {
+          "from": "The Guardian",
+          "logo": "https://assets.guim.co.uk/images/favicons/4f4f4f4f1f1f1f1f1f1f/favicon.ico",
+          "url": "https://www.theguardian.com/world/2025/jun/27/un-calls-for-independent-investigation-iran-israel-war-crimes",
+          "headline": "UN calls for investigation into possible war crimes during Iran-Israel conflict",
+          "date": "2025-06-27T10:00:00Z",
+          "summary": "The United Nations has demanded an independent investigation into allegations of war crimes by both Iran and Israel during the recent 12-day conflict."
+        },
+        {
+          "from": "CNN",
+          "logo": "https://cdn.cnn.com/cnn/.e1mo/img/4.0/logos/CNN_logo_red_background.png",
+          "url": "https://www.cnn.com/2025/06/26/middleeast/israel-iran-conflict-casualties/index.html",
+          "headline": "Casualties mount as Iran-Israel conflict devastates key regions",
+          "date": "2025-06-26T15:00:00Z",
+          "summary": "More than 1,500 civilians have been killed in the recent Iran-Israel clashes, with damage to infrastructure estimated in the billions of dollars, according to humanitarian agencies."
+        }
+      ]
+    },
+    {
+      "type": "step",
+      "data": [
+        {
+          "type": "finished",
+          "title": "Finished"
+        }
+      ]
+    }
+  ]
+]
