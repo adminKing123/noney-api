@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { default: axios } = require("axios");
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8080;
 
 const { v4: uuidv4 } = require("uuid");
 
