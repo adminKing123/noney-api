@@ -157,7 +157,6 @@ app.post("/summarise_title", async (req, res) => {
       "https://pa-dev-api.thesynapses.com/summarise_title",
       {
         prompt: prompt,
-        prompt: "What is AI?",
         prompt_id: "42d71ef4-8398-4686-935c-c59ff741559b",
         org_id: "synapses",
         chat_id: "ea1b397a-5f0e-4b12-b721-7f452b2c3480",
