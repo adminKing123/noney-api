@@ -83,9 +83,37 @@ async function useGenerateFrom(req) {
       },
       responseType: "stream",
     });
+  } else {
+    const targetUrl = "https://photon-api.thesynapses.com/generate";
+    console.log(`[Generate][${requestId}] Using DEV API`);
+
+    return axios({
+      method: "post",
+      url: targetUrl,
+      data: {
+        ...req.body,
+
+        type: "global",
+        file_url: [],
+        org_id: "synapses",
+        uid: "uiFZuraB8bSmIBMpUH8rg8bQguB3",
+        regenerate: false,
+        style: "Standard",
+        recaching: true,
+        cache_id: null,
+        file_data: "",
+        prompt_id: "8225ec42-b917-4527-b287-6dbaef35bdd7",
+        new_prompt: "",
+        by: "uiFZuraB8bSmIBMpUH8rg8bQguB3",
+        session_id: "cool",
+      },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-ID": requestId,
+      },
+      responseType: "stream",
+    });
   }
-  console.log(`[Generate][${requestId}] No valid environment configured`);
-  return null;
 }
 
 function useModelsFrom() {
@@ -134,8 +162,51 @@ function useModelsFrom() {
         description: "High-end and smart.",
       },
     };
-
-  return {};
+  else
+    return {
+      models: [
+        {
+          id: "claude-opus-4@20250514",
+          name: "Noney 1.0 Twinkle",
+          google_search: false,
+          active: "True",
+          from: "NONEY",
+          description: "High-end and smart.",
+        },
+        {
+          id: "gemini-2.5-pro-preview-05-06",
+          name: "Noney 1.0 Pro",
+          google_search: true,
+          active: "True",
+          from: "NONEY",
+          description: "Advanced and powerful.",
+        },
+        {
+          id: "gemini-2.5-flash-preview-05-20",
+          name: "Gemini 2.5 Flash",
+          google_search: true,
+          active: "True",
+          from: "GEMINI",
+          description: "Fast, smart, and web-ready.",
+        },
+        {
+          id: "claude-sonnet-4@20250514",
+          name: "Claude Sonnet 4",
+          google_search: false,
+          active: "True",
+          from: "CLAUDE",
+          description: "Smooth and balanced.",
+        },
+      ],
+      default_model: {
+        id: "claude-opus-4@20250514",
+        name: "Noney 1.0 Twinkle",
+        google_search: false,
+        active: "True",
+        from: "NONEY",
+        description: "High-end and smart.",
+      },
+    };
 }
 
 app.get("/get_models", (req, res) => {
@@ -157,10 +228,10 @@ app.post("/summarise_title", async (req, res) => {
       "https://pa-dev-api.thesynapses.com/summarise_title",
       {
         prompt: prompt,
-        prompt_id: "42d71ef4-8398-4686-935c-c59ff741559b",
+        prompt_id: "556b448c-17b5-4259-be54-b1955e180a53",
         org_id: "synapses",
-        chat_id: "ea1b397a-5f0e-4b12-b721-7f452b2c3480",
-        user_id: "TKsD9s7euSNSWK5flu7o9RFqIi83",
+        chat_id: "330faa6c-f844-4e92-b29c-b72dfcc27cfa",
+        user_id: "TSgg30aONkh9v5vAQwfIARODGkj1",
       },
       {
         headers: {
