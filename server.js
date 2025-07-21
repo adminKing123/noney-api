@@ -27,6 +27,7 @@ async function useGenerateFrom(req) {
   const requestId = req.requestId;
 
   if (FROM === "PROD") {
+    // const targetUrl = "https://photon-api.thesynapses.com/spark/generate";
     const targetUrl = "https://photon-api.thesynapses.com/generate";
     console.log(`[Generate][${requestId}] Using PROD API`);
 
@@ -55,6 +56,7 @@ async function useGenerateFrom(req) {
       responseType: "stream",
     });
   } else if (FROM === "STG") {
+    // const targetUrl = "https://photon-api.thesynapses.com/spark/generate";
     const targetUrl = "https://photon-api.thesynapses.com/generate";
     console.log(`[Generate][${requestId}] Using STG API`);
 
@@ -84,7 +86,8 @@ async function useGenerateFrom(req) {
       responseType: "stream",
     });
   } else {
-    const targetUrl = "https://photon-api.thesynapses.com/generate";
+    const targetUrl = "https://photon-api.thesynapses.com/spark/generate";
+    // const targetUrl = "https://photon-api.thesynapses.com/generate";
     console.log(`[Generate][${requestId}] Using DEV API`);
 
     return axios({
@@ -225,7 +228,7 @@ app.post("/summarise_title", async (req, res) => {
 
   try {
     const response = await axios.post(
-      "https://pa-dev-api.thesynapses.com/summarise_title",
+      "https://pa-dev-api.thesynapses.com/spark/summarise_title",
       {
         prompt: prompt,
         prompt_id: "556b448c-17b5-4259-be54-b1955e180a53",
