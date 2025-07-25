@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { default: axios } = require("axios");
@@ -27,8 +28,7 @@ async function useGenerateFrom(req) {
   const requestId = req.requestId;
 
   if (FROM === "PROD") {
-    // const targetUrl = "https://photon-api.thesynapses.com/spark/generate";
-    const targetUrl = "https://photon-api.thesynapses.com/generate";
+    const targetUrl = process.env.PROD_GENERATE_API;
     console.log(`[Generate][${requestId}] Using PROD API`);
 
     return axios({
@@ -56,8 +56,7 @@ async function useGenerateFrom(req) {
       responseType: "stream",
     });
   } else if (FROM === "STG") {
-    // const targetUrl = "https://photon-api.thesynapses.com/spark/generate";
-    const targetUrl = "https://photon-api.thesynapses.com/generate";
+    const targetUrl = process.env.STG_GENERATE_API;
     console.log(`[Generate][${requestId}] Using STG API`);
 
     return axios({
@@ -86,8 +85,7 @@ async function useGenerateFrom(req) {
       responseType: "stream",
     });
   } else {
-    const targetUrl = "https://photon-api.thesynapses.com/spark/generate";
-    // const targetUrl = "https://photon-api.thesynapses.com/generate";
+    const targetUrl = process.env.DEV_GENERATE_API;
     console.log(`[Generate][${requestId}] Using DEV API`);
 
     return axios({
@@ -228,7 +226,7 @@ app.post("/summarise_title", async (req, res) => {
 
   try {
     const response = await axios.post(
-      "https://pa-dev-api.thesynapses.com/spark/summarise_title",
+      process.env.DEV_SUMMERISE_TITLE_API,
       {
         prompt: prompt,
         prompt_id: "556b448c-17b5-4259-be54-b1955e180a53",
