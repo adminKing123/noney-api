@@ -7,7 +7,7 @@ const PORT = 8000;
 const { v4: uuidv4 } = require("uuid");
 
 const dummyData = require("./dummy_data.json");
-const { transformContent } = require("./helper");
+const { transformContent, scrapSources } = require("./helper");
 
 app.use(cors());
 app.use(express.json());
@@ -15,7 +15,7 @@ app.use(express.static("public"));
 
 const STYLE = "Concise";
 // PROD | STG | DEV
-const FROM = "PROD";
+const FROM = "DEV";
 const PROD_GENERATE_API = process.env.PROD_GENERATE_API;
 const STG_GENERATE_API = process.env.STG_GENERATE_API;
 const DEV_GENERATE_API = process.env.DEV_GENERATE_API;
@@ -257,7 +257,9 @@ app.post("/summarise_title", async (req, res) => {
 });
 
 app.post("/generate", async (req, res) => {
-  const proxy_data = {};
+  const proxy_data = {
+    source: [],
+  };
   const requestId = req.requestId;
 
   console.log(`[API][${requestId}] POST /generate`);
@@ -308,17 +310,31 @@ app.post("/generate", async (req, res) => {
           })}\n\n`
         );
       }
-      if (content?.source?.length) {
+    });
+
+    response.data.on("end", async () => {
+      if (proxy_data.source.length) {
+        res.write(
+          `event: step\ndata: ${JSON.stringify({
+            id: uuidv4(),
+            data: [
+              {
+                type: "fetch_source_information",
+                title: "Gathering Details",
+              },
+            ],
+          })}\n\n`
+        );
+        const source = await scrapSources(proxy_data.source);
+        console.log(source);
         res.write(
           `event: source\ndata: ${JSON.stringify({
             id: uuidv4(),
-            data: content?.source,
+            data: source,
           })}\n\n`
         );
       }
-    });
 
-    response.data.on("end", () => {
       console.log(`[Stream][${requestId}] Completed successfully`);
       res.write(
         `event: step\ndata: ${JSON.stringify({
