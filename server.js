@@ -7,10 +7,19 @@ const PORT = 8000;
 const { v4: uuidv4 } = require("uuid");
 
 const dummyData = require("./dummy_data.json");
+const { transformContent } = require("./helper");
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
+
+const STYLE = "Concise";
+// PROD | STG | DEV
+const FROM = "PROD";
+const PROD_GENERATE_API = process.env.PROD_GENERATE_API;
+const STG_GENERATE_API = process.env.STG_GENERATE_API;
+const DEV_GENERATE_API = process.env.DEV_GENERATE_API;
+const DEV_SUMMERISE_TITLE_API = process.env.DEV_SUMMERISE_TITLE_API;
 
 // Middleware to add request ID to every request
 app.use((req, res, next) => {
@@ -19,16 +28,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// PROD | STG | DEV
-const FROM = "PROD";
-
 console.log(`[Server] Running in ${FROM} mode`);
 
 async function useGenerateFrom(req) {
   const requestId = req.requestId;
 
   if (FROM === "PROD") {
-    const targetUrl = process.env.PROD_GENERATE_API;
+    const targetUrl = PROD_GENERATE_API;
     console.log(`[Generate][${requestId}] Using PROD API`);
 
     return axios({
@@ -41,7 +47,7 @@ async function useGenerateFrom(req) {
         org_id: "synapse",
         uid: "oB3qkWuOcTVh21NGWHudqFrxxmt1",
         regenerate: false,
-        style: "Concise",
+        style: STYLE,
         recaching: false,
         cache_id: null,
         file_data: "",
@@ -56,7 +62,7 @@ async function useGenerateFrom(req) {
       responseType: "stream",
     });
   } else if (FROM === "STG") {
-    const targetUrl = process.env.STG_GENERATE_API;
+    const targetUrl = STG_GENERATE_API;
     console.log(`[Generate][${requestId}] Using STG API`);
 
     return axios({
@@ -69,7 +75,7 @@ async function useGenerateFrom(req) {
         org_id: "synapses",
         uid: "xePSzT4DmZQ8G9UkUyeGtF5GEyP2",
         regenerate: false,
-        style: "Concise",
+        style: STYLE,
         recaching: false,
         cache_id: null,
         file_data: "",
@@ -85,7 +91,7 @@ async function useGenerateFrom(req) {
       responseType: "stream",
     });
   } else {
-    const targetUrl = process.env.DEV_GENERATE_API;
+    const targetUrl = DEV_GENERATE_API;
     console.log(`[Generate][${requestId}] Using DEV API`);
 
     return axios({
@@ -99,7 +105,7 @@ async function useGenerateFrom(req) {
         org_id: "synapses",
         uid: "uiFZuraB8bSmIBMpUH8rg8bQguB3",
         regenerate: false,
-        style: "Concise",
+        style: STYLE,
         recaching: true,
         cache_id: null,
         file_data: "",
@@ -226,7 +232,7 @@ app.post("/summarise_title", async (req, res) => {
 
   try {
     const response = await axios.post(
-      process.env.DEV_SUMMERISE_TITLE_API,
+      DEV_SUMMERISE_TITLE_API,
       {
         prompt: prompt,
         prompt_id: "556b448c-17b5-4259-be54-b1955e180a53",
@@ -251,7 +257,9 @@ app.post("/summarise_title", async (req, res) => {
 });
 
 app.post("/generate", async (req, res) => {
+  const proxy_data = {};
   const requestId = req.requestId;
+
   console.log(`[API][${requestId}] POST /generate`);
   try {
     res.setHeader("Content-Type", "text/event-stream");
@@ -272,18 +280,6 @@ app.post("/generate", async (req, res) => {
       })}\n\n`
     );
 
-    res.write(
-      `event: step\ndata: ${JSON.stringify({
-        id: uuidv4(),
-        data: [
-          {
-            type: "searching",
-            title: "Searching",
-          },
-        ],
-      })}\n\n`
-    );
-
     const id = uuidv4();
 
     const response = await useGenerateFrom(req);
@@ -295,14 +291,30 @@ app.post("/generate", async (req, res) => {
 
     console.log(`[Stream][${requestId}] Starting data stream`);
     response.data.on("data", (chunk) => {
-      const content = chunk.toString();
-      if (content) {
+      const content = transformContent(proxy_data, chunk.toString());
+      if (content.cleanedText) {
         const data = {
           index: 0,
           id: id,
-          data: content,
+          data: content.cleanedText,
         };
         res.write(`event: text\ndata: ${JSON.stringify(data)}\n\n`);
+      }
+      if (content?.steps?.length) {
+        res.write(
+          `event: step\ndata: ${JSON.stringify({
+            id: uuidv4(),
+            data: content?.steps,
+          })}\n\n`
+        );
+      }
+      if (content?.source?.length) {
+        res.write(
+          `event: source\ndata: ${JSON.stringify({
+            id: uuidv4(),
+            data: content?.source,
+          })}\n\n`
+        );
       }
     });
 
