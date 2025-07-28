@@ -16,10 +16,11 @@ app.use(express.static("public"));
 const STYLE = "Concise";
 // PROD | STG | DEV
 const FROM = "DEV";
-const PROD_GENERATE_API="https://photon-api.thesynapses.com/generate"
-const STG_GENERATE_API="https://photon-api.thesynapses.com/generate"
-const DEV_GENERATE_API="https://pa-dev-api.thesynapses.com/spark/generate"
-const DEV_SUMMERISE_TITLE_API="https://pa-dev-api.thesynapses.com/spark/summarise_title"
+const PROD_GENERATE_API = "https://photon-api.thesynapses.com/generate";
+const STG_GENERATE_API = "https://photon-api.thesynapses.com/generate";
+const DEV_GENERATE_API = "https://pa-dev-api.thesynapses.com/spark/generate";
+const DEV_SUMMERISE_TITLE_API =
+  "https://pa-dev-api.thesynapses.com/spark/summarise_title";
 
 // Middleware to add request ID to every request
 app.use((req, res, next) => {
@@ -32,6 +33,8 @@ console.log(`[Server] Running in ${FROM} mode`);
 
 async function useGenerateFrom(req) {
   const requestId = req.requestId;
+  const { deep_research, ...restBody } = req.body;
+  const styleToUse = deep_research === true ? "Standard" : STYLE;
 
   if (FROM === "PROD") {
     const targetUrl = PROD_GENERATE_API;
@@ -41,13 +44,13 @@ async function useGenerateFrom(req) {
       method: "post",
       url: targetUrl,
       data: {
-        ...req.body,
+        ...restBody,
         type: "global",
         file_url: [],
         org_id: "synapse",
         uid: "oB3qkWuOcTVh21NGWHudqFrxxmt1",
         regenerate: false,
-        style: STYLE,
+        style: styleToUse,
         recaching: false,
         cache_id: null,
         file_data: "",
@@ -69,13 +72,13 @@ async function useGenerateFrom(req) {
       method: "post",
       url: targetUrl,
       data: {
-        ...req.body,
+        ...restBody,
         type: "global",
         file_url: [],
         org_id: "synapses",
         uid: "xePSzT4DmZQ8G9UkUyeGtF5GEyP2",
         regenerate: false,
-        style: STYLE,
+        style: styleToUse,
         recaching: false,
         cache_id: null,
         file_data: "",
@@ -98,14 +101,14 @@ async function useGenerateFrom(req) {
       method: "post",
       url: targetUrl,
       data: {
-        ...req.body,
+        ...restBody,
 
         type: "global",
         file_url: [],
         org_id: "synapses",
         uid: "uiFZuraB8bSmIBMpUH8rg8bQguB3",
         regenerate: false,
-        style: STYLE,
+        style: styleToUse,
         recaching: true,
         cache_id: null,
         file_data: "",
