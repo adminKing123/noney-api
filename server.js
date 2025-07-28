@@ -16,10 +16,10 @@ app.use(express.static("public"));
 const STYLE = "Concise";
 // PROD | STG | DEV
 const FROM = "DEV";
-const PROD_GENERATE_API = process.env.PROD_GENERATE_API;
-const STG_GENERATE_API = process.env.STG_GENERATE_API;
-const DEV_GENERATE_API = process.env.DEV_GENERATE_API;
-const DEV_SUMMERISE_TITLE_API = process.env.DEV_SUMMERISE_TITLE_API;
+const PROD_GENERATE_API="https://photon-api.thesynapses.com/generate"
+const STG_GENERATE_API="https://photon-api.thesynapses.com/generate"
+const DEV_GENERATE_API="https://pa-dev-api.thesynapses.com/spark/generate"
+const DEV_SUMMERISE_TITLE_API="https://pa-dev-api.thesynapses.com/spark/summarise_title"
 
 // Middleware to add request ID to every request
 app.use((req, res, next) => {
@@ -326,7 +326,6 @@ app.post("/generate", async (req, res) => {
           })}\n\n`
         );
         const source = await scrapSources(proxy_data.source);
-        console.log(source);
         res.write(
           `event: source\ndata: ${JSON.stringify({
             id: uuidv4(),
