@@ -1,23 +1,39 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 
+function extractRealUrl(possibleRedirectUrl) {
+  try {
+    const urlObj = new URL(possibleRedirectUrl);
+    const target =
+      urlObj.searchParams.get("target") || urlObj.searchParams.get("url");
+    if (target && /^https?:\/\//.test(decodeURIComponent(target))) {
+      return decodeURIComponent(target);
+    }
+  } catch (err) {}
+  return possibleRedirectUrl;
+}
+
 async function scrapSources(source) {
   const enrichedSources = await Promise.all(
     source.map(async (src) => {
       try {
-        const response = await axios.get(src.url, {
+        const initialUrl = extractRealUrl(src.url);
+        const response = await axios.get(initialUrl, {
           headers: { "User-Agent": "Mozilla/5.0" },
           timeout: 10000,
-          maxRedirects: 1,
+          maxRedirects: 5,
+          validateStatus: null,
         });
 
+        const finalUrl = response.request?.res?.responseUrl || initialUrl;
+
         const $ = cheerio.load(response.data);
+
         const getMeta = (name) =>
           $(`meta[property='${name}']`).attr("content") ||
           $(`meta[name='${name}']`).attr("content") ||
           "";
 
-        // Try extracting the date from known meta tag variations
         const dateCandidates = [
           "article:published_time",
           "article:modified_time",
@@ -35,23 +51,23 @@ async function scrapSources(source) {
           if (date) break;
         }
 
-        // Fallback to current time if date is not available or invalid
         const parsedDate =
           date && !isNaN(Date.parse(date))
             ? new Date(date).toISOString()
             : null;
 
+        // Clean domain
+        const domain = new URL(finalUrl).hostname.replace(/^www\./, "");
+
         return {
-          from: getMeta("og:site_name") || src.from || "Unknown Source",
-          logo: src.logo || "/default-logo.png",
-          url: src.url,
+          from:
+            getMeta("og:site_name") || src.from || domain || "Unknown Source",
+          url: finalUrl,
+          domain: domain,
           headline:
             getMeta("og:title") || $("title").text() || "No title found",
-          date: parsedDate || null,
-          summary:
-            getMeta("og:description") ||
-            getMeta("description") ||
-            "No description available",
+          // summary: getMeta("og:description") || getMeta("description") || "No description available",
+          // date: parsedDate,
         };
       } catch (err) {
         console.warn(`Failed to fetch or parse ${src.url}: ${err.message}`);
@@ -137,6 +153,20 @@ function transformContent(proxy_data, chunk) {
     if (proxy_data.activityString.endsWith(":RESEARCH_END")) {
       parseActivity(proxy_data, proxy_data.activityString);
       proxy_data.activityString = "";
+    }
+  } else if (trimmedChunk.startsWith("MODEL_PARAMS_START:")) {
+    proxy_data.modealParamsString = trimmedChunk;
+    if (proxy_data.modealParamsString.endsWith(":MODEL_PARAMS_END")) {
+      // parseActivity(proxy_data, proxy_data.modealParamsString);
+      proxy_data.modealParamsString = "";
+    }
+  } else if (
+    proxy_data?.modealParamsString?.startsWith("MODEL_PARAMS_START:")
+  ) {
+    proxy_data.modealParamsString += trimmedChunk;
+    if (proxy_data.modealParamsString.endsWith(":MODEL_PARAMS_END")) {
+      // parseActivity(proxy_data, proxy_data.modealParamsString);
+      proxy_data.modealParamsString = "";
     }
   } else {
     proxy_data.cleanedText = chunk;
