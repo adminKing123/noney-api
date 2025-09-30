@@ -18,7 +18,8 @@ const STYLE = "Concise";
 const FROM = "DEV";
 const PROD_GENERATE_API = "https://photon-api.thesynapses.com/generate";
 const STG_GENERATE_API = "https://photon-api.thesynapses.com/generate";
-const DEV_GENERATE_API = "https://pa-dev-api.thesynapses.com/spark/generate";
+// const DEV_GENERATE_API = "https://pa-dev-api.thesynapses.com/spark/generate";
+const DEV_GENERATE_API = "https://photon-api.thesynapses.com/spark/generate";
 const DEV_SUMMERISE_TITLE_API =
   "https://pa-dev-api.thesynapses.com/spark/summarise_title";
 
