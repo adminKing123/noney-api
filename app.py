@@ -5,6 +5,7 @@ from google.genai import types
 import json
 import uuid
 from flask_cors import CORS
+import os
 
 # Load dataset
 with open("data.json", "r", encoding="utf-8") as f:
@@ -436,4 +437,5 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 4000))
+    app.run(host="0.0.0.0", port=port)
