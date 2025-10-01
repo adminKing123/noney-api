@@ -7,55 +7,28 @@ from flask_cors import CORS
 import os
 import json
 from arsongs_functions import (
-    tools,
-    FUNCTION_MAP
+    tools, raw_tools,
+    FUNCTION_MAP  # Import the function map for execution
 )
 
 client = genai.Client(api_key=CONFIG["GEMINI_API_KEY"])
 
 config = types.GenerateContentConfig(
     tools=tools,
+    # tools=raw_tools,
+    # system_instruction=system_instruction
 )
 
 app = Flask(__name__)
 CORS(app)
 
-# In-memory storage for chat histories (use Redis/DB for production)
-chat_histories = {}
 
-
-def get_or_create_chat(chat_uid):
-    """
-    Get existing chat or create new one based on chat_uid.
-    
-    Args:
-        chat_uid: Unique identifier for the chat session
-        
-    Returns:
-        chat object from Gemini API
-    """
-    if chat_uid not in chat_histories:
-        # Create new chat session
-        chat = client.chats.create(
-            model="gemini-2.0-flash-exp",
-            config=config
-        )
-        chat_histories[chat_uid] = {
-            'chat': chat,
-            'history': []
-        }
-    
-    return chat_histories[chat_uid]['chat']
-
-
-def process_response_recursive(chat, prompt, chat_uid, max_iterations=5):
+def process_response_recursive(conversation_history, max_iterations=5):
     """
     Recursively process model responses and handle function calls.
     
     Args:
-        chat: Gemini chat object
-        prompt: User's message
-        chat_uid: Unique chat identifier
+        conversation_history: List of conversation turns
         max_iterations: Maximum number of recursive calls to prevent infinite loops
         
     Yields:
@@ -65,12 +38,16 @@ def process_response_recursive(chat, prompt, chat_uid, max_iterations=5):
         yield send_text("\n\n[Max function call iterations reached]")
         return
     
-    # Send message to chat
-    response = chat.send_message_stream(prompt)
+    # Make API call
+    response = client.models.generate_content_stream(
+        model="gemini-2.0-flash-exp",
+        config=config,
+        contents=conversation_history,
+    )
 
     function_calls_made = []
+    model_parts = []
     has_text = False
-    collected_text = []
 
     # Process response chunks
     for chunk in response:
@@ -80,7 +57,7 @@ def process_response_recursive(chat, prompt, chat_uid, max_iterations=5):
                     # Handle text responses
                     if hasattr(part, 'text') and part.text:
                         has_text = True
-                        collected_text.append(part.text)
+                        model_parts.append({"text": part.text})
                         yield send_text(part.text)
 
                     # Handle function calls
@@ -96,75 +73,58 @@ def process_response_recursive(chat, prompt, chat_uid, max_iterations=5):
                             print(f"Function: {func_name}, Args: {func_args}, Result: {result}")
                             
                             function_calls_made.append({
-                                "name": func_name,
-                                "args": func_args,
+                                "function_call": part.function_call,
                                 "result": result
                             })
+                            model_parts.append({"function_call": part.function_call})
                             
                         except Exception as func_error:
                             print(f"Function execution error: {func_error}")
                             error_result = {"error": str(func_error)}
                             function_calls_made.append({
-                                "name": func_name,
-                                "args": func_args,
+                                "function_call": part.function_call,
                                 "result": error_result
                             })
+                            model_parts.append({"function_call": part.function_call})
 
-    # Update chat history storage
-    if chat_uid in chat_histories:
-        chat_histories[chat_uid]['history'].append({
-            'user': prompt,
-            'model': ''.join(collected_text) if collected_text else None,
-            'function_calls': function_calls_made if function_calls_made else None
-        })
-
-    # If function calls were made, send function responses back
+    # If function calls were made, add them to history and recurse
     if function_calls_made:
+        # Add model's response with function calls to history
+        conversation_history.append({
+            "role": "model",
+            "parts": model_parts
+        })
+        
+        # Add function responses to history
+        for fc in function_calls_made:
+            conversation_history.append({
+                "role": "user",
+                "parts": [{
+                    "function_response": {
+                        "name": fc["function_call"].name,
+                        "response": {"result": fc["result"]}
+                    }
+                }]
+            })
+        
         # Add spacing if there was text before function calls
         if has_text:
             yield send_text("\n\n")
         
-        # Create function response parts
-        function_response_parts = []
-        for fc in function_calls_made:
-            function_response_parts.append(
-                types.Part.from_function_response(
-                    name=fc["name"],
-                    response={"result": fc["result"]}
-                )
-            )
-        
-        # Send function responses and get next model response
-        next_response = chat.send_message_stream(function_response_parts)
-        
-        # Process the model's response to function calls
-        for chunk in next_response:
-            if hasattr(chunk, 'candidates') and chunk.candidates:
-                for candidate in chunk.candidates:
-                    for part in candidate.content.parts:
-                        if hasattr(part, 'text') and part.text:
-                            yield send_text(part.text)
+        # Recursively process the next response
+        yield from process_response_recursive(conversation_history, max_iterations - 1)
 
 
 @app.route("/generate", methods=["POST"])
-def chat_endpoint():
+def chat():
     data = request.get_json()
     prompt = data.get("prompt")
-    chat_uid = data.get("chat_uid")
-    
-    if not chat_uid:
-        return jsonify({"error": "chat_uid is required"}), 400
 
     def generate():
         try:
             yield send_start_step()
-            
-            # Get or create chat session
-            chat = get_or_create_chat(chat_uid)
-            
-            # Process the message with function calling support
-            yield from process_response_recursive(chat, prompt, chat_uid)
-            
+            conversation_history = [{"role": "user", "parts": [{"text": prompt}]}]
+            yield from process_response_recursive(conversation_history)
             yield send_end_step()
             
         except Exception as e:
@@ -181,6 +141,7 @@ def chat_endpoint():
             "X-Accel-Buffering": "no",
         },
     )
+
 
 @app.route("/health", methods=["GET"])
 def health():
