@@ -1,7 +1,8 @@
 from events import send_event, send_step, send_start_step, send_end_step, send_text, send_searching_event
 from flask import Flask, request, Response, jsonify, stream_with_context
 from config import CONFIG
-from google import genai
+# from google import genai
+from google.genai import client as CliAI
 from google.genai import types
 from flask_cors import CORS
 import os
@@ -11,7 +12,7 @@ from arsongs_functions import (
     FUNCTION_MAP
 )
 
-client = genai.Client(api_key=CONFIG["GEMINI_API_KEY"])
+client = CliAI.Client(api_key=CONFIG["GEMINI_API_KEY"])
 
 config = types.GenerateContentConfig(
     tools=tools,
