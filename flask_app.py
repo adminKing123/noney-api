@@ -6,6 +6,7 @@ from langchain.messages import HumanMessage
 import json
 import uuid
 import os
+from firebase_admin import firestore
 from firebase import db  # Firestore DB imported
 
 # Set API key for LangChain Google Gemini
@@ -57,13 +58,17 @@ def stream():
 # --- DELETE Chat Route ---
 @app.route("/delete_chat/<userId>/<chatId>", methods=["DELETE"])
 def delete_chat(userId, chatId):
-
     chat_ref = db.collection("users").document(userId).collection("chats").document(chatId)
+    firestore.client().recursive_delete(chat_ref)
 
-    # Delete entire Chat Document
-    chat_ref.delete()
+    chat_ref = db.collection("users").document(userId).collection("drafts").document(chatId)
+    firestore.client().recursive_delete(chat_ref)
 
-    return jsonify({"success": True, "message": "Chat deleted successfully!", "chatId": chatId})
+    return jsonify({
+        "success": True,
+        "message": "Chat and its subcollections deleted successfully!",
+        "chatId": chatId
+    })
 
 @app.route("/summarise_title", methods=["POST"])
 def summarise_title():
