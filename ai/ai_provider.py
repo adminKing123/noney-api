@@ -1,4 +1,4 @@
-from google_text_ai import GeminiTextAI
+from ai.google_text_ai import GeminiTextAI
 
 class Models:
     NONEY_1_0_TWINKLE_20241001 = "noney-1.0-twinkle-20241001"

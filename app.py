@@ -9,12 +9,14 @@ import os
 from firebase_admin import firestore
 from firebase import db
 from ai.ai_provider import AIProvider, Models
+from middleware.auth import require_auth
 
 app = Flask(__name__)
 CORS(app)
 
 
 @app.route("/generate", methods=["POST"])
+@require_auth
 def stream():
     model_id = request.json.get("model_id", Models.DEFAULT_MODEL)
     prompt = request.json.get("prompt", "")
@@ -27,6 +29,7 @@ def stream():
 
 # --- DELETE Chat Route ---
 @app.route("/delete_chat/<userId>/<chatId>", methods=["DELETE"])
+@require_auth
 def delete_chat(userId, chatId):
     chat_ref = db.collection("users").document(userId).collection("chats").document(chatId)
     firestore.client().recursive_delete(chat_ref)
@@ -41,6 +44,7 @@ def delete_chat(userId, chatId):
     })
 
 @app.route("/summarise_title", methods=["POST"])
+@require_auth
 def summarise_title():
     prompt = request.json.get("prompt", "")
 
