@@ -14,18 +14,19 @@ from middleware.auth import require_auth
 app = Flask(__name__)
 CORS(app)
 
-
 @app.route("/generate", methods=["POST"])
 @require_auth
 def stream():
     model_id = request.json.get("model_id", Models.DEFAULT_MODEL)
     prompt = request.json.get("prompt", "")
+    chat_uid = request.json.get("chat_uid", None)
     ai_provider = AIProvider()
     ai = ai_provider.get(model_id)
     return Response(
         ai.stream({
             "prompt": prompt,
-            "user": request.user
+            "chat_uid": chat_uid,
+            "user": request.user,
         }),
         mimetype="text/event-stream"
     )
@@ -70,5 +71,5 @@ def summarise_title():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Render provides PORT
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=CONFIG.get("DEBUG", False))
 
