@@ -7,5 +7,4 @@ instance/
 *.pyc
 .DS_Store
 .venv/
-config.py
 firebase_key.json
