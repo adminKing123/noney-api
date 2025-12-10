@@ -7,53 +7,23 @@ import json
 import uuid
 import os
 from firebase_admin import firestore
-from firebase import db  # Firestore DB imported
-
-# Set API key for LangChain Google Gemini
-os.environ["GOOGLE_API_KEY"] = CONFIG["GOOGLE_API_KEY"]
+from firebase import db
+from ai.ai_provider import AIProvider, Models
 
 app = Flask(__name__)
 CORS(app)
 
-# --- SSE Helpers ---
-def send_event(event, data, is_json=True):
-    if is_json:
-        data = json.dumps(data)
-    return f"event: {event}\ndata: {data}\n\n"
 
-def send_step(data):
-    return send_event("step", {"id": str(uuid.uuid4()), "data": data})
-
-def send_start_step():
-    return send_step([{"type": "connecting", "title": "Please Wait"}])
-
-def send_end_step():
-    return send_step([{"type": "finished", "title": "Finished"}])
-
-def send_text(text, index=0):
-    data = {
-        "id": str(uuid.uuid4()),
-        "data": text,
-        "index": index,
-    }
-    return send_event("text", data)
-
-# --- LangChain Gemini 2.5 Setup ---
-gemini2_5_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-
-# --- Generate Route ---
 @app.route("/generate", methods=["POST"])
 def stream():
-    user_input = request.json.get("prompt", "")
-
-    def generate():
-        yield send_start_step()
-        for chunk in gemini2_5_model.stream([HumanMessage(content=user_input)]):
-            yield send_text(chunk.content)
-        yield send_end_step()
-
-    return Response(generate(), mimetype="text/event-stream")
-
+    model_id = request.json.get("model_id", Models.DEFAULT_MODEL)
+    prompt = request.json.get("prompt", "")
+    ai_provider = AIProvider()
+    ai = ai_provider.get(model_id)
+    return Response(
+        ai.stream([HumanMessage(content=prompt)]),
+        mimetype="text/event-stream"
+    )
 
 # --- DELETE Chat Route ---
 @app.route("/delete_chat/<userId>/<chatId>", methods=["DELETE"])
@@ -78,8 +48,9 @@ def summarise_title():
         return jsonify({"error": "Prompt is required"}), 400
 
     summarise_prompt = f"Summarize this into a short title under 100 characters:\n\n{prompt}"
-
-    response = gemini2_5_model.invoke([HumanMessage(content=summarise_prompt)])
+    ai_provider = AIProvider()
+    ai = ai_provider.get(Models.DEFAULT_MODEL)
+    response = ai.invoke([HumanMessage(content=summarise_prompt)])
     summary = response.content.strip()
 
     # Ensure max 100 characters even if model exceeds
