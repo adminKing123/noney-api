@@ -26,11 +26,11 @@ class BaseAI(ABC):
         return self._event("text", data)
 
     @abstractmethod
-    def stream(self, messages):
+    def stream(self, payload):
         """Return a generator that yields SSE responses"""
         pass
 
     @abstractmethod
-    def invoke(self, messages):
+    def invoke(self, payload):
         """Return a single response"""
         pass

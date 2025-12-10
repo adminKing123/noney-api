@@ -23,7 +23,10 @@ def stream():
     ai_provider = AIProvider()
     ai = ai_provider.get(model_id)
     return Response(
-        ai.stream([HumanMessage(content=prompt)]),
+        ai.stream({
+            "prompt": prompt,
+            "user": request.user
+        }),
         mimetype="text/event-stream"
     )
 
@@ -54,7 +57,10 @@ def summarise_title():
     summarise_prompt = f"Summarize this into a short title under 100 characters:\n\n{prompt}"
     ai_provider = AIProvider()
     ai = ai_provider.get(Models.DEFAULT_MODEL)
-    response = ai.invoke([HumanMessage(content=summarise_prompt)])
+    response = ai.invoke({
+        "prompt": summarise_prompt,
+        "user": request.user
+    })
     summary = response.content.strip()
 
     # Ensure max 100 characters even if model exceeds

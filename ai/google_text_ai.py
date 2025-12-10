@@ -6,13 +6,13 @@ class GeminiTextAI(BaseAI):
     def __init__(self, model_name="gemini-2.5-flash"):
         self.model = ChatGoogleGenerativeAI(model=model_name)
 
-    def stream(self, messages):
+    def stream(self, payload):
         yield self._start()
 
-        for chunk in self.model.stream(messages):
+        for chunk in self.model.stream([HumanMessage(content=payload["prompt"])]):
             yield self._text(chunk.content)
 
         yield self._end()
 
-    def invoke(self, messages):
-        return self.model.invoke(messages)
+    def invoke(self, payload):
+        return self.model.invoke([HumanMessage(content=payload["prompt"])])
