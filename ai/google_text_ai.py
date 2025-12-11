@@ -25,16 +25,21 @@ class GeminiTextAI(BaseAI):
         chat_uid = payload.get("chat_uid", None)
         prompt = payload.get("prompt", "")
 
+        yield self._send_step("info", "Summarizing context")
         ctx = get_google_text_context(user_id, chat_uid)
         context = ctx.build_context(prompt)
 
         ai_response = ""
         yield self._start()
 
+        started = False
         for chunk in self.model.stream(context):
+            if (not started):
+                yield self._started()
+                started = True
             ai_response += chunk.content
             yield self._text(chunk.content)
-            
+
         ctx.append(AIMessage(content=ai_response))
         yield self._end()
 

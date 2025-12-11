@@ -12,10 +12,19 @@ class BaseAI(ABC):
         return self._event("step", {"id": str(uuid.uuid4()), "data": data})
 
     def _start(self):
-        return self._step([{"type": "connecting", "title": "Please Wait"}])
+        return self._step([{"type": "connecting", "title": "Thinking"}])
+
+    def _started(self):
+        return self._step([{"type": "started", "title": "Generating"}])
 
     def _end(self):
         return self._step([{"type": "finished", "title": "Finished"}])
+    
+    def _send_step(self, type, title, detail=None):
+        data = {"type": type, "title": title}
+        if detail:
+            data["detail"] = detail
+        return self._step([data])
 
     def _text(self, text, index=0):
         data = {
