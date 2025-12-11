@@ -12,6 +12,8 @@ class GoogleTextContext:
         self.messages = list(self._get_messages())
 
     def _get_messages(self):
+        if (not self.user_id) or (not self.chat_uid):
+            return
         messages = db.chat.get_messages(self.user_id, self.chat_uid, limit=self.MESSAGES_LIMIT, should_yeild=True)
         for msg in messages:
             prompt = msg.get("prompt", None)
