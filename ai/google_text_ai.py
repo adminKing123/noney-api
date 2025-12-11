@@ -1,8 +1,8 @@
+import time
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import HumanMessage, AIMessage
 from ai.base import BaseAI
 from .google_text_context import get_google_text_context
-
 
 class GeminiTextAI(BaseAI):
     def __init__(
@@ -20,6 +20,7 @@ class GeminiTextAI(BaseAI):
         )
 
     def stream(self, payload):
+        start_time = time.time()
         user = payload.get("user", {})
         user_id = user.get("user_id", None)
         chat_uid = payload.get("chat_uid", None)
@@ -41,6 +42,9 @@ class GeminiTextAI(BaseAI):
             yield self._text(chunk.content)
 
         ctx.append(AIMessage(content=ai_response))
+        end_time = time.time()
+        duration = end_time - start_time
+        yield self._send_duration(duration)
         yield self._end()
 
     def invoke(self, payload):

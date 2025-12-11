@@ -34,6 +34,13 @@ class BaseAI(ABC):
         }
         return self._event("text", data)
 
+    def _send_duration(self, seconds):
+        return self._event("duration", {
+            "data": {
+                "seconds": seconds
+            }
+        })
+
     @abstractmethod
     def stream(self, payload):
         """Return a generator that yields SSE responses"""
