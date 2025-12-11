@@ -3,12 +3,13 @@ from flask import Flask, Response, request, jsonify
 from flask_cors import CORS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import HumanMessage
-import json
-import uuid
+# import json
+# import uuid
 import os
-from firebase_admin import firestore
-from firebase import db
-from ai.ai_provider import AIProvider, Models
+# from firebase_admin import firestore
+# from firebase import db
+from db import db
+from ai import AIProvider, Models
 from middleware.auth import require_auth
 
 app = Flask(__name__)
@@ -35,12 +36,7 @@ def stream():
 @app.route("/delete_chat/<userId>/<chatId>", methods=["DELETE"])
 @require_auth
 def delete_chat(userId, chatId):
-    chat_ref = db.collection("users").document(userId).collection("chats").document(chatId)
-    firestore.client().recursive_delete(chat_ref)
-
-    chat_ref = db.collection("users").document(userId).collection("drafts").document(chatId)
-    firestore.client().recursive_delete(chat_ref)
-
+    db.chat.delete_chat(userId, chatId)
     return jsonify({
         "success": True,
         "message": "Chat and its subcollections deleted successfully!",

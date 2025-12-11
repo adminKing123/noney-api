@@ -1,4 +1,4 @@
-from firebase_admin import auth
+from db import db
 from flask import request, jsonify
 
 def require_auth(f):
@@ -8,9 +8,8 @@ def require_auth(f):
             return jsonify({"error": "Missing Authorization header"}), 401
 
         try:
-            token = auth_header.split(" ")[1]  # "Bearer <token>"
-            decoded = auth.verify_id_token(token)
-            request.user = decoded  # attach user info
+            token = auth_header.split(" ")[1]
+            request.user = db.user.authenticate(token)
         except Exception as e:
             return jsonify({"error": "Invalid or expired token"}), 401
 
