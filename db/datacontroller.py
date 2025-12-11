@@ -1,7 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 import json
-import os
+from config import CONFIG
 
 class User:
     def __init__(self, client):
@@ -22,9 +22,14 @@ class Chat:
         chat_ref = self.client.collection("users").document(userId).collection("drafts").document(chatId)
         self.client.recursive_delete(chat_ref)
 
+    def get_messages(self, userId, chatId, limit=20):
+        messages_ref = self.client.collection("users").document(userId).collection("chats").document(chatId).collection("messages").order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit)
+        messages_docs = messages_ref.stream()
+        return [msg.to_dict() for msg in messages_docs]
+
 class DB:
     def __init__(self):
-        cred = credentials.Certificate(json.loads(os.getenv("FIREBASE_CREDENTIALS")))
+        cred = credentials.Certificate(json.loads(CONFIG["FIREBASE_CREDENTIALS"]))
         firebase_admin.initialize_app(cred)
         self.client = firestore.client()
 
