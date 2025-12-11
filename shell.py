@@ -13,7 +13,7 @@ class ClearCommand:
 
 clear = ClearCommand()
 
-debug_status = "ON" if CONFIG.get("DEBUG") else "OFF"
+debug_status = "ON" if CONFIG.DEBUG else "OFF"
 
 banner = rf"""
 ====================================================================

@@ -1,2 +1,43 @@
+from db import db
+from functools import lru_cache, cached_property
+from langchain.messages import HumanMessage, AIMessage
+from config import CONFIG
+
 class GoogleTextContext:
-    pass
+    MESSAGES_LIMIT = CONFIG.GEMINI_MESSAGE_LIMIT
+
+    def __init__(self, user_id, chat_uid):
+        self.user_id = user_id
+        self.chat_uid = chat_uid
+        self.messages = list(self._get_messages())
+
+    def _get_messages(self):
+        messages = db.chat.get_messages(self.user_id, self.chat_uid, limit=self.MESSAGES_LIMIT, should_yeild=True)
+        for msg in messages:
+            prompt = msg.get("prompt", None)
+            if prompt:
+                user_message = HumanMessage(content=prompt)
+            yield user_message
+            answer = msg.get("answer", None)
+            if answer:
+                ai_message = ""
+                for part in answer:
+                    if part.get("type") == "text":
+                        ai_message += part.get("data", "")
+                yield AIMessage(content=ai_message)
+
+    def append(self, message):
+        if hasattr(self, "messages"):
+            self.messages.append(message)
+
+    def build_context(self, prompt):
+        if (not self.user_id) or (not self.chat_uid):
+            return [HumanMessage(content=prompt)]
+        else:
+            self.append(HumanMessage(content=prompt))
+            context = self.messages
+            return context
+
+@lru_cache(maxsize=CONFIG.LRU_CACHE_SIZE)
+def get_google_text_context(user_id, chat_uid):
+    return GoogleTextContext(user_id, chat_uid)
