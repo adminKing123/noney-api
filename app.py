@@ -1,16 +1,11 @@
 from config import CONFIG
 from flask import Flask, Response, request, jsonify
 from flask_cors import CORS
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.messages import HumanMessage
-# import json
-# import uuid
 import os
-# from firebase_admin import firestore
-# from firebase import db
 from db import db
-from ai import AIProvider, Models
+from ai import AIProvider
 from middleware.auth import require_auth
+from ai.contextprovider import ContextProvider
 
 app = Flask(__name__)
 CORS(app)
@@ -18,7 +13,7 @@ CORS(app)
 @app.route("/generate", methods=["POST"])
 @require_auth
 def stream():
-    model_id = request.json.get("model_id", Models.DEFAULT_MODEL)
+    model_id = request.json.get("model_id", CONFIG.MODELS.DEFAULT_MODEL)
     prompt = request.json.get("prompt", "")
     chat_uid = request.json.get("chat_uid", None)
     ai_provider = AIProvider()
@@ -36,7 +31,6 @@ def stream():
 @app.route("/delete_chat/<userId>/<chatId>", methods=["DELETE"])
 @require_auth
 def delete_chat(userId, chatId):
-    db.chat.delete_chat(userId, chatId)
     return jsonify({
         "success": True,
         "message": "Chat and its subcollections deleted successfully!",
@@ -53,7 +47,7 @@ def summarise_title():
 
     summarise_prompt = f"Summarize this into a short title under 100 characters:\n\n{prompt}"
     ai_provider = AIProvider()
-    ai = ai_provider.get(Models.DEFAULT_MODEL)
+    ai = ai_provider.get(CONFIG.MODELS.DEFAULT_MODEL)
     response = ai.invoke({
         "prompt": summarise_prompt,
         "user": request.user

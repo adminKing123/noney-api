@@ -3,8 +3,19 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import HumanMessage, AIMessage
 from ai.base import BaseAI
 from .google_text_context import get_google_text_context
+from .contextprovider import ContextProvider
+from config import CONFIG
 
 class GeminiTextAI(BaseAI):
+    MAPPINGS = {
+        "gemini-2.5-flash": {
+            "temperature": 0.7,
+            "top_p": 1.0,
+            "top_k": 40,
+            "model_id": CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001,
+        },
+    }
+
     def __init__(
         self,
         model_name="gemini-2.5-flash",
@@ -12,11 +23,13 @@ class GeminiTextAI(BaseAI):
         top_p=1.0,
         top_k=40,
     ):
+        self.model_name = model_name
+        self.details = self.MAPPINGS.get(model_name, {})
         self.model = ChatGoogleGenerativeAI(
             model=model_name,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
+            temperature=self.details.get("temperature", temperature),
+            top_p=self.details.get("top_p", top_p),
+            top_k=self.details.get("top_k", top_k),
         )
 
     def stream(self, payload):
@@ -27,7 +40,7 @@ class GeminiTextAI(BaseAI):
         prompt = payload.get("prompt", "")
 
         yield self._send_step("info", "Summarizing context")
-        ctx = get_google_text_context(user_id, chat_uid)
+        ctx = ContextProvider.get(self.details.get("model_id"), user_id, chat_uid)
         context = ctx.build_context(prompt)
 
         ai_response = ""
