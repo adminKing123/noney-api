@@ -7,18 +7,11 @@ from .contextprovider import ContextProvider
 from config import CONFIG
 
 class GeminiTextAI(BaseAI):
-    MAPPINGS = {
-        "gemini-2.5-flash": {
-            "temperature": 0.7,
-            "top_p": 1.0,
-            "top_k": 40,
-            "model_id": CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001,
-        },
-    }
+    MAPPINGS = CONFIG.AI_MAPPINGS
 
     def __init__(
         self,
-        model_name="gemini-2.5-flash",
+        model_name,
         temperature=0.7,
         top_p=1.0,
         top_k=40,

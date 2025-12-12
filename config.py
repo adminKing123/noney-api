@@ -14,3 +14,16 @@ class CONFIG:
     LRU_CACHE_SIZE = int(os.getenv("LRU_CACHE_SIZE", "128"))
     GEMINI_MESSAGE_LIMIT = int(os.getenv("GEMINI_MESSAGE_LIMIT", "10"))
     MODELS = Models()
+
+    AI_MAPPINGS = {
+        "gemini-2.5-flash": {
+            "temperature": 0.7,
+            "top_p": 1.0,
+            "top_k": 40,
+            "model_id": MODELS.NONEY_1_0_TWINKLE_20241001,
+        },
+    }
+
+    AI_MAPPINGS_REVERSED = {
+        MODELS.NONEY_1_0_TWINKLE_20241001: "gemini-2.5-flash",
+    }
