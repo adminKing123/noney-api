@@ -31,6 +31,7 @@ def stream():
 @app.route("/delete_chat/<userId>/<chatId>", methods=["DELETE"])
 @require_auth
 def delete_chat(userId, chatId):
+    db.chat.delete_chat(userId, chatId)
     return jsonify({
         "success": True,
         "message": "Chat and its subcollections deleted successfully!",
@@ -45,7 +46,7 @@ def summarise_title():
     if not prompt:
         return jsonify({"error": "Prompt is required"}), 400
 
-    summarise_prompt = f"Summarize this into a short title under 100 characters:\n\n{prompt}"
+    summarise_prompt = f"Summarize this into a short title under 100 characters (only plain text):\n\n{prompt}"
     ai_provider = AIProvider()
     ai = ai_provider.get(CONFIG.MODELS.DEFAULT_MODEL)
     response = ai.invoke({
