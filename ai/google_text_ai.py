@@ -12,6 +12,7 @@ class GeminiTextAI(BaseAI):
     def __init__(
         self,
         model_name,
+        system_prompt=None,
         temperature=0.7,
         top_p=1.0,
         top_k=40,
@@ -24,6 +25,7 @@ class GeminiTextAI(BaseAI):
             top_p=self.details.get("top_p", top_p),
             top_k=self.details.get("top_k", top_k),
         )
+        self.system_prompt = system_prompt
 
     def stream(self, payload):
         start_time = time.time()
@@ -33,7 +35,7 @@ class GeminiTextAI(BaseAI):
         prompt = payload.get("prompt", "")
 
         yield self._send_step("info", "Summarizing context")
-        ctx = ContextProvider.get(self.details.get("model_id"), user_id, chat_uid)
+        ctx = ContextProvider.get(self.details.get("model_id"), user_id, chat_uid, self.system_prompt)
         context = ctx.build_context(prompt)
 
         ai_response = ""

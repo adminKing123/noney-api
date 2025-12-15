@@ -1,14 +1,15 @@
 from db import db
 from functools import lru_cache, cached_property
-from langchain.messages import HumanMessage, AIMessage
+from langchain.messages import HumanMessage, AIMessage, SystemMessage
 from config import CONFIG
 
 class GoogleTextContext:
     MESSAGES_LIMIT = CONFIG.GEMINI_MESSAGE_LIMIT
 
-    def __init__(self, user_id, chat_uid):
+    def __init__(self, user_id, chat_uid, system_prompt=None):
         self.user_id = user_id
         self.chat_uid = chat_uid
+        self.system_prompt = system_prompt
         self.messages = list(self._get_messages())
 
     def _get_messages(self):
@@ -38,8 +39,10 @@ class GoogleTextContext:
         else:
             self.append(HumanMessage(content=prompt))
             context = self.messages
+            if self.system_prompt:
+                context = [SystemMessage(content=self.system_prompt)] + self.messages
             return context
 
 @lru_cache(maxsize=CONFIG.LRU_CACHE_SIZE)
-def get_google_text_context(user_id, chat_uid):
-    return GoogleTextContext(user_id, chat_uid)
+def get_google_text_context(user_id, chat_uid, system_prompt=None):
+    return GoogleTextContext(user_id, chat_uid, system_prompt)
