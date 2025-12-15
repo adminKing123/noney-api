@@ -8,6 +8,9 @@ class Models:
     NONEY_CODE_GEN_20241001 = "noney-code-gen-20241001"
     DEFAULT_MODEL = NONEY_1_0_TWINKLE_20241001
 
+class Uploads:
+    UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
+
 class CONFIG:
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "")
@@ -15,6 +18,7 @@ class CONFIG:
     LRU_CACHE_SIZE = int(os.getenv("LRU_CACHE_SIZE", "128"))
     GEMINI_MESSAGE_LIMIT = int(os.getenv("GEMINI_MESSAGE_LIMIT", "10"))
     MODELS = Models()
+    UPLOADS = Uploads()
 
     AI_MAPPINGS = {
         "gemini-2.0-flash": {

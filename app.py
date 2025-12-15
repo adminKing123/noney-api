@@ -5,7 +5,7 @@ import os
 from db import db
 from ai import AIProvider
 from middleware.auth import require_auth
-from ai.contextprovider import ContextProvider
+from utils.files import save_file
 
 app = Flask(__name__)
 CORS(app)
@@ -59,6 +59,35 @@ def summarise_title():
     summary = summary[:100]
 
     return jsonify({"summarized_title": summary})
+
+@app.route("/upload", methods=["POST"])
+@require_auth
+def upload_file():
+    user_id = request.get("user", {}).get("user_id", None)
+    chat_id = request.form.get("chat_id")
+
+    if not chat_id or not user_id:
+        return jsonify({"error": "chat_id and user_id are required"}), 400
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    file_meta = save_file(file, user_id, chat_id)
+
+    return jsonify({
+        "success": True,
+        "file": {
+            "name": file_meta["filename"],
+            "size": file_meta["size"],
+            "chat_id": chat_id
+        }
+    }), 201
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Render provides PORT
