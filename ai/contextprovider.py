@@ -6,7 +6,7 @@ class ContextProvider:
     def get(model_id, user_id, chat_uid, system_prompt=None):
         if model_id == CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001:
             return get_google_text_context(user_id, chat_uid, system_prompt)
-        
-        # for now returning google text context as default
+        if model_id == CONFIG.MODELS.NONEY_CODE_GEN_20241001:
+            return get_google_text_context(user_id, chat_uid, system_prompt)
         return get_google_text_context(user_id, chat_uid, system_prompt)
         

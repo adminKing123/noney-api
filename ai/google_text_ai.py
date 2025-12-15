@@ -2,7 +2,6 @@ import time
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import HumanMessage, AIMessage
 from ai.base import BaseAI
-from .google_text_context import get_google_text_context
 from .contextprovider import ContextProvider
 from config import CONFIG
 
@@ -25,7 +24,7 @@ class GeminiTextAI(BaseAI):
             top_p=self.details.get("top_p", top_p),
             top_k=self.details.get("top_k", top_k),
         )
-        self.system_prompt = system_prompt
+        self.system_prompt = self.details.get("system_prompt", system_prompt)
 
     def stream(self, payload):
         start_time = time.time()
