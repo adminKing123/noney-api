@@ -2,7 +2,7 @@ import os
 from werkzeug.utils import secure_filename
 from config import CONFIG
 
-def save_file(file, user_id, file_id):
+def save_file(file, user_id, file_id, file_type=""):
     filename = secure_filename(file_id + "_" + file.filename)
 
     chat_dir = os.path.join(
@@ -18,6 +18,7 @@ def save_file(file, user_id, file_id):
         "user_id": user_id,
         "original_name": file.filename,
         "filename": filename,
+        "file_type": file_type,
         "download_url": f"/uploads/{filename}",
         "size": os.path.getsize(file_path),
     }

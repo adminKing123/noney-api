@@ -66,6 +66,7 @@ def upload_file():
     user_id = request.user.get("user_id", None)
     chat_id = request.form.get("chat_id")
     file_id = request.form.get("file_id")
+    file_type = request.form.get("file_type", "")
 
     if not chat_id or not user_id or not file_id:
         return jsonify({"error": "chat_id, user_id, and file_id are required"}), 400
@@ -78,7 +79,7 @@ def upload_file():
     if file.filename == "":
         return jsonify({"error": "Empty filename"}), 400
 
-    file_meta = save_file(file, user_id, file_id)
+    file_meta = save_file(file, user_id, file_id, file_type)
 
     return jsonify(file_meta), 201
 
