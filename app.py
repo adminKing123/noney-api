@@ -5,7 +5,7 @@ import os
 from db import db
 from ai import AIProvider
 from middleware.auth import require_auth
-from utils.files import save_file
+from utils.files import save_file, remove_file
 
 app = Flask(__name__)
 CORS(app)
@@ -86,14 +86,27 @@ def upload_file():
 @app.route("/delete_file/<filename>", methods=["DELETE"])
 @require_auth
 def delete_file(filename):
-    upload_dir = CONFIG.UPLOADS.UPLOAD_FOLDER
-    file_path = os.path.join(upload_dir, filename)
+    user_id = request.user.get("user_id")
 
-    if not os.path.exists(file_path):
-        return jsonify({"error": "File not found"}), 404
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
 
-    os.remove(file_path)
-    return jsonify({"success": True, "message": "File deleted successfully"}), 200
+    # GitHub repo path (same as upload logic)
+    github_path = f"uploads/{user_id}/{filename}"
+    commit_message = f"Delete file {filename} for user {user_id}"
+
+    success = remove_file(
+        file_path=github_path,
+        commit_message=commit_message
+    )
+
+    if not success:
+        return jsonify({"error": "File not found or delete failed"}), 404
+
+    return jsonify({
+        "success": True,
+        "message": "File deleted successfully"
+    }), 200
 
 @app.route("/uploads/<filename>", methods=["GET"])
 def download_file(filename):

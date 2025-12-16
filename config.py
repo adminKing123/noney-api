@@ -17,6 +17,12 @@ class CONFIG:
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     LRU_CACHE_SIZE = int(os.getenv("LRU_CACHE_SIZE", "128"))
     GEMINI_MESSAGE_LIMIT = int(os.getenv("GEMINI_MESSAGE_LIMIT", "10"))
+    
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+    GITHUB_BRANCH_NAME = os.getenv("GITHUB_BRANCH_NAME", "main")
+    GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "")
+    GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "")
+
     MODELS = Models()
     UPLOADS = Uploads()
 
