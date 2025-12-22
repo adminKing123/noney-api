@@ -38,6 +38,22 @@ def delete_chat(userId, chatId):
         "chatId": chatId
     })
 
+@app.route("/rename_chat/<userId>/<chatId>", methods=["PUT"])
+@require_auth
+def rename_chat(userId, chatId):
+    new_title = request.json.get("title", "")
+    
+    if not new_title:
+        return jsonify({"error": "Title is required"}), 400
+    
+    db.chat.rename_chat(userId, chatId, new_title)
+    return jsonify({
+        "success": True,
+        "message": "Chat renamed successfully!",
+        "chatId": chatId,
+        "title": new_title
+    })
+
 @app.route("/summarise_title", methods=["POST"])
 @require_auth
 def summarise_title():

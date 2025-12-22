@@ -22,6 +22,13 @@ class Chat:
         chat_ref = self.client.collection("users").document(userId).collection("drafts").document(chatId)
         self.client.recursive_delete(chat_ref)
 
+    def rename_chat(self, userId, chatId, new_title):
+        chat_ref = self.client.collection("users").document(userId).collection("chats").document(chatId)
+        chat_ref.update({
+            "title": new_title,
+            # "updated_at": firestore.SERVER_TIMESTAMP
+        })
+
     def get_messages(self, userId, chatId, limit=20, should_yeild=False):
         messages_ref = self.client.collection("users").document(userId).collection("chats").document(chatId).collection("messages").order_by("created_at", direction=firestore.Query.ASCENDING).limit(limit)
         if should_yeild:
