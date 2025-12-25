@@ -19,7 +19,7 @@ class GeminiTextAI(BaseAI):
         self.model_name = model_name
         self.details = self.MAPPINGS.get(model_name, {})
         self.model = ChatGoogleGenerativeAI(
-            model=model_name,
+            model=self.details.get("model_id"),
             temperature=self.details.get("temperature", temperature),
             top_p=self.details.get("top_p", top_p),
             top_k=self.details.get("top_k", top_k),
@@ -34,7 +34,7 @@ class GeminiTextAI(BaseAI):
         prompt = payload.get("prompt", "")
 
         yield self._send_step("info", "Summarizing context")
-        ctx = ContextProvider.get(self.details.get("model_id"), user_id, chat_uid, self.system_prompt)
+        ctx = ContextProvider.get(self.model_name, user_id, chat_uid, self.system_prompt)
         context = ctx.build_context(prompt)
 
         ai_response = ""

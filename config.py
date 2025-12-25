@@ -27,17 +27,17 @@ class CONFIG:
     UPLOADS = Uploads()
 
     AI_MAPPINGS = {
-        "gemini-2.0-flash": {
+        MODELS.NONEY_1_0_TWINKLE_20241001:{
             "temperature": 0.7,
             "top_p": 1.0,
             "top_k": 40,
-            "model_id": MODELS.NONEY_1_0_TWINKLE_20241001,
+            "model_id": "gemini-2.0-flash",
         },
-        "gemini-2.5-flash": {
+        MODELS.NONEY_CODE_GEN_20241001: {
             "temperature": 0.7,
             "top_p": 1.0,
             "top_k": 40,
-            "model_id": MODELS.NONEY_CODE_GEN_20241001,
+            "model_id": "gemini-2.5-flash",
             "system_prompt": '''
 You are a helpful and precise AI assistant specialized in code generation and software development tasks. Your primary goal is to assist users by providing accurate, efficient, and well-structured code snippets in response to their programming-related queries.
 Guidelines:
@@ -52,9 +52,4 @@ Guidelines:
 9. Strict: Don't answer anything outside Software Engineering Scope, and always maintain professionalism.
 '''
         },
-    }
-
-    AI_MAPPINGS_REVERSED = {
-        MODELS.NONEY_1_0_TWINKLE_20241001: "gemini-2.0-flash",
-        MODELS.NONEY_CODE_GEN_20241001: "gemini-2.5-flash",
     }
