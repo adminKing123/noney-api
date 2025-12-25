@@ -12,13 +12,13 @@ class BaseAI(ABC):
         return self._event("step", {"id": str(uuid.uuid4()), "data": data})
 
     def _start(self):
-        return self._step([{"type": "connecting", "title": "Thinking"}])
+        return self._step([{"id": str(uuid.uuid4()), "type": "connecting", "title": "Thinking"}])
 
     def _started(self):
-        return self._step([{"type": "started", "title": "Generating"}])
+        return self._step([{"id": str(uuid.uuid4()), "type": "started", "title": "Generating"}])
 
     def _end(self):
-        return self._step([{"type": "finished", "title": "Finished"}])
+        return self._step([{"id": str(uuid.uuid4()), "type": "finished", "title": "Finished"}])
     
     def _send_step(self, type, title, detail=None):
         data = {"type": type, "title": title}
@@ -38,6 +38,28 @@ class BaseAI(ABC):
         return self._event("duration", {
             "data": {
                 "seconds": seconds
+            }
+        })
+    
+    def _tool_call(self, tool_name, tool_args):
+        return self._event("step", {
+            "data": {
+                "id": str(uuid.uuid4()),
+                "title": f"Calling tool: {tool_name}",
+                "tool_name": tool_name,
+                "tool_args": tool_args,
+                "type": "tool_call"
+            }
+        })
+    
+    def _tool_result(self, tool_name, tool_result):
+        return self._event("step", {
+            "data": {
+                "id": str(uuid.uuid4()),
+                "title": f"Tool result from: {tool_name}",
+                "tool_name": tool_name,
+                "tool_result": tool_result,
+                "type": "tool_result"
             }
         })
 
