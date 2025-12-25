@@ -9,3 +9,4 @@ instance/
 .venv/
 firebase_key.json
 /uploads
+*.log
