@@ -63,7 +63,7 @@ def get_code(data):
 
 # ---------------- Core Request Handler ---------------- #
 
-def post_request(endpoint: str, payload: dict, log: bool = True):
+def post_request(endpoint: str, payload: dict, log: bool = False):
     """Generic POST request handler with base64 encoding/decoding and logging."""
     encoded_payload = encode(payload)
     try:
