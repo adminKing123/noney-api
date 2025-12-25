@@ -10,3 +10,5 @@ class AIProvider:
             return GeminiTextAI(model_name=CONFIG.MODELS.NONEY_CODE_GEN_20241001)
         if (model_name == CONFIG.MODELS.NONEY_HRMS_ASSISTANT_20241001):
             return HrmsPreviewAI(model_name=CONFIG.MODELS.NONEY_HRMS_ASSISTANT_20241001)
+        if (model_name == CONFIG.MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001):
+            return HrmsPreviewAI(model_name=CONFIG.MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001)

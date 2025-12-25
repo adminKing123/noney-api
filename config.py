@@ -13,6 +13,7 @@ class Models:
     NONEY_1_0_TWINKLE_20241001 = "noney-1.0-twinkle-20241001"
     NONEY_CODE_GEN_20241001 = "noney-code-gen-20241001"
     NONEY_HRMS_ASSISTANT_20241001 = "noney-hrms-assistant-20241001"
+    NONEY_HRMS_ASSISTANT_PRO_20241001 = "noney-hrms-assistant-pro-20241001"
     DEFAULT_MODEL = NONEY_1_0_TWINKLE_20241001
 
 class Uploads:
@@ -65,6 +66,15 @@ Guidelines:
             "top_p": 1.0,
             "top_k": 40,
             "model_id": "gemini-2.5-flash",
+            "system_prompt": '''
+You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
+'''
+        },
+        MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001: {
+            "temperature": 0.7,
+            "top_p": 1.0,
+            "top_k": 40,
+            "model_id": "gemini-3-pro-preview",
             "system_prompt": '''
 You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
 '''
