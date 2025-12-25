@@ -1,4 +1,4 @@
-from ai.google_text_ai import GeminiTextAI
+from .google_text.google_text_ai import GeminiTextAI
 from config import CONFIG
 
 class AIProvider:

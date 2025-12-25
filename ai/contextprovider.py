@@ -1,5 +1,5 @@
 from config import CONFIG
-from .google_text_context import get_google_text_context
+from .google_text.google_text_context import get_google_text_context
 
 class ContextProvider:
     @staticmethod

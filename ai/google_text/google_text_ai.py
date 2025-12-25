@@ -2,7 +2,7 @@ import time
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import HumanMessage, AIMessage
 from ai.base import BaseAI
-from .contextprovider import ContextProvider
+from ..contextprovider import ContextProvider
 from config import CONFIG
 
 class GeminiTextAI(BaseAI):
