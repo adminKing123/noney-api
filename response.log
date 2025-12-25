@@ -1,0 +1,1183 @@
+[2025-12-25T17:26:04.729549]
+{
+  "response_data": [
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199864",
+      "log_date": "12/25/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "4:19"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199840",
+      "log_date": "12/24/2025",
+      "user_override_comment": "Forgot to checkin today ,\n forgot to checkin",
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "15:16"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199770",
+      "log_date": "12/23/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:10"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199745",
+      "log_date": "12/22/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "8:39"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199682",
+      "log_date": "12/19/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:02"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199639",
+      "log_date": "12/18/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:56"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199603",
+      "log_date": "12/17/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199565",
+      "log_date": "12/16/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:11"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199536",
+      "log_date": "12/15/2025",
+      "user_override_comment": "forgot to checkout",
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "17:49"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199478",
+      "log_date": "12/12/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:15"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199441",
+      "log_date": "12/11/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "9:36"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199404",
+      "log_date": "12/10/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "8:50"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199359",
+      "log_date": "12/09/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199314",
+      "log_date": "12/08/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:52"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199254",
+      "log_date": "12/05/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199217",
+      "log_date": "12/04/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:02"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199180",
+      "log_date": "12/03/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:07"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199137",
+      "log_date": "12/02/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:30"
+    }
+  ],
+  "total_late_counts": 6,
+  "status": "Success",
+  "message": "Attendance log(s) on the given date."
+}
+==================================================
+[2025-12-25T17:25:11.875421]
+{
+  "response_data": [
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "181225",
+      "log_date": "07/26/2024",
+      "user_override_comment": "forgot to checkout",
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "68:04"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "181164",
+      "log_date": "07/25/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:03"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "181089",
+      "log_date": "07/24/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:42"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "181041",
+      "log_date": "07/23/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:13"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180959",
+      "log_date": "07/22/2024",
+      "user_override_comment": "forgot to checkout",
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "23:26"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180881",
+      "log_date": "07/19/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:17"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180809",
+      "log_date": "07/18/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:09"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180752",
+      "log_date": "07/17/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:13"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180693",
+      "log_date": "07/16/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:01"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180617",
+      "log_date": "07/15/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:09"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180486",
+      "log_date": "07/11/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:21"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180421",
+      "log_date": "07/10/2024",
+      "user_override_comment": "Forgot to checkout",
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "22:56"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180366",
+      "log_date": "07/09/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:06"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180304",
+      "log_date": "07/08/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:08"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180199",
+      "log_date": "07/05/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:37"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180142",
+      "log_date": "07/04/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:01"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "180066",
+      "log_date": "07/03/2024",
+      "user_override_comment": "forgot to logout",
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "22:57"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "179995",
+      "log_date": "07/02/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:21"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "179927",
+      "log_date": "07/01/2024",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:16"
+    }
+  ],
+  "total_late_counts": 0,
+  "status": "Success",
+  "message": "Attendance log(s) on the given date."
+}
+==================================================
+[2025-12-25T17:24:10.806143]
+{
+  "response_data": [
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166992",
+      "log_date": "11/30/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:33"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166920",
+      "log_date": "11/29/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:21"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166809",
+      "log_date": "11/28/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:25"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166723",
+      "log_date": "11/27/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166586",
+      "log_date": "11/24/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:28"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166477",
+      "log_date": "11/23/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:24"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166383",
+      "log_date": "11/22/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:54"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166282",
+      "log_date": "11/21/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:22"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166196",
+      "log_date": "11/20/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:08"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "166079",
+      "log_date": "11/17/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:44"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165947",
+      "log_date": "11/16/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "7:59"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165858",
+      "log_date": "11/15/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:17"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165781",
+      "log_date": "11/14/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:17"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165668",
+      "log_date": "11/10/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165576",
+      "log_date": "11/09/2023",
+      "user_override_comment": "forgot to logout",
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "10:10"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165461",
+      "log_date": "11/08/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:07"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165369",
+      "log_date": "11/07/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:01"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165254",
+      "log_date": "11/06/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:30"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165126",
+      "log_date": "11/03/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:08"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "165012",
+      "log_date": "11/02/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:14"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "164921",
+      "log_date": "11/01/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:14"
+    }
+  ],
+  "total_late_counts": 0,
+  "status": "Success",
+  "message": "Attendance log(s) on the given date."
+}
+==================================================
+[2025-12-25T17:22:43.086354]
+{
+  "response_data": [
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "162474",
+      "log_date": "09/29/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:10"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "162339",
+      "log_date": "09/28/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:02"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "162237",
+      "log_date": "09/27/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:32"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "162125",
+      "log_date": "09/26/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:17"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "162013",
+      "log_date": "09/25/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:44"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161859",
+      "log_date": "09/22/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:07"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161713",
+      "log_date": "09/21/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:10"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161625",
+      "log_date": "09/20/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:14"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161512",
+      "log_date": "09/19/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:17"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161410",
+      "log_date": "09/18/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:17"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161260",
+      "log_date": "09/15/2023",
+      "user_override_comment": "Forgot to checkout",
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "70:54"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161097",
+      "log_date": "09/14/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:35"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "161006",
+      "log_date": "09/13/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:15"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160900",
+      "log_date": "09/12/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:06"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160788",
+      "log_date": "09/11/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:06"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160634",
+      "log_date": "09/08/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:01"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160503",
+      "log_date": "09/07/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:25"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160403",
+      "log_date": "09/06/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:16"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160286",
+      "log_date": "09/05/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:16"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160178",
+      "log_date": "09/04/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:19"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "160015",
+      "log_date": "09/01/2023",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:24"
+    }
+  ],
+  "total_late_counts": 0,
+  "status": "Success",
+  "message": "Attendance log(s) on the given date."
+}
+==================================================
+[2025-12-25T17:22:14.138705]
+{
+  "response_data": [
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199864",
+      "log_date": "12/25/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "4:19"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199840",
+      "log_date": "12/24/2025",
+      "user_override_comment": "Forgot to checkin today ,\n forgot to checkin",
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "15:16"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199770",
+      "log_date": "12/23/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:10"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199745",
+      "log_date": "12/22/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "8:39"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199682",
+      "log_date": "12/19/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:02"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199639",
+      "log_date": "12/18/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:56"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199603",
+      "log_date": "12/17/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199565",
+      "log_date": "12/16/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:11"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199536",
+      "log_date": "12/15/2025",
+      "user_override_comment": "forgot to checkout",
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "17:49"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199478",
+      "log_date": "12/12/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:15"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199441",
+      "log_date": "12/11/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "9:36"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199404",
+      "log_date": "12/10/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "Yes",
+      "logged_hours": "8:50"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199359",
+      "log_date": "12/09/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199314",
+      "log_date": "12/08/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:52"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199254",
+      "log_date": "12/05/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:00"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199217",
+      "log_date": "12/04/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:02"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199180",
+      "log_date": "12/03/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "9:07"
+    },
+    {
+      "name": "Harsh Narwariya",
+      "user_id": "560",
+      "attendance_id": "199137",
+      "log_date": "12/02/2025",
+      "user_override_comment": null,
+      "out_office_log": null,
+      "is_came_late": "-",
+      "logged_hours": "8:30"
+    }
+  ],
+  "total_late_counts": 6,
+  "status": "Success",
+  "message": "Attendance log(s) on the given date."
+}
+==================================================
+[2025-12-25T17:06:26.295697]
+{
+  "response_data": [
+    {
+      "project_id": "255",
+      "project_name": "#W QuantumZero",
+      "project_type_id": "1",
+      "project_status": "Active"
+    },
+    {
+      "project_id": "83",
+      "project_name": "00 Skill Building",
+      "project_type_id": "5",
+      "project_status": "Active"
+    },
+    {
+      "project_id": "253",
+      "project_name": "197 BeMasterly",
+      "project_type_id": "2",
+      "project_status": "In-Active"
+    },
+    {
+      "project_id": "267",
+      "project_name": "241 Photon AI",
+      "project_type_id": "6",
+      "project_status": "Active"
+    },
+    {
+      "project_id": "268",
+      "project_name": "308 Strikie",
+      "project_type_id": "2",
+      "project_status": "In-Active"
+    },
+    {
+      "project_id": "278",
+      "project_name": "317 SmartAxiom",
+      "project_type_id": "1",
+      "project_status": "Active"
+    }
+  ],
+  "message": "User's project list !",
+  "status": "Success"
+}
+==================================================
+[2025-12-25T17:02:10.954533]
+{
+  "logged_hours": "4:19",
+  "response_data": [
+    {
+      "attendance_id": "199864",
+      "total_time": "15535",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "10:17",
+      "logout": "14:36"
+    },
+    {
+      "attendance_id": "199864",
+      "total_time": "15535",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "14:57",
+      "logout": "00:00"
+    }
+  ],
+  "login_count": 2,
+  "logout_count": 1,
+  "log_date": "2025-12-25",
+  "message": "User's logs detail !",
+  "status": "Success"
+}
+==================================================
+[2025-12-25T17:00:53.858845]
+{
+  "logged_hours": "4:19",
+  "response_data": [
+    {
+      "attendance_id": "199864",
+      "total_time": "15535",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "10:17",
+      "logout": "14:36"
+    },
+    {
+      "attendance_id": "199864",
+      "total_time": "15535",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "14:57",
+      "logout": "00:00"
+    }
+  ],
+  "login_count": 2,
+  "logout_count": 1,
+  "log_date": "2025-12-25",
+  "message": "User's logs detail !",
+  "status": "Success"
+}
+==================================================
+[2025-12-25T17:00:31.847669]
+{
+  "logged_hours": 0,
+  "response_data": [
+    {
+      "attendance_id": "199855",
+      "total_time": "0",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "10:02",
+      "logout": "00:00"
+    }
+  ],
+  "login_count": 1,
+  "logout_count": 0,
+  "log_date": "2025-12-25",
+  "message": "User's logs detail !",
+  "status": "Success"
+}
+==================================================
+[2025-12-25T17:00:06.093993]
+{
+  "logged_hours": 0,
+  "response_data": [
+    {
+      "attendance_id": "199874",
+      "total_time": "0",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "11:59",
+      "logout": "00:00"
+    }
+  ],
+  "login_count": 1,
+  "logout_count": 0,
+  "log_date": "2025-12-25",
+  "message": "User's logs detail !",
+  "status": "Success"
+}
+==================================================
+[2025-12-25T16:59:26.874933]
+{
+  "logged_hours": "4:19",
+  "response_data": [
+    {
+      "attendance_id": "199864",
+      "total_time": "15535",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "10:17",
+      "logout": "14:36"
+    },
+    {
+      "attendance_id": "199864",
+      "total_time": "15535",
+      "ip_address": "169.254.169.126",
+      "log_date": "12/25/2025",
+      "login": "14:57",
+      "logout": "00:00"
+    }
+  ],
+  "login_count": 2,
+  "logout_count": 1,
+  "log_date": "2025-12-25",
+  "message": "User's logs detail !",
+  "status": "Success"
+}
+==================================================

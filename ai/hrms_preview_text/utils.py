@@ -179,7 +179,7 @@ def get_user_mail_setting(user_id=None, signed_array=None):
     data = post_request(endpoint, payload)
     return data.get("response_data", [])
 
-def get_attendance(start_date, end_date, user_id=None, signed_array=None):
+def get_attendance(start_date="", end_date="", user_id=None, signed_array=None):
     endpoint = "/attendance/show_attendance"
     extra_fields = {"start_date": start_date, "end_date": end_date}
     payload = build_user_payload(user_id, signed_array, extra_fields)

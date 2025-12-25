@@ -1,10 +1,9 @@
 import time
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.messages import HumanMessage, AIMessage, AIMessageChunk, ToolMessage
+from langchain.messages import HumanMessage, AIMessageChunk, ToolMessage
 from ai.base import BaseAI
 from langchain.agents import create_agent
-from .tools import get_a_user
-# from ..contextprovider import ContextProvider
+from .tools import get_a_user, get_today_log_status_tool, get_emp_projects_tool, get_emp_project_log_tool, get_user_mail_setting_tool, get_attendance_tool, fetch_data_tool
 from config import CONFIG
 
 class HrmsPreviewAI(BaseAI):
@@ -29,7 +28,7 @@ class HrmsPreviewAI(BaseAI):
         self.system_prompt = self.details.get("system_prompt", system_prompt)
         self.agent = create_agent(
             model=self.model,
-            tools=[get_a_user],
+            tools=[get_a_user, get_today_log_status_tool, get_emp_projects_tool, get_emp_project_log_tool, get_user_mail_setting_tool, get_attendance_tool, fetch_data_tool],
         )
 
     def stream(self, payload):
@@ -70,8 +69,10 @@ class HrmsPreviewAI(BaseAI):
                     started = True
                 if isinstance(msg.content, list):
                     for part in msg.content:
-                        if part.get("type") == "text":
-                            # print(part["text"], end="", flush=True)
+                        if type(part) == str:
+                            ai_response += part
+                            yield self._text(part)
+                        elif part.get("type") == "text":
                             ai_response += part["text"]
                             yield self._text(part["text"])
                 else:
