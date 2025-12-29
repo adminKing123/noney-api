@@ -138,6 +138,9 @@ def download_file(filename):
         as_attachment=True
     )
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    return jsonify({"status": "ok"}), 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Render provides PORT
