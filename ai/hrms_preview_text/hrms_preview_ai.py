@@ -14,9 +14,9 @@ class HrmsPreviewAI(BaseAI):
         self,
         model_name,
         system_prompt=None,
-        temperature=0.7,
-        top_p=1.0,
-        top_k=40,
+        temperature=None,
+        top_p=None,
+        top_k=None,
     ):
         self.model_name = model_name
         self.details = self.MAPPINGS.get(model_name, {})
@@ -61,7 +61,8 @@ class HrmsPreviewAI(BaseAI):
 
 
             if isinstance(msg, ToolMessage):
-                yield self._tool_result(msg.name, msg.content)
+                ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
+                yield self._tool_result(msg.tool_call_id, msg.name, msg.content)
 
 
             if isinstance(msg, AIMessageChunk) and msg.content:
@@ -77,7 +78,6 @@ class HrmsPreviewAI(BaseAI):
                             ai_response += part["text"]
                             yield self._text(part["text"])
                 else:
-                    # print(msg.content, end="", flush=True)
                     ai_response += msg.content
                     yield self._text(msg.content)
 

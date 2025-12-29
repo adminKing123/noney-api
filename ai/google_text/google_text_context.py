@@ -1,5 +1,5 @@
 from db import db
-from functools import lru_cache, cached_property
+from functools import lru_cache
 from langchain.messages import HumanMessage, AIMessage, SystemMessage
 from config import CONFIG
 
