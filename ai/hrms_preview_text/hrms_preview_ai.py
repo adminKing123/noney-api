@@ -1,9 +1,10 @@
 import time
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.messages import HumanMessage, AIMessageChunk, ToolMessage
+from langchain.messages import AIMessage, AIMessageChunk, ToolMessage
 from ai.base import BaseAI
 from langchain.agents import create_agent
 from .tools import get_a_user, get_today_log_status_tool, get_emp_projects_tool, get_emp_project_log_tool, get_user_mail_setting_tool, get_attendance_tool, fetch_data_tool
+from ..contextprovider import ContextProvider
 from config import CONFIG
 
 class HrmsPreviewAI(BaseAI):
@@ -38,9 +39,9 @@ class HrmsPreviewAI(BaseAI):
         chat_uid = payload.get("chat_uid", None)
         prompt = payload.get("prompt", "")
 
-        # yield self._send_step("info", "Summarizing context")
-        # ctx = ContextProvider.get(self.model_name, user_id, chat_uid, self.system_prompt)
-        # context = ctx.build_context(prompt)
+        yield self._send_step("info", "Summarizing context")
+        ctx = ContextProvider.get(self.model_name, user_id, chat_uid, self.system_prompt)
+        context = ctx.build_context(prompt)
 
         ai_response = ""
         yield self._start()
@@ -48,7 +49,7 @@ class HrmsPreviewAI(BaseAI):
         started = False
 
         for msg, meta in self.agent.stream(
-            {"messages": [HumanMessage(content=prompt)]},
+            {"messages": context},
             stream_mode="messages",
         ):
             if isinstance(msg, AIMessageChunk):
@@ -80,7 +81,7 @@ class HrmsPreviewAI(BaseAI):
                     ai_response += msg.content
                     yield self._text(msg.content)
 
-        # ctx.append(AIMessage(content=ai_response))
+        ctx.append(AIMessage(content=ai_response))
         end_time = time.time()
         duration = end_time - start_time
         yield self._send_duration(duration)

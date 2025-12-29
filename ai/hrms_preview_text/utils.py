@@ -145,27 +145,8 @@ def get_today_log_status(user_id=None, signed_array=None):
     endpoint = "/attendance/total_logs_detail"
     payload = build_user_payload(user_id, signed_array)
     data = post_request(endpoint, payload)
-
-    isLoggedIn = False
-    login_time = ""
-    logout_time = ""
-
     response_data = data.get("response_data", [])
-    if response_data:
-        first_log = response_data[0]
-        last_log = response_data[-1]
-        login_time = first_log.get("login", "") + " " + first_log.get("log_date", "")
-        logout_time = last_log.get("logout", "") + " " + last_log.get("log_date", "")
-
-    if data.get("login_count", 0) > data.get("logout_count", 0):
-        isLoggedIn = True
-
-    return {
-        "total_logged_hours": data.get("logged_hours", "N/A"),
-        "is_logged_in": isLoggedIn,
-        "login_time": login_time,
-        "logout_time": logout_time
-    }
+    return response_data
 
 def get_emp_projects(user_id=None, signed_array=None):
     endpoint = "/project/get_emp_projects"
