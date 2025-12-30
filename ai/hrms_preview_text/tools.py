@@ -234,7 +234,7 @@ def fetch_data_tool(endpoint: str, user_id=None, signed_array=None) -> dict:
     )
 
 @tool
-def login(
+def login_tool(
     user_id: str,
     signed_array: str,
     override_comment: str = ""
@@ -263,7 +263,7 @@ def login(
     )
 
 @tool
-def logout(
+def logout_tool(
     user_id: str,
     signed_array: str,
     override_comment: str = ""
@@ -300,6 +300,6 @@ tools = [
     get_user_mail_setting_tool, 
     get_attendance_tool, 
     fetch_data_tool,
-    login,
-    logout
+    login_tool,
+    logout_tool
 ]
