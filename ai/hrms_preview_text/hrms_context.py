@@ -17,13 +17,13 @@ class HrmsContext:
             return
         messages = db.chat.get_messages(self.user_id, self.chat_uid, limit=self.MESSAGES_LIMIT, should_yeild=True)
         for msg in messages:
-            steps = msg.get("steps", [])
-            for step in steps:
-                if step.get("tool_id", False):
-                    tool_name = step.get("tool_name", None)
-                    tool_content = step.get("tool_result", None)
-                    if tool_name and tool_content:
-                        yield ToolMessage(name=tool_name, content=tool_content, tool_call_id=step.get("tool_id"))
+            # steps = msg.get("steps", [])
+            # for step in steps:
+            #     if step.get("tool_id", False):
+            #         tool_name = step.get("tool_name", None)
+            #         tool_content = step.get("tool_result", None)
+            #         if tool_name and tool_content:
+            #             yield ToolMessage(name=tool_name, content=tool_content, tool_call_id=step.get("tool_id"))
 
             prompt = msg.get("prompt", None)
             if prompt:

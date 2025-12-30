@@ -62,7 +62,7 @@ class HrmsPreviewAI(BaseAI):
 
 
             if isinstance(msg, ToolMessage):
-                ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
+                # ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
                 yield self._tool_result(msg.tool_call_id, msg.name, msg.content)
 
 

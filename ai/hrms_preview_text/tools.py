@@ -1,5 +1,5 @@
 from langchain.tools import tool
-from .utils import find_user_local, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout
+from .utils import find_user_local, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout, get_project_modules, get_project_activities
 
 @tool
 def get_a_user(query: str) -> dict:
@@ -291,6 +291,75 @@ def logout_tool(
         override_comment=override_comment
     )
 
+@tool
+def get_project_modules_tool(
+    user_id: str,
+    signed_array: str,
+    project_id: str = None
+) -> dict:
+    """
+    Retrieve modules associated with a specific project.
+
+    Args:
+        user_id (str): Unique identifier of the user.
+        signed_array (str): Authentication token used to authorize the request.
+        project_id (str, optional): Identifier of the project to fetch modules for.
+
+    Returns:
+        dict: List of modules linked to the specified project.
+
+        Each module object contains:
+            - project_id (str): Identifier of the project.
+            - module_id (str): Unique identifier of the module.
+            - module_name (str): Name of the module.
+            - estimated_time (str): Estimated effort/time for the module (may be empty).
+            - module_startdate (str): Module start date (DD/MM/YYYY).
+            - module_enddate (str | None): Module end date, if available.
+            - module_status (str): Current status of the module (e.g., Open).
+    """
+    return get_project_modules(
+        user_id=user_id,
+        signed_array=signed_array,
+        project_id=project_id
+    )
+
+
+@tool
+def get_project_activities_tool(
+    user_id: str,
+    signed_array: str,
+    project_id: str = None
+) -> dict:
+    """
+    Retrieve all activities associated with a specific project.
+
+    This tool fetches project-level activity mappings for a given user.
+    Each activity represents a task/category that can be logged under the project.
+
+    Args:
+        user_id (str): Unique identifier of the user.
+        signed_array (str): Authentication token used to authorize the request.
+        project_id (str, optional): Identifier of the project whose activities are required.
+
+    Returns:
+        dict: List of project activities.  
+        Each item in the list contains:
+
+        - project_id (str): Identifier of the project.
+        - activity_id (str): Master activity identifier.
+        - activity_name (str): Human-readable name of the activity.
+        - total_forecast_hours (str): Forecasted hours allocated to this activity.
+        - project_activity_id (str): Unique identifier mapping the activity to the project.
+        - act_status (str): Activity status  
+            - "1" → Active  
+            - "0" → Inactive
+    """
+    return get_project_activities(
+        user_id=user_id,
+        signed_array=signed_array,
+        project_id=project_id
+    )
+
 
 tools = [
     get_a_user, 
@@ -301,5 +370,7 @@ tools = [
     get_attendance_tool, 
     fetch_data_tool,
     login_tool,
-    logout_tool
+    logout_tool,
+    get_project_modules_tool,
+    get_project_activities_tool,
 ]

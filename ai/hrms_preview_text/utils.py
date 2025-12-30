@@ -75,6 +75,7 @@ def post_request(endpoint: str, payload: dict, log: bool = False):
         )
         if resp.status_code == 200:
             data = decode(resp.json())
+            print("Sending", payload)
             if log:
                 log_response(data)
             return data
@@ -201,18 +202,34 @@ def get_emp_project_log(start_date="", end_date="", user_id=None, signed_array=N
 
 def login(user_id=None, signed_array=None, override_comment=""):
     endpoint = "/attendance/fill_attendance"
-    payload = build_user_payload(user_id, signed_array)
     extra_fields = {"override_comment": override_comment}
-    data = post_request(endpoint, payload, extra_fields)
+    payload = build_user_payload(user_id, signed_array, extra_fields)
+    data = post_request(endpoint, payload)
     result = data.get("response_data", {})
     result["message"] = data.get("message", "")
     return result
 
 def logout(user_id=None, signed_array=None, override_comment=""):
     endpoint = "/attendance/fill_attendance"
-    payload = build_user_payload(user_id, signed_array)
     extra_fields = {"override_comment": override_comment}
-    data = post_request(endpoint, payload, extra_fields)
+    payload = build_user_payload(user_id, signed_array, extra_fields)
+    data = post_request(endpoint, payload)
     result = data.get("response_data", {})
     result["message"] = data.get("message", "")
+    return result
+
+def get_project_modules(user_id=None, signed_array=None, project_id=None):
+    endpoint = "/project/get_modules"
+    extra_fields = {"project_id": project_id}
+    payload = build_user_payload(user_id, signed_array, extra_fields)
+    data = post_request(endpoint, payload)
+    result = data.get("response_data", {})
+    return result
+
+def get_project_activities(user_id=None, signed_array=None, project_id=None):
+    endpoint = "/project/get_activities"
+    extra_fields = {"project_id": project_id}
+    payload = build_user_payload(user_id, signed_array, extra_fields)
+    data = post_request(endpoint, payload)
+    result = data.get("response_data", {})
     return result
