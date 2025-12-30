@@ -2,26 +2,12 @@ import base64
 import json
 import requests
 from datetime import datetime
-import re
 from config import CONFIG
-import pickle
-import os
 
-# ---------------- Configuration ---------------- #
 HR_CODE = CONFIG.HRMS.HR_CODE
 API_BASE = CONFIG.HRMS.API_BASE
-
-# ---------------- Global Defaults ---------------- #
 DEFAULT_USER_ID = CONFIG.HRMS.DEFAULT_USER_ID
 DEFAULT_SIGNED_ARRAY = CONFIG.HRMS.DEFAULT_SIGNED_ARRAY
-
-# ---------------- Load Users Data ---------------- #
-USERS = None
-users_data_path = os.path.join(os.path.dirname(__file__), "users.data")
-with open(users_data_path, "rb") as f:
-    USERS = pickle.load(f)
-
-# ---------------- Utility Functions ---------------- #
 
 def log_response(data, filename="response.log"):
     try:
@@ -60,8 +46,6 @@ def decode(res):
 def get_code(data):
     string = f'{data["user_id"]}|{data["employee_id"]}|{data["username"]}|{data["user_type"]}'
     return btoa(string)
-
-# ---------------- Core Request Handler ---------------- #
 
 def post_request(endpoint: str, payload: dict, log: bool = False):
     """Generic POST request handler with base64 encoding/decoding and logging."""
@@ -102,45 +86,27 @@ def fetch_data_from_endpoint(endpoint: str, user_id=None, signed_array=None):
     payload = build_user_payload(user_id, signed_array)
     return post_request(endpoint, payload)
 
-def find_user_local(query: str) -> str:
-    """
-    Search user by:
-    - name (partial, case-insensitive)
-    - user_id (exact)
-    - employee_id (exact)
-
-    returns
-    - user_id
-    - employee_id
-    - name
-    - signed_array
-    """
+def find_user(query: str) -> str:
     q = str(query).strip().lower()
-
-    for user in USERS:
+    users = []
+    endpoint = "/user/get_users"
+    payload = build_user_payload()
+    data = post_request(endpoint, payload)
+    for user in data.get("response_data", []):
         name = str(user.get("name", "")).lower()
         user_id = str(user.get("user_id", "")).lower()
         employee_id = str(user.get("employee_id", "")).lower()
+        user["signed_array"] = get_code(user)
 
         if (
             q == user_id or
             q == employee_id or
             q in name
         ):
-            return user
-
-    return None
-
-def get_user_by_id(user_id=None, signed_array=None):
-    endpoint = "/user/get_user_list"
-    payload = build_user_payload(user_id, signed_array)
-    data = post_request(endpoint, payload)
-
-    if "response_data" in data:
-        for user in data["response_data"]:
-            if str(user.get("user_id")) == str(user_id or DEFAULT_USER_ID):
-                return user
-    return data
+            if len(users) >= 5:
+                break
+            users.append(user)
+    return users
 
 def get_today_log_status(user_id=None, signed_array=None):
     endpoint = "/attendance/total_logs_detail"

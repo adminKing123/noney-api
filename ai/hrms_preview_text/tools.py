@@ -1,22 +1,26 @@
 from langchain.tools import tool
-from .utils import find_user_local, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout, get_project_modules, get_project_activities
+from .utils import find_user, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout, get_project_modules, get_project_activities
 
 @tool
-def get_a_user(query: str) -> dict:
+def find_user_tool(query: str) -> dict:
     """
-    Find a user from locally cached HRMS user data.
+    Find user(s) from locally cached HRMS user data.
 
-    This tool searches for a user using:
-    - Partial name match (case-insensitive)
-    - Exact user_id match
-    - Exact employee_id match
+    Search behavior:
+    - Partial, case-insensitive match on name
+    - Exact match on user_id
+    - Exact match on employee_id
 
     Args:
         query (str): Name, user_id, or employee_id to search for.
 
     Returns:
-        dict: A dictionary containing user details if a match is found.
-        The returned object includes (but is not limited to):
+        list[dict]:
+            - Empty list if no users are found
+            - List with one user dictionary if a single match is found
+            - List of up to 5 user dictionaries if multiple matches are found
+
+        Each user dictionary may include (but is not limited to):
         - user_id (str)
         - employee_id (str)
         - name (str)
@@ -26,17 +30,18 @@ def get_a_user(query: str) -> dict:
         - team_lead (str)
         - firm_name (str)
         - org_name (str)
-        - workinghour (str)
+        - working_hour (str)
         - joining_date (str)
-        - leaving_date (str or None)
+        - leaving_date (str | None)
         - leave balances (casual, emergency, comp off, etc.)
         - signed_array (str): Authentication token for further API calls
 
-        Returns None if no matching user is found.
+    Note:
+        - If multiple users are returned, the caller or agent
+          should ask the end user to clarify which user they mean
+          before proceeding.
     """
-    return find_user_local(query)
-
-
+    return find_user(query)
 
 @tool
 def get_today_log_status_tool(user_id: str, signed_array: str) -> dict:
@@ -362,7 +367,7 @@ def get_project_activities_tool(
 
 
 tools = [
-    get_a_user, 
+    find_user_tool, 
     get_today_log_status_tool, 
     get_emp_projects_tool, 
     get_emp_project_log_tool, 
