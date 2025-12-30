@@ -198,3 +198,21 @@ def get_emp_project_log(start_date="", end_date="", user_id=None, signed_array=N
         return {"error": f"Failed with status {resp.status_code}"}
     except requests.RequestException as e:
         return {"error": f"Request failed: {str(e)}"}
+
+def login(user_id=None, signed_array=None, override_comment=""):
+    endpoint = "/attendance/fill_attendance"
+    payload = build_user_payload(user_id, signed_array)
+    extra_fields = {"override_comment": override_comment}
+    data = post_request(endpoint, payload, extra_fields)
+    result = data.get("response_data", {})
+    result["message"] = data.get("message", "")
+    return result
+
+def logout(user_id=None, signed_array=None, override_comment=""):
+    endpoint = "/attendance/fill_attendance"
+    payload = build_user_payload(user_id, signed_array)
+    extra_fields = {"override_comment": override_comment}
+    data = post_request(endpoint, payload, extra_fields)
+    result = data.get("response_data", {})
+    result["message"] = data.get("message", "")
+    return result

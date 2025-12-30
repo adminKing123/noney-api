@@ -1,5 +1,5 @@
 from langchain.tools import tool
-from .utils import find_user_local, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint
+from .utils import find_user_local, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout
 
 @tool
 def get_a_user(query: str) -> dict:
@@ -232,3 +232,74 @@ def fetch_data_tool(endpoint: str, user_id=None, signed_array=None) -> dict:
         user_id=user_id,
         signed_array=signed_array
     )
+
+@tool
+def login(
+    user_id: str,
+    signed_array: str,
+    override_comment: str = ""
+) -> dict:
+    """
+    Perform a login (check-in) action for a user in the HRMS system.
+
+    Args:
+        user_id (str): Unique identifier of the user.
+        signed_array (str): Authentication token used to authorize the request.
+        override_comment (str, optional): Optional comment attached to the login action.
+
+    Returns:
+        dict: A dictionary containing the result of the login action.
+        - last_ms (str): Timestamp in milliseconds of the last action.
+        - last_status (str): Status after the action ("login").
+        - user_id (str): User identifier.
+        - user_status (str | None): Additional user status, if any.
+        - last_time (str): Human-readable time of the action.
+        - message (str): Confirmation message (e.g., "You have checked in successfully.")
+    """
+    return login(
+        user_id=user_id,
+        signed_array=signed_array,
+        override_comment=override_comment
+    )
+
+@tool
+def logout(
+    user_id: str,
+    signed_array: str,
+    override_comment: str = ""
+) -> dict:
+    """
+    Perform a logout (check-out) action for a user in the HRMS system.
+
+    Args:
+        user_id (str): Unique identifier of the user.
+        signed_array (str): Authentication token used to authorize the request.
+        override_comment (str, optional): Optional comment attached to the logout action.
+
+    Returns:
+        dict: A dictionary containing the result of the logout action.
+        - last_ms (str): Timestamp in milliseconds of the last action.
+        - last_status (str): Status after the action ("logout").
+        - user_id (str): User identifier.
+        - user_status (str | None): Additional user status, if any.
+        - last_time (str): Human-readable time of the action.
+        - message (str): Confirmation message (e.g., "You have checked out successfully.")
+    """
+    return logout(
+        user_id=user_id,
+        signed_array=signed_array,
+        override_comment=override_comment
+    )
+
+
+tools = [
+    get_a_user, 
+    get_today_log_status_tool, 
+    get_emp_projects_tool, 
+    get_emp_project_log_tool, 
+    get_user_mail_setting_tool, 
+    get_attendance_tool, 
+    fetch_data_tool,
+    login,
+    logout
+]

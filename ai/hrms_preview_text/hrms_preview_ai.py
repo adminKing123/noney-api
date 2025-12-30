@@ -3,7 +3,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import AIMessage, AIMessageChunk, ToolMessage
 from ai.base import BaseAI
 from langchain.agents import create_agent
-from .tools import get_a_user, get_today_log_status_tool, get_emp_projects_tool, get_emp_project_log_tool, get_user_mail_setting_tool, get_attendance_tool, fetch_data_tool
+from .tools import tools
 from ..contextprovider import ContextProvider
 from config import CONFIG
 
@@ -29,7 +29,8 @@ class HrmsPreviewAI(BaseAI):
         self.system_prompt = self.details.get("system_prompt", system_prompt)
         self.agent = create_agent(
             model=self.model,
-            tools=[get_a_user, get_today_log_status_tool, get_emp_projects_tool, get_emp_project_log_tool, get_user_mail_setting_tool, get_attendance_tool, fetch_data_tool],
+            tools=tools,
+            system_prompt=self.system_prompt,
         )
 
     def stream(self, payload):

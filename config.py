@@ -35,19 +35,21 @@ class CONFIG:
     UPLOADS = Uploads()
     HRMS = Hrms()
 
-    AI_MAPPINGS = {
-        MODELS.NONEY_1_0_TWINKLE_20241001:{
-            "temperature": 0.7,
-            "top_p": 1.0,
-            "top_k": 40,
-            "model_id": "gemini-2.0-flash",
-        },
-        MODELS.NONEY_CODE_GEN_20241001: {
-            "temperature": 0.7,
-            "top_p": 1.0,
-            "top_k": 40,
-            "model_id": "gemini-2.5-flash",
-            "system_prompt": '''
+    AI_MAPPINGS = {}
+
+    AI_MAPPINGS[MODELS.NONEY_1_0_TWINKLE_20241001] = {
+        "temperature": 0.7,
+        "top_p": 1.0,
+        "top_k": 40,
+        "model_id": "gemini-2.0-flash",
+    }
+
+    AI_MAPPINGS[MODELS.NONEY_CODE_GEN_20241001] = {
+        "temperature": 0.7,
+        "top_p": 1.0,
+        "top_k": 40,
+        "model_id": "gemini-2.5-flash",
+        "system_prompt": '''
 You are a helpful and precise AI assistant specialized in code generation and software development tasks. Your primary goal is to assist users by providing accurate, efficient, and well-structured code snippets in response to their programming-related queries.
 Guidelines:
 1. Always provide code snippets in the requested programming language.
@@ -60,37 +62,32 @@ Guidelines:
 8. Always answer in module-level code snippets, avoid writing full applications unless explicitly requested.
 9. Strict: Don't answer anything outside Software Engineering Scope, and always maintain professionalism.
 '''
-        },
-        MODELS.NONEY_HRMS_ASSISTANT_20241001: {
-            "temperature": 0,
-            "top_p": None,
-            "top_k": None,
-            "model_id": "gemini-2.5-flash",
-            "system_prompt": '''
+    }
+
+    AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_20241001] = {
+        "temperature": 0,
+        "top_p": None,
+        "top_k": None,
+        "model_id": "gemini-2.5-flash",
+        "system_prompt": '''
 You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
-RULES:
+RULES TO BE FOLLOWED:
 - You MUST call `get_a_user` first for ANY request that needs user_id or signed_array.
 - You are NOT allowed to guess or hallucinate user_id or signed_array.
 - user_id and signed_array must ONLY come from the response of get_a_user.
 - If get_a_user returns null or empty, STOP and tell the user you could not find the user.
 - If the user is found, reuse the SAME user_id and signed_array for all future tool calls.
 - Never ask the user to provide user_id or signed_array manually.
+- Check login status before performing login or logout actions.
+- If the user is already logged in, do not perform login again; inform the user instead.
+- If the user is not logged in, do not perform logout; inform the user instead.
 '''
-        },
-        MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001: {
-            "temperature": 0,
-            "top_p": None,
-            "top_k": None,
-            "model_id": "gemini-3-pro-preview",
-            "system_prompt": '''
-You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
-RULES:
-- You MUST call `get_a_user` first for ANY request that needs user_id or signed_array.
-- You are NOT allowed to guess or hallucinate user_id or signed_array.
-- user_id and signed_array must ONLY come from the response of get_a_user.
-- If get_a_user returns null or empty, STOP and tell the user you could not find the user.
-- If the user is found, reuse the SAME user_id and signed_array for all future tool calls.
-- Never ask the user to provide user_id or signed_array manually.
-'''
-        },
+    }
+
+    AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001] = {
+        "temperature": 0,
+        "top_p": None,
+        "top_k": None,
+        "model_id": "gemini-3-pro-preview",
+        "system_prompt": AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_20241001]["system_prompt"]
     }
