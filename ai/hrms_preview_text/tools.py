@@ -1,5 +1,5 @@
-from langchain.tools import tool
-from .utils import find_user, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout, get_project_modules, get_project_activities
+from langchain.tools import tool, ToolRuntime
+from .utils import find_user, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout, get_project_modules, get_project_activities, generate_csv
 
 @tool
 def find_user_tool(query: str) -> dict:
@@ -365,6 +365,36 @@ def get_project_activities_tool(
         project_id=project_id
     )
 
+@tool
+def get_csv_of_all_employees(runtime: ToolRuntime) -> dict:
+    """
+    Generate a CSV file containing details of all employees in the HRMS system.
+
+    This tool fetches all employee records, generates a CSV file,
+    uploads it, and returns metadata about the generated file
+    including a public download URL.
+
+    Args:
+        runtime (ToolRuntime): Runtime context provided by LangChain.
+
+    Returns:
+        dict: Metadata of the generated CSV file with the following keys:
+            - file_id (str): Unique identifier of the file
+            - user_id (str): ID of the requesting user
+            - original_name (str): Original filename
+            - filename (str): Stored filename
+            - file_type (str): Type of the file
+            - size (int): File size in bytes
+            - download_url (str): Public URL to download the CSV
+
+    don't render the download link, just acknowledge its presence.
+    """
+    return generate_csv(
+        find_user("", None),
+        runtime.context.get("user_id"),
+        runtime.context.get("chat_uid")
+    )
+
 
 tools = [
     find_user_tool, 
@@ -378,4 +408,5 @@ tools = [
     logout_tool,
     get_project_modules_tool,
     get_project_activities_tool,
+    get_csv_of_all_employees,
 ]

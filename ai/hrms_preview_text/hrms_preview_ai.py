@@ -6,6 +6,7 @@ from langchain.agents import create_agent
 from .tools import tools
 from ..contextprovider import ContextProvider
 from config import CONFIG
+import json
 
 class HrmsPreviewAI(BaseAI):
     MAPPINGS = CONFIG.AI_MAPPINGS
@@ -49,9 +50,11 @@ class HrmsPreviewAI(BaseAI):
 
         started = False
 
+        index = 0
         for msg, meta in self.agent.stream(
             {"messages": context},
             stream_mode="messages",
+            context={ "user_id": user_id, "chat_uid": chat_uid},
         ):
             if isinstance(msg, AIMessageChunk):
                 fc = msg.additional_kwargs.get("function_call")
@@ -63,6 +66,14 @@ class HrmsPreviewAI(BaseAI):
 
             if isinstance(msg, ToolMessage):
                 # ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
+                if (msg.name == "get_csv_of_all_employees"):
+                    try:
+                        data = json.loads(msg.content)
+                        yield self._file(
+                            data=data,
+                        )
+                    except json.JSONDecodeError:
+                        pass
                 yield self._tool_result(msg.tool_call_id, msg.name, msg.content)
 
 
@@ -74,13 +85,13 @@ class HrmsPreviewAI(BaseAI):
                     for part in msg.content:
                         if type(part) == str:
                             ai_response += part
-                            yield self._text(part)
+                            yield self._text(part, index=index)
                         elif part.get("type") == "text":
                             ai_response += part["text"]
-                            yield self._text(part["text"])
+                            yield self._text(part["text"], index=index)
                 else:
                     ai_response += msg.content
-                    yield self._text(msg.content)
+                    yield self._text(msg.content, index=index)
 
         ctx.append(AIMessage(content=ai_response))
         end_time = time.time()

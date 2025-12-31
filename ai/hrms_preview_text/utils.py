@@ -3,6 +3,11 @@ import json
 import requests
 from datetime import datetime
 from config import CONFIG
+import csv
+import io
+import uuid
+from werkzeug.datastructures import FileStorage
+from utils.files import save_file
 
 HR_CODE = CONFIG.HRMS.HR_CODE
 API_BASE = CONFIG.HRMS.API_BASE
@@ -85,7 +90,7 @@ def fetch_data_from_endpoint(endpoint: str, user_id=None, signed_array=None):
     payload = build_user_payload(user_id, signed_array)
     return post_request(endpoint, payload)
 
-def find_user(query: str) -> str:
+def find_user(query: str, limit=5) -> str:
     q = str(query).strip().lower()
     users = []
     endpoint = "/user/get_users"
@@ -102,7 +107,7 @@ def find_user(query: str) -> str:
             q == employee_id or
             q in name
         ):
-            if len(users) >= 5:
+            if limit is not None and len(users) >= limit:
                 break
             users.append(user)
     return users
@@ -198,3 +203,34 @@ def get_project_activities(user_id=None, signed_array=None, project_id=None):
     data = post_request(endpoint, payload)
     result = data.get("response_data", {})
     return result
+
+def generate_csv(data, user_id, chat_id) -> dict:
+    if not data:
+        raise ValueError("No employee data found 😡")
+
+    headers = data[0].keys()
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=headers)
+    writer.writeheader()
+    writer.writerows(data)
+
+    csv_bytes = output.getvalue().encode("utf-8")
+    output.close()
+
+    file_id = str(uuid.uuid4())
+    filename = f"all_employees_{chat_id}.csv"
+
+    csv_file = FileStorage(
+        stream=io.BytesIO(csv_bytes),
+        filename=filename,
+        content_type="text/csv"
+    )
+
+    return save_file(
+        file=csv_file,
+        user_id=user_id,
+        file_id=file_id,
+        file_type="csv"
+    )
+

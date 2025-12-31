@@ -33,6 +33,13 @@ class BaseAI(ABC):
             "index": index,
         }
         return self._event("text", data)
+    
+    def _file(self, data):
+        data = {
+            "id": str(uuid.uuid4()),
+            "data": data,
+        }
+        return self._event("file", data)
 
     def _send_duration(self, seconds):
         return self._event("duration", {
