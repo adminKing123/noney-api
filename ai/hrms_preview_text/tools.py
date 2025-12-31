@@ -387,7 +387,7 @@ def get_csv_of_all_employees(runtime: ToolRuntime) -> dict:
             - size (int): File size in bytes
             - download_url (str): Public URL to download the CSV
 
-    don't render the download link, just acknowledge its presence.
+    render as [All Employees.csv]({download_url})
     """
     return generate_csv(
         find_user("", None),

@@ -66,14 +66,6 @@ class HrmsPreviewAI(BaseAI):
 
             if isinstance(msg, ToolMessage):
                 # ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
-                if (msg.name == "get_csv_of_all_employees"):
-                    try:
-                        data = json.loads(msg.content)
-                        yield self._file(
-                            data=data,
-                        )
-                    except json.JSONDecodeError:
-                        pass
                 yield self._tool_result(msg.tool_call_id, msg.name, msg.content)
 
 
