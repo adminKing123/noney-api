@@ -59,7 +59,6 @@ def post_request(endpoint: str, payload: dict, log: bool = False):
         )
         if resp.status_code == 200:
             data = decode(resp.json())
-            print("Sending", payload)
             if log:
                 log_response(data)
             return data

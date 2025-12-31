@@ -55,8 +55,6 @@ def save_file(file, user_id, file_id, file_type=""):
     except Exception as e:
         if os.path.exists(local_path):
             os.remove(local_path)
-
-        print(f"File upload failed: {e}")
         raise
 
 
@@ -70,7 +68,6 @@ def upload_file(file_path, content, commit_message):
         )
         return True
     except Exception as e:
-        print(f"Failed to upload {file_path} to GitHub: {e}")
         return False
 
 
@@ -85,5 +82,4 @@ def remove_file(file_path, commit_message):
         )
         return True
     except Exception as e:
-        print(f"Failed to delete {file_path} from GitHub: {e}")
         return False
