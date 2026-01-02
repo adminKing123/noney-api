@@ -42,13 +42,21 @@ class GeminiTextAI(BaseAI):
 
         started = False
         for chunk in self.model.stream(context):
-            if (not started):
+            if not started:
                 yield self._started()
                 started = True
-            ai_response += chunk.content
-            yield self._text(chunk.content)
+
+            if isinstance(chunk.content, list):
+                for block in chunk.content:
+                    if isinstance(block, dict) and "text" in block:
+                        ai_response += block["text"]
+                        yield self._text(block["text"])
+            else:
+                ai_response += str(chunk.content)
+                yield self._text(str(chunk.content))
 
         ctx.append(AIMessage(content=ai_response))
+
         end_time = time.time()
         duration = end_time - start_time
         yield self._send_duration(duration)

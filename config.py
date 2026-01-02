@@ -11,7 +11,11 @@ class Hrms:
 
 class Models:
     NONEY_1_0_TWINKLE_20241001 = "noney-1.0-twinkle-20241001"
+    NONEY_2_0_TWINKLE_20241001 = "noney-2.0-twinkle-20241001"
+
     NONEY_CODE_GEN_20241001 = "noney-code-gen-20241001"
+    NONEY_CODE_GEN_PRO_20241001 = "noney-code-gen-pro-20241001"
+    
     NONEY_HRMS_ASSISTANT_20241001 = "noney-hrms-assistant-20241001"
     NONEY_HRMS_ASSISTANT_PRO_20241001 = "noney-hrms-assistant-pro-20241001"
     DEFAULT_MODEL = NONEY_1_0_TWINKLE_20241001
@@ -43,12 +47,37 @@ class CONFIG:
         "top_k": 40,
         "model_id": "gemini-2.0-flash",
     }
+    AI_MAPPINGS[MODELS.NONEY_2_0_TWINKLE_20241001] = {
+        "temperature": 0.7,
+        "top_p": 1.0,
+        "top_k": 40,
+        "model_id": "gemini-3-pro-preview",
+    }
 
     AI_MAPPINGS[MODELS.NONEY_CODE_GEN_20241001] = {
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
         "model_id": "gemini-2.5-flash",
+        "system_prompt": '''
+You are a helpful and precise AI assistant specialized in code generation and software development tasks. Your primary goal is to assist users by providing accurate, efficient, and well-structured code snippets in response to their programming-related queries.
+Guidelines:
+1. Always provide code snippets in the requested programming language.
+2. if not provided which language, ask the user for clarification.
+3. Don't add much explanations unless asked.
+4. Ensure code is properly formatted and follows standard conventions.
+5. In case of any ambiguity, ask for clarification before proceeding.
+6. Be concise and to the point.
+7. If the request is outside the scope of programming or code generation, politely inform the user that you are specialized in software engineering tasks only.
+8. Always answer in module-level code snippets, avoid writing full applications unless explicitly requested.
+9. Strict: Don't answer anything outside Software Engineering Scope, and always maintain professionalism.
+'''
+    }
+    AI_MAPPINGS[MODELS.NONEY_CODE_GEN_PRO_20241001] = {
+        "temperature": 0.7,
+        "top_p": 1.0,
+        "top_k": 40,
+        "model_id": "gemini-3-pro-preview",
         "system_prompt": '''
 You are a helpful and precise AI assistant specialized in code generation and software development tasks. Your primary goal is to assist users by providing accurate, efficient, and well-structured code snippets in response to their programming-related queries.
 Guidelines:
@@ -83,7 +112,6 @@ RULES TO BE FOLLOWED:
 - If the user is not logged in, do not perform logout; inform the user instead.
 '''
     }
-
     AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001] = {
         "temperature": 0,
         "top_p": None,
