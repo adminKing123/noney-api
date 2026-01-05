@@ -2,12 +2,15 @@ import time
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import AIMessage, AIMessageChunk, ToolMessage
 from langchain.agents.middleware import HumanInTheLoopMiddleware 
+from langgraph.types import Command
 from langgraph.checkpoint.memory import InMemorySaver
 from ai.base import BaseAI
 from langchain.agents import create_agent
 from .tools import tools
 from ..contextprovider import ContextProvider
 from config import CONFIG
+
+_shared_checkpointer = InMemorySaver()
 
 class HrmsPreviewAI(BaseAI):
     MAPPINGS = CONFIG.AI_MAPPINGS
@@ -38,7 +41,7 @@ class HrmsPreviewAI(BaseAI):
                     "delete_all_users": {"allowed_decisions": ["approve", "reject"]},
                 }
             )],
-            checkpointer=InMemorySaver(),
+            checkpointer=_shared_checkpointer,
         )
 
     def stream(self, payload):
@@ -47,6 +50,7 @@ class HrmsPreviewAI(BaseAI):
         user_id = user.get("user_id", None)
         chat_uid = payload.get("chat_uid", None)
         prompt = payload.get("prompt", "")
+        descisions = payload.get("descisions", None)
 
         config = {"configurable": {"thread_id": chat_uid}}
 
@@ -61,8 +65,17 @@ class HrmsPreviewAI(BaseAI):
 
         did_interrupted = False
         index = 0
+
+        # When resuming with decisions, use Command(resume=...) 
+        # Otherwise, start with messages
+        if descisions and len(descisions) > 0:
+            print(descisions)
+            payload = Command(resume={"decisions": descisions})
+        else:
+            payload = {"messages": context}
+
         for mode, chunk in self.agent.stream(
-            {"messages": context},
+            payload,
             stream_mode=["updates", "messages"],
             context={ "user_id": user_id, "chat_uid": chat_uid},
             config=config,

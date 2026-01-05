@@ -16,6 +16,7 @@ def stream():
     model_id = request.json.get("model_id", CONFIG.MODELS.DEFAULT_MODEL)
     prompt = request.json.get("prompt", "")
     chat_uid = request.json.get("chat_uid", None)
+    descisions = request.json.get("descisions", None)
     ai_provider = AIProvider()
     ai = ai_provider.get(model_id)
     return Response(
@@ -23,6 +24,7 @@ def stream():
             "prompt": prompt,
             "chat_uid": chat_uid,
             "user": request.user,
+            "descisions": descisions,
         }),
         mimetype="text/event-stream"
     )
