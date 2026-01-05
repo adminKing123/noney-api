@@ -51,39 +51,41 @@ class HrmsPreviewAI(BaseAI):
         started = False
 
         index = 0
-        for msg, meta in self.agent.stream(
+        for mode, chunk in self.agent.stream(
             {"messages": context},
-            stream_mode="messages",
+            stream_mode=["updates", "messages"],
             context={ "user_id": user_id, "chat_uid": chat_uid},
         ):
-            if isinstance(msg, AIMessageChunk):
-                fc = msg.additional_kwargs.get("function_call")
-                if fc:
-                    tool_name = fc["name"]
-                    tool_args = fc["arguments"]
-                    yield self._tool_call(tool_name, tool_args)
+            if mode == "messages":
+                msg, meta = chunk
+                if isinstance(msg, AIMessageChunk):
+                    fc = msg.additional_kwargs.get("function_call")
+                    if fc:
+                        tool_name = fc["name"]
+                        tool_args = fc["arguments"]
+                        yield self._tool_call(tool_name, tool_args)
 
 
-            if isinstance(msg, ToolMessage):
-                # ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
-                yield self._tool_result(msg.tool_call_id, msg.name, msg.content)
+                if isinstance(msg, ToolMessage):
+                    # ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
+                    yield self._tool_result(msg.tool_call_id, msg.name, msg.content)
 
 
-            if isinstance(msg, AIMessageChunk) and msg.content:
-                if (not started):
-                    yield self._started()
-                    started = True
-                if isinstance(msg.content, list):
-                    for part in msg.content:
-                        if type(part) == str:
-                            ai_response += part
-                            yield self._text(part, index=index)
-                        elif part.get("type") == "text":
-                            ai_response += part["text"]
-                            yield self._text(part["text"], index=index)
-                else:
-                    ai_response += msg.content
-                    yield self._text(msg.content, index=index)
+                if isinstance(msg, AIMessageChunk) and msg.content:
+                    if (not started):
+                        yield self._started()
+                        started = True
+                    if isinstance(msg.content, list):
+                        for part in msg.content:
+                            if type(part) == str:
+                                ai_response += part
+                                yield self._text(part, index=index)
+                            elif part.get("type") == "text":
+                                ai_response += part["text"]
+                                yield self._text(part["text"], index=index)
+                    else:
+                        ai_response += msg.content
+                        yield self._text(msg.content, index=index)
 
         ctx.append(AIMessage(content=ai_response))
         end_time = time.time()
