@@ -1,12 +1,13 @@
 import time
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import AIMessage, AIMessageChunk, ToolMessage
+from langchain.agents.middleware import HumanInTheLoopMiddleware 
+from langgraph.checkpoint.memory import InMemorySaver
 from ai.base import BaseAI
 from langchain.agents import create_agent
 from .tools import tools
 from ..contextprovider import ContextProvider
 from config import CONFIG
-import json
 
 class HrmsPreviewAI(BaseAI):
     MAPPINGS = CONFIG.AI_MAPPINGS
@@ -32,6 +33,12 @@ class HrmsPreviewAI(BaseAI):
             model=self.model,
             tools=tools,
             system_prompt=self.system_prompt,
+            middleware=[HumanInTheLoopMiddleware(
+                interrupt_on={
+                    "delete_all_users": {"allowed_decisions": ["approve", "reject"]},
+                }
+            )],
+            checkpointer=InMemorySaver(),
         )
 
     def stream(self, payload):
@@ -40,6 +47,8 @@ class HrmsPreviewAI(BaseAI):
         user_id = user.get("user_id", None)
         chat_uid = payload.get("chat_uid", None)
         prompt = payload.get("prompt", "")
+
+        config = {"configurable": {"thread_id": chat_uid}}
 
         yield self._send_step("info", "Summarizing context")
         ctx = ContextProvider.get(self.model_name, user_id, chat_uid, self.system_prompt)
@@ -50,11 +59,13 @@ class HrmsPreviewAI(BaseAI):
 
         started = False
 
+        did_interrupted = False
         index = 0
         for mode, chunk in self.agent.stream(
             {"messages": context},
             stream_mode=["updates", "messages"],
             context={ "user_id": user_id, "chat_uid": chat_uid},
+            config=config,
         ):
             if mode == "messages":
                 msg, meta = chunk
@@ -87,11 +98,21 @@ class HrmsPreviewAI(BaseAI):
                         ai_response += msg.content
                         yield self._text(msg.content, index=index)
 
+            elif mode == "updates":
+                if "__interrupt__" in chunk:
+                    did_interrupted = True
+                    for interrupt_data in chunk["__interrupt__"]:
+                         yield self._interrupt({
+                             "id": interrupt_data.id,
+                            "value": interrupt_data.value,
+                         })
+
         ctx.append(AIMessage(content=ai_response))
         end_time = time.time()
         duration = end_time - start_time
         yield self._send_duration(duration)
-        yield self._end()
+        if not did_interrupted:
+            yield self._end()
 
     def invoke(self, payload):
         prompt = payload.get("prompt", "")

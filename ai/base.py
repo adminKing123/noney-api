@@ -34,6 +34,9 @@ class BaseAI(ABC):
         }
         return self._event("text", data)
     
+    def _interrupt(self, data):
+        return self._event("interrupt", {"id": str(uuid.uuid4()), "data": data})
+    
     def _file(self, data):
         data = {
             "id": str(uuid.uuid4()),
