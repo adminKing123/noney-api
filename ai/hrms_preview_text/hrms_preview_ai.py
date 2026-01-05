@@ -9,8 +9,9 @@ from langchain.agents import create_agent
 from .tools import tools
 from ..contextprovider import ContextProvider
 from config import CONFIG
+from db.firebase_checkpoint_saver import FirebaseSaver
 
-_shared_checkpointer = InMemorySaver()
+_shared_checkpointer = FirebaseSaver()
 
 class HrmsPreviewAI(BaseAI):
     MAPPINGS = CONFIG.AI_MAPPINGS
@@ -38,6 +39,7 @@ class HrmsPreviewAI(BaseAI):
             system_prompt=self.system_prompt,
             middleware=[HumanInTheLoopMiddleware(
                 interrupt_on={
+                    "get_csv_of_all_employees": {"allowed_decisions": ["approve", "reject"]},
                     "login_tool": {"allowed_decisions": ["approve", "reject"]},
                     "logout_tool": {"allowed_decisions": ["approve", "reject"]},
                 }
