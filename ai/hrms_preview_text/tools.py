@@ -395,11 +395,6 @@ def get_csv_of_all_employees(runtime: ToolRuntime) -> dict:
         runtime.context.get("chat_uid")
     )
 
-@tool
-def delete_all_users() -> str:
-    """Delete all users"""
-    return "All users deleted"
-
 tools = [
     find_user_tool, 
     get_today_log_status_tool, 
@@ -413,5 +408,4 @@ tools = [
     get_project_modules_tool,
     get_project_activities_tool,
     get_csv_of_all_employees,
-    delete_all_users,
 ]

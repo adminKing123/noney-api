@@ -38,7 +38,8 @@ class HrmsPreviewAI(BaseAI):
             system_prompt=self.system_prompt,
             middleware=[HumanInTheLoopMiddleware(
                 interrupt_on={
-                    "delete_all_users": {"allowed_decisions": ["approve", "reject"]},
+                    "login_tool": {"allowed_decisions": ["approve", "reject"]},
+                    "logout_tool": {"allowed_decisions": ["approve", "reject"]},
                 }
             )],
             checkpointer=_shared_checkpointer,
@@ -52,24 +53,26 @@ class HrmsPreviewAI(BaseAI):
         prompt = payload.get("prompt", "")
         descisions = payload.get("descisions", None)
 
+        continuing_after_interrupt = descisions and len(descisions) > 0
+
         config = {"configurable": {"thread_id": chat_uid}}
 
-        yield self._send_step("info", "Summarizing context")
+        if not continuing_after_interrupt:
+            yield self._send_step("info", "Summarizing context")
         ctx = ContextProvider.get(self.model_name, user_id, chat_uid, self.system_prompt)
         context = ctx.build_context(prompt)
 
         ai_response = ""
-        yield self._start()
+
+        if not continuing_after_interrupt:
+            yield self._start()
 
         started = False
 
         did_interrupted = False
         index = 0
-
-        # When resuming with decisions, use Command(resume=...) 
-        # Otherwise, start with messages
-        if descisions and len(descisions) > 0:
-            print(descisions)
+        
+        if continuing_after_interrupt:
             payload = Command(resume={"decisions": descisions})
         else:
             payload = {"messages": context}
