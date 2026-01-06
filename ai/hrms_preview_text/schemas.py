@@ -6,6 +6,11 @@ class FindUserInput(BaseModel):
         description="Name, user_id, or employee_id to search for. Supports partial name matching and exact ID matching."
     )
 
+class FindUserLeavesPolicyInput(BaseModel):
+    query: str = Field(
+        description="Name, user_id, or employee_id of the user to get leave policy for."
+    )
+
 class TodayLogStatusInput(BaseModel):
     query: str = Field(
         description="Name, user_id, or employee_id of the user to check today's attendance logs for."
@@ -98,4 +103,15 @@ class ProjectActivitiesInput(BaseModel):
     project_id: Optional[str] = Field(
         default=None,
         description="Project ID to fetch activities for. Required to get meaningful results."
+    )
+
+class EmpLeavesInput(BaseModel):
+    query: str = Field(
+        description="Name, user_id, or employee_id of the employee whose leaves you want to retrieve."
+    )
+    start_date: str = Field(
+        description="Start date in MM/DD/YYYY format."
+    )
+    end_date: str = Field(
+        description="End date in MM/DD/YYYY format."
     )

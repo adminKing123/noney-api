@@ -9,11 +9,17 @@ import uuid
 from werkzeug.datastructures import FileStorage
 from utils.files import save_file
 from typing import Union, Dict
+from datetime import datetime
+
 
 HR_CODE = CONFIG.HRMS.HR_CODE
 API_BASE = CONFIG.HRMS.API_BASE
 DEFAULT_USER_ID = CONFIG.HRMS.DEFAULT_USER_ID
 DEFAULT_SIGNED_ARRAY = CONFIG.HRMS.DEFAULT_SIGNED_ARRAY
+DATE_FMT = "%m/%d/%Y"
+
+def parse_date(date_str):
+    return datetime.strptime(date_str, DATE_FMT).date() if date_str else None
 
 def resolve_user(query: str) -> Union[Dict, tuple]:
     """
@@ -250,3 +256,32 @@ def generate_csv(data, user_id, chat_id) -> dict:
         file_type="csv"
     )
 
+def get_employee_leaves(user_id=None, signed_array=None, start_date=None, end_date=None):
+    endpoint = "/leavemanager/get_user_leave_record"
+    payload = build_user_payload(user_id, signed_array)
+    data = post_request(endpoint, payload)
+    leaves = data.get("response_data", [])
+    result = []
+    start = parse_date(start_date)
+    end = parse_date(end_date)
+    for leave in leaves:
+        applied_date = parse_date(leave.get("applied_date"))
+        e_user_id = leave.get("user_id")
+        if e_user_id != user_id:
+            continue
+        if not applied_date:
+            continue
+        if start and applied_date < start:
+            continue
+        if end and applied_date > end:
+            continue
+        result.append(leave)
+    return result
+
+def get_employee_leaves_policy(user_id=None, signed_array=None):
+    endpoint = "/setting/get_policy_setting"
+    payload = build_user_payload(user_id, signed_array)
+    data = post_request(endpoint, payload)
+
+    result = data.get("response_data", {})
+    return result

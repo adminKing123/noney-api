@@ -13,7 +13,9 @@ from .utils import (
     logout, 
     get_project_modules, 
     get_project_activities, 
-    generate_csv
+    generate_csv,
+    get_employee_leaves,
+    get_employee_leaves_policy,
 )
 from .schemas import (
     FindUserInput,
@@ -26,7 +28,9 @@ from .schemas import (
     LoginInput,
     LogoutInput,
     ProjectModulesInput,
-    ProjectActivitiesInput
+    ProjectActivitiesInput,
+    EmpLeavesInput,
+    FindUserLeavesPolicyInput,
 )
 
 @tool(args_schema=FindUserInput)
@@ -435,6 +439,135 @@ def get_csv_of_all_employees(runtime: ToolRuntime) -> dict:
         runtime.context.get("chat_uid")
     )
 
+@tool(args_schema=EmpLeavesInput)
+def get_employee_leaves_tool(
+    query: str,
+    start_date: str = "",
+    end_date: str = ""
+) -> dict:
+    """
+    Retrieve leave applications for a specific employee within an optional date range.
+
+    Args:
+        query (str): Name, user_id, or employee_id to identify the employee.
+        start_date (str, optional): Start date filter in MM/DD/YYYY format.
+        end_date (str, optional): End date filter in MM/DD/YYYY format.
+
+    Returns:
+        dict: A list of leave application records.
+
+        Each leave record contains:
+            - app_id (str): Unique identifier of the leave application.
+            - user_id (str): Identifier of the employee.
+            - name (str): Full name of the employee.
+            - email_id (str): Employee email address.
+            - team_lead_id (str): Identifier of the reporting manager.
+            - rm_name (str): Name of the reporting manager.
+            - leave_type (str): Type of leave (e.g., "eml", "cal", "compoff").
+            - applied_date (str): Date when the leave was applied (MM/DD/YYYY).
+            - leave_sbj (str): Subject/title of the leave request.
+            - leave_status (str): Current status of the leave
+            - start_date (str): Leave start date (MM/DD/YYYY).
+            - end_date (str): Leave end date (MM/DD/YYYY).
+            - leave_days (str): Total number of leave days applied.
+            - leave_desc (str): Detailed reason/description for the leave.
+            - exl_used (str | None): Extra leave used, if applicable.
+            - cal_used (str | None): Casual leave used, if applicable.
+            - eml_used (str | None): Emergency leave used, if applicable.
+            - transfer_deduction_rate (str | None): Leave transfer or deduction rate, if any.
+            - is_halfleave_applied (str): Indicates if half-day leave was applied ("Yes"/"No").
+            - halfleave_date1 (str | None): First half-day leave date, if applicable.
+            - halfleave_date2 (str | None): Second half-day leave date, if applicable.
+            - action_maker_id (str): Identifier of the person who took action on the leave.
+            - act_maker_name (str): Name of the approver/action taker.
+            - action_date (str): Date when the action was taken (MM/DD/YYYY).
+            - action_comment (str): Comment added by the approver.
+            - can_cancel (bool): Whether the leave can be cancelled by the employee.
+            - can_act (bool): Whether the current user can take action on the leave.
+    """
+    user, error = resolve_user(query)
+    if error:
+        return error
+    return get_employee_leaves(
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
+        start_date=start_date,
+        end_date=end_date
+    )
+
+@tool(args_schema=FindUserLeavesPolicyInput)
+def get_employee_leaves_policy_tool(
+    query: str,
+) -> dict:
+    """
+    Retrieve the leave policy configuration applicable to a specific employee.
+
+    Args:
+        query (str): Name, user_id, or employee_id to identify the employee.
+
+    Returns:
+        dict: An object representing the employee's leave policy.
+
+        The returned policy object contains:
+            - policy_id (str): Unique identifier of the leave policy.
+
+            Leave balance limits:
+            - cal_max_bal (int): Maximum Casual Leave balance allowed.
+            - eml_max_bal (int): Maximum Emergency Leave balance allowed.
+            - exl_max_bal (int): Maximum Extra Leave balance allowed.
+            - cff_max_bal (int): Maximum Comp-Off balance allowed.
+
+            Leave usage constraints:
+            - max_cal_taken_together (str): Maximum casual leaves allowed together.
+            - max_exl_taken_together (str): Maximum extra leaves allowed together.
+            - min_exl_taken_together (str): Minimum extra leaves required in one request.
+            - max_cff_taken_in_a_month (str): Maximum comp-off leaves allowed per month.
+
+            Carry forward rules:
+            - max_cal_carry_forward (int | None): Maximum casual leaves carried forward.
+            - max_exl_carry_forward (int | None): Maximum extra leaves carried forward.
+            - max_eml_carry_forward (int | None): Maximum emergency leaves carried forward.
+
+            Advance leave application rules (in days):
+            - apply_cal_half_before (str): Days before applying half-day casual leave.
+            - apply_cal_before (str): Days before applying casual leave.
+            - apply_eml_before (str): Days before applying emergency leave.
+            - apply_exl_before (str): Days before applying extra leave.
+
+            Deduction and penalty rules:
+            - eml_transfer_deduction (float): Deduction rate when emergency leave is transferred.
+            - exl_transfer_deduction (float): Deduction rate when extra leave is transferred.
+            - unapproved_deduction_rate (float): Deduction multiplier for unapproved leaves.
+            - insufficient_approved_deduction_rate (float): Deduction rate when approvals are insufficient.
+
+            Comp-Off and expiry rules:
+            - cff_expiry_limit (str): Comp-off expiry duration in days.
+
+            Attendance and system rules:
+            - enabled_sandwich_rule (str): Whether sandwich leave rule is enabled ("1"/"0").
+            - max_att_override (str): Maximum attendance overrides allowed.
+            - att_overtime_hour (str): Overtime hours threshold.
+            - checkin_relaxation_time (str): Allowed late check-in relaxation time (minutes).
+            - max_week_off (str): Maximum allowed week-offs.
+            - default_week_off_days (list[str]): Default week-off days (1=Monday … 7=Sunday).
+
+            Notification and audit metadata:
+            - leave_req_mail_id (str): Email address for leave request notifications.
+            - modified_by (str): User ID of the person who last modified the policy.
+            - modified_on (str): Timestamp of the last modification (YYYY-MM-DD HH:MM:SS).
+
+    Note:
+        - Policy values are enforced system-wide by HRMS.
+        - Some numeric values may be returned as strings depending on backend configuration.
+    """
+    user, error = resolve_user(query)
+    if error:
+        return error
+    return get_employee_leaves_policy(
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
+    )
+
 tools = [
     find_user_tool, 
     get_today_log_status_tool, 
@@ -448,4 +581,6 @@ tools = [
     get_project_modules_tool,
     get_project_activities_tool,
     get_csv_of_all_employees,
+    get_employee_leaves_tool,
+    get_employee_leaves_policy_tool,
 ]
