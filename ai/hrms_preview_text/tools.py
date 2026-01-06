@@ -539,9 +539,8 @@ def get_webex_token_tool(
 
     IMPORTANT:
         put token as:
-        <copyinlinetext>
-            <WEBEX_TOKEN>
-        </copyinlinetext>
+        <copyinlinetext>TOKEN_HERE</copyinlinetext>
+        
         also please acknowledge in response
     """
 
