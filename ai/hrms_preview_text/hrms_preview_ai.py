@@ -62,6 +62,9 @@ class HrmsPreviewAI(BaseAI):
 
         if not continuing_after_interrupt:
             yield self._send_step("info", "Summarizing context")
+        else:
+            yield self._send_step("info", "Proceeding after human-in-the-loop decisions")
+
         ctx = ContextProvider.get(self.model_name, user_id, chat_uid, self.system_prompt)
         context = ctx.build_context(prompt)
 
