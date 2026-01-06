@@ -8,11 +8,27 @@ import io
 import uuid
 from werkzeug.datastructures import FileStorage
 from utils.files import save_file
+from typing import Union, Dict
 
 HR_CODE = CONFIG.HRMS.HR_CODE
 API_BASE = CONFIG.HRMS.API_BASE
 DEFAULT_USER_ID = CONFIG.HRMS.DEFAULT_USER_ID
 DEFAULT_SIGNED_ARRAY = CONFIG.HRMS.DEFAULT_SIGNED_ARRAY
+
+def resolve_user(query: str) -> Union[Dict, tuple]:
+    """
+    Resolve a user query to a single user or return an error.
+    
+    Returns:
+        tuple: (user_dict, None) if successful
+        tuple: (None, error_dict) if failed
+    """
+    users = find_user(query)
+    if not users:
+        return None, {"error": f"No user found matching query: {query}"}
+    if len(users) > 1:
+        return None, {"error": f"Multiple users found for '{query}'. Please be more specific.", "matches": [u.get("name") for u in users]}
+    return users[0], None
 
 def log_response(data, filename="response.log"):
     try:

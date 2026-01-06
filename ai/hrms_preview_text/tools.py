@@ -1,7 +1,35 @@
 from langchain.tools import tool, ToolRuntime
-from .utils import find_user, get_today_log_status, get_emp_projects, get_emp_project_log, get_user_mail_setting, get_attendance, fetch_data_from_endpoint, login, logout, get_project_modules, get_project_activities, generate_csv
+from typing import Optional
+from .utils import (
+    find_user, 
+    resolve_user,
+    get_today_log_status, 
+    get_emp_projects, 
+    get_emp_project_log, 
+    get_user_mail_setting, 
+    get_attendance, 
+    fetch_data_from_endpoint, 
+    login, 
+    logout, 
+    get_project_modules, 
+    get_project_activities, 
+    generate_csv
+)
+from .schemas import (
+    FindUserInput,
+    TodayLogStatusInput,
+    EmpProjectsInput,
+    EmpProjectLogInput,
+    UserMailSettingInput,
+    AttendanceInput,
+    FetchDataInput,
+    LoginInput,
+    LogoutInput,
+    ProjectModulesInput,
+    ProjectActivitiesInput
+)
 
-@tool
+@tool(args_schema=FindUserInput)
 def find_user_tool(query: str) -> dict:
     """
     Find user(s) from locally cached HRMS user data.
@@ -43,8 +71,8 @@ def find_user_tool(query: str) -> dict:
     """
     return find_user(query)
 
-@tool
-def get_today_log_status_tool(user_id: str, signed_array: str) -> dict:
+@tool(args_schema=TodayLogStatusInput)
+def get_today_log_status_tool(query: str) -> dict:
     """
     Fetch today's attendance log sessions for a specific user.
 
@@ -60,17 +88,19 @@ def get_today_log_status_tool(user_id: str, signed_array: str) -> dict:
     - logout: Logout time (HH:MM or "00:00" if still logged in)
 
     Args:
-        user_id (str): Unique identifier of the user.
-        signed_array (str): Authentication token for the user.
+        query (str): Name, user_id, or employee_id to identify the user.
 
     Returns:
         dict: A list of today's attendance session records.
     """
-    return get_today_log_status(user_id=user_id, signed_array=signed_array)
+    user, error = resolve_user(query)
+    if error:
+        return error
+    return get_today_log_status(user_id=user["user_id"], signed_array=user["signed_array"])
 
 
-@tool
-def get_emp_projects_tool(user_id: str, signed_array: str) -> dict:
+@tool(args_schema=EmpProjectsInput)
+def get_emp_projects_tool(query: str) -> dict:
     """
     Fetch all projects assigned to a specific employee.
 
@@ -79,8 +109,7 @@ def get_emp_projects_tool(user_id: str, signed_array: str) -> dict:
     (Active / In-Active).
 
     Args:
-        user_id (str): Unique identifier of the employee whose projects are requested.
-        signed_array (str): Authentication token used to authorize the request.
+        query (str): Name, user_id, or employee_id to identify the user.
 
     Returns:
         dict: A response object containing a list of projects with the following fields:
@@ -89,14 +118,16 @@ def get_emp_projects_tool(user_id: str, signed_array: str) -> dict:
             - project_type_id (str): Identifier representing the project category/type.
             - project_status (str): Current status of the project (e.g., "Active", "In-Active").
     """
-    return get_emp_projects(user_id=user_id, signed_array=signed_array)
+    user, error = resolve_user(query)
+    if error:
+        return error
+    return get_emp_projects(user_id=user["user_id"], signed_array=user["signed_array"])
 
 
-@tool
+@tool(args_schema=EmpProjectLogInput)
 def get_emp_project_log_tool(
-    user_id: str,
-    signed_array: str,
-    project_id: str = 0,
+    query: str,
+    project_id: str = "0",
     start_date: str = "",
     end_date: str = ""
 ) -> dict:
@@ -113,8 +144,7 @@ def get_emp_project_log_tool(
     - start_date and end_date can be used to limit logs to a specific date range.
 
     Args:
-        user_id (str): Unique identifier of the employee.
-        signed_array (str): Authentication token for request authorization.
+        query (str): Name, user_id, or employee_id to identify the user.
         project_id (str, optional): Project identifier to filter logs.
             Use 0 or empty value to fetch logs for all projects.
         start_date (str, optional): Start date for filtering logs (YYYY-MM-DD).
@@ -136,17 +166,20 @@ def get_emp_project_log_tool(
             - log_date (str): Date when the work was logged (MM/DD/YYYY).
             - hour_clocked (str): Number of hours logged for the entry.
     """
+    user, error = resolve_user(query)
+    if error:
+        return error
     return get_emp_project_log(
-        user_id=user_id,
+        user_id=user["user_id"],
         project_id=project_id,
-        signed_array=signed_array,
+        signed_array=user["signed_array"],
         start_date=start_date,
         end_date=end_date
     )
 
 
-@tool
-def get_user_mail_setting_tool(user_id: str, signed_array: str) -> dict:
+@tool(args_schema=UserMailSettingInput)
+def get_user_mail_setting_tool(query: str) -> dict:
     """
     Retrieve email notification preferences for a specific user.
 
@@ -155,8 +188,7 @@ def get_user_mail_setting_tool(user_id: str, signed_array: str) -> dict:
     All preference values are returned as string booleans ("true" / "false").
 
     Args:
-        user_id (str): Unique identifier of the user.
-        signed_array (str): Authentication token used to authorize the request.
+        query (str): Name, user_id, or employee_id to identify the user.
 
     Returns:
         dict: An object representing the user's email notification settings,
@@ -173,12 +205,14 @@ def get_user_mail_setting_tool(user_id: str, signed_array: str) -> dict:
             - apply_compoff (str): Email notification for compensatory off applications.
             - compoff_action_mail (str): Email notification for comp-off approval/rejection actions.
     """
-    return get_user_mail_setting(user_id=user_id, signed_array=signed_array)
+    user, error = resolve_user(query)
+    if error:
+        return error
+    return get_user_mail_setting(user_id=user["user_id"], signed_array=user["signed_array"])
 
-@tool
+@tool(args_schema=AttendanceInput)
 def get_attendance_tool(
-    user_id: str,
-    signed_array: str,
+    query: str,
     start_date: str = "",
     end_date: str = ""
 ) -> dict:
@@ -196,8 +230,7 @@ def get_attendance_tool(
     - If both dates are provided, records within the range are returned.
 
     Args:
-        user_id (str): Unique identifier of the user.
-        signed_array (str): Authentication token for request authorization.
+        query (str): Name, user_id, or employee_id to identify the user.
         start_date (str, optional): Start date filter (YYYY-MM-DD).
         end_date (str, optional): End date filter (YYYY-MM-DD).
 
@@ -212,15 +245,18 @@ def get_attendance_tool(
             - user_override_comment (str | null): Manual comment added by the user, if any.
             - out_office_log (str | null): Out-of-office details, if applicable.
     """
+    user, error = resolve_user(query)
+    if error:
+        return error
     return get_attendance(
-        user_id=user_id,
-        signed_array=signed_array,
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
         start_date=start_date,
         end_date=end_date
     )
 
-@tool
-def fetch_data_tool(endpoint: str, user_id=None, signed_array=None) -> dict:
+@tool(args_schema=FetchDataInput)
+def fetch_data_tool(endpoint: str, user_id: Optional[str] = None, signed_array: Optional[str] = None) -> dict:
     """
     Call a raw HRMS API endpoint with a standard authenticated payload.
 
@@ -238,18 +274,16 @@ def fetch_data_tool(endpoint: str, user_id=None, signed_array=None) -> dict:
         signed_array=signed_array
     )
 
-@tool
+@tool(args_schema=LoginInput)
 def login_tool(
-    user_id: str,
-    signed_array: str,
+    query: str,
     override_comment: str = ""
 ) -> dict:
     """
     Perform a login (check-in) action for a user in the HRMS system.
 
     Args:
-        user_id (str): Unique identifier of the user.
-        signed_array (str): Authentication token used to authorize the request.
+        query (str): Name, user_id, or employee_id to identify the user.
         override_comment (str, optional): Optional comment attached to the login action.
 
     Returns:
@@ -261,24 +295,25 @@ def login_tool(
         - last_time (str): Human-readable time of the action.
         - message (str): Confirmation message (e.g., "You have checked in successfully.")
     """
+    user, error = resolve_user(query)
+    if error:
+        return error
     return login(
-        user_id=user_id,
-        signed_array=signed_array,
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
         override_comment=override_comment
     )
 
-@tool
+@tool(args_schema=LogoutInput)
 def logout_tool(
-    user_id: str,
-    signed_array: str,
+    query: str,
     override_comment: str = ""
 ) -> dict:
     """
     Perform a logout (check-out) action for a user in the HRMS system.
 
     Args:
-        user_id (str): Unique identifier of the user.
-        signed_array (str): Authentication token used to authorize the request.
+        query (str): Name, user_id, or employee_id to identify the user.
         override_comment (str, optional): Optional comment attached to the logout action.
 
     Returns:
@@ -290,24 +325,25 @@ def logout_tool(
         - last_time (str): Human-readable time of the action.
         - message (str): Confirmation message (e.g., "You have checked out successfully.")
     """
+    user, error = resolve_user(query)
+    if error:
+        return error
     return logout(
-        user_id=user_id,
-        signed_array=signed_array,
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
         override_comment=override_comment
     )
 
-@tool
+@tool(args_schema=ProjectModulesInput)
 def get_project_modules_tool(
-    user_id: str,
-    signed_array: str,
-    project_id: str = None
+    query: str,
+    project_id: Optional[str] = None
 ) -> dict:
     """
     Retrieve modules associated with a specific project.
 
     Args:
-        user_id (str): Unique identifier of the user.
-        signed_array (str): Authentication token used to authorize the request.
+        query (str): Name, user_id, or employee_id to identify the user.
         project_id (str, optional): Identifier of the project to fetch modules for.
 
     Returns:
@@ -322,18 +358,20 @@ def get_project_modules_tool(
             - module_enddate (str | None): Module end date, if available.
             - module_status (str): Current status of the module (e.g., Open).
     """
+    user, error = resolve_user(query)
+    if error:
+        return error
     return get_project_modules(
-        user_id=user_id,
-        signed_array=signed_array,
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
         project_id=project_id
     )
 
 
-@tool
+@tool(args_schema=ProjectActivitiesInput)
 def get_project_activities_tool(
-    user_id: str,
-    signed_array: str,
-    project_id: str = None
+    query: str,
+    project_id: Optional[str] = None
 ) -> dict:
     """
     Retrieve all activities associated with a specific project.
@@ -342,8 +380,7 @@ def get_project_activities_tool(
     Each activity represents a task/category that can be logged under the project.
 
     Args:
-        user_id (str): Unique identifier of the user.
-        signed_array (str): Authentication token used to authorize the request.
+        query (str): Name, user_id, or employee_id to identify the user.
         project_id (str, optional): Identifier of the project whose activities are required.
 
     Returns:
@@ -359,9 +396,12 @@ def get_project_activities_tool(
             - "1" → Active  
             - "0" → Inactive
     """
+    user, error = resolve_user(query)
+    if error:
+        return error
     return get_project_activities(
-        user_id=user_id,
-        signed_array=signed_array,
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
         project_id=project_id
     )
 
