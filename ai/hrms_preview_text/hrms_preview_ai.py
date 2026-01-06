@@ -66,10 +66,7 @@ class HrmsPreviewAI(BaseAI):
             yield self._send_step("info", "Proceeding after human-in-the-loop decisions")
 
         
-        dynamic_system_prompt = f"""{self.system_prompt}
-USER CONTEXT
-emailid: {user.get("email", "N/A")}
-"""
+        dynamic_system_prompt = f"""{self.system_prompt} USER CONTEXT: emailid: {user.get("email", "N/A")}"""
 
 
         ctx = ContextProvider.get(self.model_name, user_id, chat_uid, dynamic_system_prompt)
