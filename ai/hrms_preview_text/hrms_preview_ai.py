@@ -40,6 +40,7 @@ class HrmsPreviewAI(BaseAI):
             system_prompt=self.system_prompt,
             middleware=[HumanInTheLoopMiddleware(
                 interrupt_on={
+                    "get_webex_token_tool": {"allowed_decisions": ["approve", "reject"]},
                     "get_csv_of_all_employees": {"allowed_decisions": ["approve", "reject"]},
                     "login_tool": {"allowed_decisions": ["approve", "reject"]},
                     "logout_tool": {"allowed_decisions": ["approve", "reject"]},
@@ -90,7 +91,7 @@ class HrmsPreviewAI(BaseAI):
         for mode, chunk in self.agent.stream(
             payload,
             stream_mode=["updates", "messages"],
-            context={ "user_id": user_id, "chat_uid": chat_uid},
+            context={ "user_id": user_id, "chat_uid": chat_uid, "email": user.get("email", "")},
             config=config,
         ):
             if mode == "messages":

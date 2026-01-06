@@ -17,6 +17,7 @@ from .utils import (
     get_employee_leaves,
     get_employee_leaves_policy,
     get_holiday_and_leave_calendar,
+    get_webex_token,
 )
 from .schemas import (
     FindUserInput,
@@ -33,6 +34,7 @@ from .schemas import (
     EmpLeavesInput,
     FindUserLeavesPolicyInput,
     EmpHolidaysAndLeaveCalendarInput,
+    EmpWebexTokenInput,
 )
 
 @tool(args_schema=FindUserInput)
@@ -44,9 +46,6 @@ def find_user_tool(query: str) -> dict:
     - Partial, case-insensitive match on name
     - Exact match on user_id
     - Exact match on employee_id
-
-    Args:
-        query (str): Name, user_id, employee_id, or email to search for.
 
     Returns:
         list[dict]:
@@ -82,9 +81,6 @@ def get_today_log_status_tool(query: str) -> dict:
     """
     Fetch today's attendance log sessions for a specific user.
 
-    This tool returns all login/logout records for the current day.
-    A user may have multiple sessions (e.g., re-login after logout).
-
     Each record includes:
     - attendance_id: Attendance record identifier
     - total_time: Total worked time in seconds (may repeat across sessions)
@@ -92,9 +88,6 @@ def get_today_log_status_tool(query: str) -> dict:
     - log_date: Date of the attendance log (MM/DD/YYYY)
     - login: Login time (HH:MM)
     - logout: Logout time (HH:MM or "00:00" if still logged in)
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
 
     Returns:
         dict: A list of today's attendance session records.
@@ -109,13 +102,6 @@ def get_today_log_status_tool(query: str) -> dict:
 def get_emp_projects_tool(query: str) -> dict:
     """
     Fetch all projects assigned to a specific employee.
-
-    This tool returns a list of projects mapped to the given user.
-    Each project contains metadata such as its ID, name, type, and current status
-    (Active / In-Active).
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
 
     Returns:
         dict: A response object containing a list of projects with the following fields:
@@ -139,22 +125,6 @@ def get_emp_project_log_tool(
 ) -> dict:
     """
     Retrieve detailed work logs for an employee across one or more projects.
-
-    This tool returns time-tracking and activity logs recorded by the employee.
-    It supports filtering by project and date range and provides rich metadata
-    including project, module, activity details, work descriptions, and hours logged.
-
-    Filtering behavior:
-    - If project_id is provided, logs are fetched only for that project.
-    - If project_id is not provided or set to 0, logs from all projects are returned.
-    - start_date and end_date can be used to limit logs to a specific date range.
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-        project_id (str, optional): Project identifier to filter logs.
-            Use 0 or empty value to fetch logs for all projects.
-        start_date (str, optional): Start date for filtering logs (YYYY-MM-DD).
-        end_date (str, optional): End date for filtering logs (YYYY-MM-DD).
 
     Returns:
         dict: A response object containing a list of work log entries.
@@ -189,13 +159,6 @@ def get_user_mail_setting_tool(query: str) -> dict:
     """
     Retrieve email notification preferences for a specific user.
 
-    This tool returns the user's mail settings that control which
-    system-generated emails and notifications are enabled or disabled.
-    All preference values are returned as string booleans ("true" / "false").
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-
     Returns:
         dict: An object representing the user's email notification settings,
         containing the following fields:
@@ -225,21 +188,6 @@ def get_attendance_tool(
     """
     Retrieve attendance records for a user within an optional date range.
 
-    This tool returns daily attendance details including logged working hours,
-    late arrival status, override comments, and out-of-office information.
-    Results can be filtered by a start and/or end date.
-
-    Filtering behavior:
-    - If no dates are provided, all available attendance records are returned.
-    - If start_date is provided, records from that date onward are returned.
-    - If end_date is provided, records up to that date are returned.
-    - If both dates are provided, records within the range are returned.
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-        start_date (str, optional): Start date filter (YYYY-MM-DD).
-        end_date (str, optional): End date filter (YYYY-MM-DD).
-
     Returns:
         dict: A list of attendance entries where each entry contains:
             - attendance_id (str): Unique identifier of the attendance record.
@@ -268,11 +216,6 @@ def fetch_data_tool(endpoint: str, user_id: Optional[str] = None, signed_array: 
 
     This is a generic utility tool for fetching data from
     custom or unsupported API endpoints.
-
-    Args:
-        endpoint (str): API endpoint path (e.g. "/attendance/show_attendance").
-        user_id (str, optional): User identifier override.
-        signed_array (str, optional): Authentication token override.
     """
     return fetch_data_from_endpoint(
         endpoint,
@@ -287,10 +230,6 @@ def login_tool(
 ) -> dict:
     """
     Perform a login (check-in) action for a user in the HRMS system.
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-        override_comment (str, optional): Optional comment attached to the login action.
 
     Returns:
         dict: A dictionary containing the result of the login action.
@@ -318,10 +257,6 @@ def logout_tool(
     """
     Perform a logout (check-out) action for a user in the HRMS system.
 
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-        override_comment (str, optional): Optional comment attached to the logout action.
-
     Returns:
         dict: A dictionary containing the result of the logout action.
         - last_ms (str): Timestamp in milliseconds of the last action.
@@ -347,10 +282,6 @@ def get_project_modules_tool(
 ) -> dict:
     """
     Retrieve modules associated with a specific project.
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-        project_id (str, optional): Identifier of the project to fetch modules for.
 
     Returns:
         dict: List of modules linked to the specified project.
@@ -385,10 +316,6 @@ def get_project_activities_tool(
     This tool fetches project-level activity mappings for a given user.
     Each activity represents a task/category that can be logged under the project.
 
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-        project_id (str, optional): Identifier of the project whose activities are required.
-
     Returns:
         dict: List of project activities.  
         Each item in the list contains:
@@ -420,9 +347,6 @@ def get_csv_of_all_employees(runtime: ToolRuntime) -> dict:
     uploads it, and returns metadata about the generated file
     including a public download URL.
 
-    Args:
-        runtime (ToolRuntime): Runtime context provided by LangChain.
-
     Returns:
         dict: Metadata of the generated CSV file with the following keys:
             - file_id (str): Unique identifier of the file
@@ -449,11 +373,6 @@ def get_employee_leaves_tool(
 ) -> dict:
     """
     Retrieve leave applications for a specific employee within an optional date range.
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the employee.
-        start_date (str, optional): Start date filter in MM/DD/YYYY format.
-        end_date (str, optional): End date filter in MM/DD/YYYY format.
 
     Returns:
         dict: A list of leave application records.
@@ -503,9 +422,6 @@ def get_employee_leaves_policy_tool(
 ) -> dict:
     """
     Retrieve the leave policy configuration applicable to a specific employee.
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the employee.
 
     Returns:
         dict: An object representing the employee's leave policy.
@@ -557,10 +473,6 @@ def get_employee_leaves_policy_tool(
             - leave_req_mail_id (str): Email address for leave request notifications.
             - modified_by (str): User ID of the person who last modified the policy.
             - modified_on (str): Timestamp of the last modification (YYYY-MM-DD HH:MM:SS).
-
-    Note:
-        - Policy values are enforced system-wide by HRMS.
-        - Some numeric values may be returned as strings depending on backend configuration.
     """
     user, error = resolve_user(query)
     if error:
@@ -582,11 +494,6 @@ def get_holiday_and_leave_calendar_tool(
 
     This tool provides information about organizational holidays, weekly offs,
     and a mapping of dates to employees who are on leave.
-
-    Args:
-        query (str): Name, user_id, or employee_id to identify the user.
-        start_date (str, optional): Start date filter in MM/DD/YYYY format.
-        end_date (str, optional): End date filter in MM/DD/YYYY format.
 
     Returns:
         dict: An object containing holiday and leave calendar information.
@@ -617,6 +524,38 @@ def get_holiday_and_leave_calendar_tool(
         end_date=end_date
     )
 
+@tool(args_schema=EmpWebexTokenInput)
+def get_webex_token_tool(
+    query: str,
+    runtime: ToolRuntime,
+) -> dict:
+    """
+    Retrieve the Webex integration token for the authenticated employee.
+    Returns:
+        dict:
+            On success: {"token": <webex_token_data>}
+            On authorization failure: {"error": "Not authorized to fetch Webex token for other users."}
+            On user resolution failure: Error object returned by `resolve_user`.
+
+    IMPORTANT:
+        put token as:
+        <copyinlinetext>
+            <WEBEX_TOKEN>
+        </copyinlinetext>
+        also please acknowledge in response
+    """
+
+    user, error = resolve_user(query)
+    if error:
+        return error
+    if user.get("username", "") != runtime.context.get("email", ""):
+        return {
+            "error": "Not authorized to fetch Webex token for other users."
+        }
+    return get_webex_token(
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
+    )
 
 tools = [
     find_user_tool, 
@@ -634,4 +573,5 @@ tools = [
     get_employee_leaves_tool,
     get_employee_leaves_policy_tool,
     get_holiday_and_leave_calendar_tool,
+    get_webex_token_tool,
 ]

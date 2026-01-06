@@ -126,3 +126,8 @@ class EmpHolidaysAndLeaveCalendarInput(BaseModel):
     end_date: str = Field(
         description="End date in MM/DD/YYYY format."
     )
+
+class EmpWebexTokenInput(BaseModel):
+    query: str = Field(
+        description="Name, user_id, employee_id or email of the employee whose Webex token you want to retrieve."
+    )

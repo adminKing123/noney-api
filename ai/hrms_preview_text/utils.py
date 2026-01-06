@@ -326,3 +326,17 @@ def get_holiday_and_leave_calendar(user_id=None, signed_array=None, start_date=N
         "holidays": holidays,
         "leaves": dict(leaves_by_date),
     }
+
+def get_webex_token(user_id=None, signed_array=None):
+    endpoint = "/user/get_user_spark_id"
+    payload = build_user_payload(user_id, signed_array)
+    data = post_request(endpoint, payload)
+
+    result = data.get("response_data", data)
+    if data.get("status") == "Success":
+        return {
+            "token": result
+        }
+    return {
+        "error": data.get("message", "Error in getting the token")
+    }
