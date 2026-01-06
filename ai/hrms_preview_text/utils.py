@@ -10,7 +10,8 @@ from werkzeug.datastructures import FileStorage
 from utils.files import save_file
 from typing import Union, Dict
 from datetime import datetime
-
+from collections import defaultdict
+from functools import lru_cache
 
 HR_CODE = CONFIG.HRMS.HR_CODE
 API_BASE = CONFIG.HRMS.API_BASE
@@ -21,6 +22,7 @@ DATE_FMT = "%m/%d/%Y"
 def parse_date(date_str):
     return datetime.strptime(date_str, DATE_FMT).date() if date_str else None
 
+@lru_cache(maxsize=128)
 def resolve_user(query: str) -> Union[Dict, tuple]:
     """
     Resolve a user query to a single user or return an error.
@@ -285,3 +287,40 @@ def get_employee_leaves_policy(user_id=None, signed_array=None):
 
     result = data.get("response_data", {})
     return result
+
+def get_holiday_and_leave_calendar(user_id=None, signed_array=None, start_date=None, end_date=None):
+    if not start_date or not end_date:
+        raise ValueError("start_date and end_date are required")
+
+    endpoint = "/leavemanager/get_holiday_leave_records"
+    payload = build_user_payload(user_id, signed_array)
+    data = post_request(endpoint, payload)
+
+    records = data.get("response_data", [])
+
+    start = parse_date(start_date)
+    end = parse_date(end_date)
+
+    holidays = []
+    leaves_by_date = defaultdict(list)
+
+    for record in records:
+        record_date = parse_date(record.get("date"))
+        if not record_date:
+            continue
+        if record_date < start or record_date > end:
+            continue
+
+        name = record.get("name", "")
+        if name.startswith("Leave:") or name.startswith("Half Day Leave:"):
+            leaves_by_date[record_date.strftime(DATE_FMT)].append(name)
+        else:
+            holidays.append({
+                "name": name,
+                "date": record_date.strftime(DATE_FMT)
+            })
+
+    return {
+        "holidays": holidays,
+        "leaves": dict(leaves_by_date),
+    }

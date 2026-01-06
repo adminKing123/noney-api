@@ -16,6 +16,7 @@ from .utils import (
     generate_csv,
     get_employee_leaves,
     get_employee_leaves_policy,
+    get_holiday_and_leave_calendar,
 )
 from .schemas import (
     FindUserInput,
@@ -31,6 +32,7 @@ from .schemas import (
     ProjectActivitiesInput,
     EmpLeavesInput,
     FindUserLeavesPolicyInput,
+    EmpHolidaysAndLeaveCalendarInput,
 )
 
 @tool(args_schema=FindUserInput)
@@ -568,6 +570,54 @@ def get_employee_leaves_policy_tool(
         signed_array=user["signed_array"],
     )
 
+@tool(args_schema=EmpHolidaysAndLeaveCalendarInput)
+def get_holiday_and_leave_calendar_tool(
+    query: str,
+    start_date: str = "",
+    end_date: str = ""
+) -> dict:
+    """
+    Retrieve the holiday calendar and employee leave calendar for a given user
+    within an optional date range.
+
+    This tool provides information about organizational holidays, weekly offs,
+    and a mapping of dates to employees who are on leave.
+
+    Args:
+        query (str): Name, user_id, or employee_id to identify the user.
+        start_date (str, optional): Start date filter in MM/DD/YYYY format.
+        end_date (str, optional): End date filter in MM/DD/YYYY format.
+
+    Returns:
+        dict: An object containing holiday and leave calendar information.
+
+        The response contains the following keys:
+
+        holidays (list[dict]):
+            List of organizational holidays and weekly offs.
+
+            Each holiday object includes:
+                - name (str): Holiday or week-off name
+                    (e.g., "Diwali", "Independence Day", "2nd Saturday").
+                - date (str): Date of the holiday (MM/DD/YYYY).
+
+        leaves (dict[str, list[str]]):
+            A mapping of dates to a list of employee names who are on leave.
+
+            - Key (str): Date in MM/DD/YYYY format.
+            - Value (list[str]): Names of employees on leave on that date.
+    """
+    user, error = resolve_user(query)
+    if error:
+        return error
+    return get_holiday_and_leave_calendar(
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
+        start_date=start_date,
+        end_date=end_date
+    )
+
+
 tools = [
     find_user_tool, 
     get_today_log_status_tool, 
@@ -583,4 +633,5 @@ tools = [
     get_csv_of_all_employees,
     get_employee_leaves_tool,
     get_employee_leaves_policy_tool,
+    get_holiday_and_leave_calendar_tool,
 ]

@@ -115,3 +115,14 @@ class EmpLeavesInput(BaseModel):
     end_date: str = Field(
         description="End date in MM/DD/YYYY format."
     )
+
+class EmpHolidaysAndLeaveCalendarInput(BaseModel):
+    query: str = Field(
+        description="Name, user_id, or employee_id of the employee whose holidays and leave calendar you want to retrieve."
+    )
+    start_date: str = Field(
+        description="Start date in MM/DD/YYYY format."
+    )
+    end_date: str = Field(
+        description="End date in MM/DD/YYYY format."
+    )
