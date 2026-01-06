@@ -3,27 +3,27 @@ from typing import Optional
 
 class FindUserInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id to search for. Supports partial name matching and exact ID matching."
+        description="Name, user_id, employee_id or email to search for. Supports partial name matching and exact ID matching."
     )
 
 class FindUserLeavesPolicyInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user to get leave policy for."
+        description="Name, user_id, employee_id or email of the user to get leave policy for."
     )
 
 class TodayLogStatusInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user to check today's attendance logs for."
+        description="Name, user_id, employee_id or email of the user to check today's attendance logs for."
     )
 
 class EmpProjectsInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the employee whose projects you want to fetch."
+        description="Name, user_id, employee_id or email of the employee whose projects you want to fetch."
     )
 
 class EmpProjectLogInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the employee whose work logs you want to retrieve."
+        description="Name, user_id, employee_id or email of the employee whose work logs you want to retrieve."
     )
     project_id: Optional[str] = Field(
         default="0",
@@ -40,12 +40,12 @@ class EmpProjectLogInput(BaseModel):
 
 class UserMailSettingInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user whose email notification preferences you want to retrieve."
+        description="Name, user_id, employee_id or email of the user whose email notification preferences you want to retrieve."
     )
 
 class AttendanceInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user whose attendance records you want to retrieve."
+        description="Name, user_id, employee_id or email of the user whose attendance records you want to retrieve."
     )
     start_date: Optional[str] = Field(
         default="",
@@ -71,7 +71,7 @@ class FetchDataInput(BaseModel):
 
 class LoginInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user to check in (login)."
+        description="Name, user_id, employee_id or email of the user to check in (login)."
     )
     override_comment: Optional[str] = Field(
         default="",
@@ -80,7 +80,7 @@ class LoginInput(BaseModel):
 
 class LogoutInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user to check out (logout)."
+        description="Name, user_id, employee_id or email of the user to check out (logout)."
     )
     override_comment: Optional[str] = Field(
         default="",
@@ -89,7 +89,7 @@ class LogoutInput(BaseModel):
 
 class ProjectModulesInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user."
+        description="Name, user_id, employee_id or email of the user."
     )
     project_id: Optional[str] = Field(
         default=None,
@@ -98,7 +98,7 @@ class ProjectModulesInput(BaseModel):
 
 class ProjectActivitiesInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the user."
+        description="Name, user_id, employee_id or email of the user."
     )
     project_id: Optional[str] = Field(
         default=None,
@@ -107,7 +107,7 @@ class ProjectActivitiesInput(BaseModel):
 
 class EmpLeavesInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the employee whose leaves you want to retrieve."
+        description="Name, user_id, employee_id or email of the employee whose leaves you want to retrieve."
     )
     start_date: str = Field(
         description="Start date in MM/DD/YYYY format."
@@ -118,7 +118,7 @@ class EmpLeavesInput(BaseModel):
 
 class EmpHolidaysAndLeaveCalendarInput(BaseModel):
     query: str = Field(
-        description="Name, user_id, or employee_id of the employee whose holidays and leave calendar you want to retrieve."
+        description="Name, user_id, employee_id or email of the employee whose holidays and leave calendar you want to retrieve."
     )
     start_date: str = Field(
         description="Start date in MM/DD/YYYY format."

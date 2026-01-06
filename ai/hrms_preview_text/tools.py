@@ -46,7 +46,7 @@ def find_user_tool(query: str) -> dict:
     - Exact match on employee_id
 
     Args:
-        query (str): Name, user_id, or employee_id to search for.
+        query (str): Name, user_id, employee_id, or email to search for.
 
     Returns:
         list[dict]:

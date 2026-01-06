@@ -124,12 +124,14 @@ def find_user(query: str, limit=5) -> str:
         name = str(user.get("name", "")).lower()
         user_id = str(user.get("user_id", "")).lower()
         employee_id = str(user.get("employee_id", "")).lower()
+        username = str(user.get("username", "")).lower()
         user["signed_array"] = get_code(user)
 
         if (
             q == user_id or
             q == employee_id or
-            q in name
+            q in name or
+            q in username
         ):
             if limit is not None and len(users) >= limit:
                 break
