@@ -18,6 +18,7 @@ from .utils import (
     get_employee_leaves_policy,
     get_holiday_and_leave_calendar,
     get_webex_token,
+    fill_work_log,
 )
 from .schemas import (
     FindUserInput,
@@ -35,6 +36,11 @@ from .schemas import (
     FindUserLeavesPolicyInput,
     EmpHolidaysAndLeaveCalendarInput,
     EmpWebexTokenInput,
+
+    ProjectInput,
+    ModuleInput,
+    ActivityInput,
+    WorkLogInput,
 )
 
 @tool(args_schema=FindUserInput)
@@ -226,7 +232,8 @@ def fetch_data_tool(endpoint: str, user_id: Optional[str] = None, signed_array: 
 @tool(args_schema=LoginInput)
 def login_tool(
     query: str,
-    override_comment: str = ""
+    override_comment: str = "",
+    today_login_status: str = ""
 ) -> dict:
     """
     Perform a login (check-in) action for a user in the HRMS system.
@@ -243,6 +250,10 @@ def login_tool(
     user, error = resolve_user(query)
     if error:
         return error
+    if today_login_status == "logged_in":
+        return {
+            "error": "User is already logged in today."
+        }
     return login(
         user_id=user["user_id"],
         signed_array=user["signed_array"],
@@ -252,7 +263,8 @@ def login_tool(
 @tool(args_schema=LogoutInput)
 def logout_tool(
     query: str,
-    override_comment: str = ""
+    override_comment: str = "",
+    today_login_status: str = "",
 ) -> dict:
     """
     Perform a logout (check-out) action for a user in the HRMS system.
@@ -269,6 +281,10 @@ def logout_tool(
     user, error = resolve_user(query)
     if error:
         return error
+    if today_login_status == "logged_out":
+        return {
+            "error": "User is already logged out today."
+        }
     return logout(
         user_id=user["user_id"],
         signed_array=user["signed_array"],
@@ -558,6 +574,60 @@ def get_webex_token_tool(
         signed_array=user["signed_array"],
     )
 
+from langchain.tools import tool
+
+@tool(args_schema=WorkLogInput)
+def fill_work_log_tool(
+    query: str,
+    project: ProjectInput,
+    module: ModuleInput,
+    activity: ActivityInput,
+    hour_clocked: float,
+    work_desc: str,
+    runtime: ToolRuntime,
+) -> dict:
+    """Used to fill work log for today automatically."""
+    user, error = resolve_user(query)
+    if error:
+        return error
+
+    if user.get("username", "") != runtime.context.get("email", ""):
+        return {
+            "error": "Not authorized to fill work log for other users."
+        }
+
+    # ---- Resolve Project ID ----
+    project_id = project.project_id
+    if not project_id:
+        return {
+            "error": "Project Id could not be resolved."
+        }
+
+    # ---- Resolve Module ID ----
+    module_id = module.module_id
+    if not module_id:
+        return {
+            "error": "Module Id could not be resolved."
+        }
+
+    # ---- Resolve Activity ID ----
+    activity_id = activity.activity_id
+    if not activity_id:
+        return {
+            "error": "Activity Id could not be resolved."
+        }
+
+    return fill_work_log(
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
+        project_id=project_id,
+        module_id=module_id,
+        activity_id=activity_id,
+        hour_clocked=hour_clocked,
+        work_desc=work_desc,
+    )
+
+
 tools = [
     find_user_tool, 
     get_today_log_status_tool, 
@@ -575,4 +645,5 @@ tools = [
     get_employee_leaves_policy_tool,
     get_holiday_and_leave_calendar_tool,
     get_webex_token_tool,
+    fill_work_log_tool,
 ]
