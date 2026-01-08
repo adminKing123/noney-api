@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 
 class FindUserInput(BaseModel):
     query: str = Field(
@@ -77,6 +77,9 @@ class LoginInput(BaseModel):
         default="",
         description="Optional comment to attach to the login action (e.g., reason for late arrival)."
     )
+    today_login_status: Literal["logged_in", "logged_out"] = Field(
+        description="Current login status of the user for today. get it using get_today_log_status_tool tool."
+    )
 
 class LogoutInput(BaseModel):
     query: str = Field(
@@ -85,6 +88,9 @@ class LogoutInput(BaseModel):
     override_comment: Optional[str] = Field(
         default="",
         description="Optional comment to attach to the logout action (e.g., reason for early departure)."
+    )
+    today_login_status: Literal["logged_in", "logged_out"] = Field(
+        description="Current login status of the user for today. get it using get_today_log_status_tool tool."
     )
 
 class ProjectModulesInput(BaseModel):
@@ -130,4 +136,58 @@ class EmpHolidaysAndLeaveCalendarInput(BaseModel):
 class EmpWebexTokenInput(BaseModel):
     query: str = Field(
         description="Name, user_id, employee_id or email of the employee whose Webex token you want to retrieve."
+    )
+
+
+
+# Work Log Input Schema
+
+class ProjectInput(BaseModel):
+    project_id: str = Field(
+        default=None,
+        description="Project ID. If not provided, resolve using project_name via get_emp_projects_tool."
+    )
+    project_name: str = Field(
+        default=None,
+        description="Original project name that is found using project_id from get_emp_projects_tool."
+    )
+
+class ModuleInput(BaseModel):
+    module_id: str = Field(
+        description="Module ID. If not provided, resolve using module_name via get_project_modules_tool."
+    )
+    module_name: str = Field(
+        description="Original module name that is found using module_id from get_project_modules_tool."
+    )
+
+class ActivityInput(BaseModel):
+    activity_id: str = Field(
+        description="Activity ID. If not provided, resolve using activity_name via get_project_activities_tool."
+    )
+    activity_name: str = Field(
+        description="Original activity name that is found using activity_id from get_project_activities_tool."
+    )
+
+
+class WorkLogInput(BaseModel):
+    query: str = Field(
+        description="Name, user_id, employee_id or email of the employee whose work is being logged."
+    )
+
+    project: ProjectInput = Field(
+        description="Resolve using get_emp_projects_tool"
+    )
+
+    module: ModuleInput = Field(
+        description="Resolve using get_project_modules_tool"
+    )
+
+    activity: ActivityInput = Field(
+        description="Resolve using get_project_activities_tool"
+    )
+    hour_clocked: float = Field(
+        description="Number of hours to log."
+    )
+    work_desc: str = Field(
+        description="Description of the work done."
     )
