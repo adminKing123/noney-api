@@ -17,6 +17,7 @@ HR_CODE = CONFIG.HRMS.HR_CODE
 API_BASE = CONFIG.HRMS.API_BASE
 DEFAULT_USER_ID = CONFIG.HRMS.DEFAULT_USER_ID
 DEFAULT_SIGNED_ARRAY = CONFIG.HRMS.DEFAULT_SIGNED_ARRAY
+WEBEX_API_BASE = CONFIG.HRMS.WEBEX_API_BASE
 DATE_FMT = "%m/%d/%Y"
 
 def parse_date(date_str):
@@ -372,4 +373,24 @@ def fill_work_log(project_id, module_id, activity_id, work_desc, hour_clocked, u
         }
     return {
         "error": data.get("message", "Error in getting the token")
+    }
+
+
+def get_headers(access_token: str) -> dict:
+    return {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+def get_employee_image(access_token: str) -> dict:
+    url = f"{WEBEX_API_BASE}/people/me"
+    print(access_token)
+    res = requests.get(url, headers=get_headers(access_token))
+    try:
+        res.raise_for_status()
+        data = res.json()
+    except:
+        return {"error": "Failed to fetch employee image."}
+    return {
+        "image_url": data.get("avatar", "Abhinay image is not available.")
     }

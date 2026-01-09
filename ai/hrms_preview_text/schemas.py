@@ -191,3 +191,8 @@ class WorkLogInput(BaseModel):
     work_desc: str = Field(
         description="Description of the work done."
     )
+
+class GetUserImageInput(BaseModel):
+    query: str = Field(
+        description="Name, user_id, employee_id or email of the employee whose image you want to retrieve."
+    )

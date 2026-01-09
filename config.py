@@ -6,6 +6,7 @@ load_dotenv()
 class Hrms:
     HR_CODE = os.getenv("HR_CODE", "aWxlYWRzeW5hcHNlMjAzfFNMQ09OU1RBTlNUTg==")
     API_BASE = os.getenv("HRMS_API_BASE", "https://hrsapi.thesynapses.com")
+    WEBEX_API_BASE = os.getenv("HRMS_WEBEX_API_BASE", "https://webexapis.com/v1")
     DEFAULT_USER_ID = int(os.getenv("HRMS_DEFAULT_USER_ID", "128"))
     DEFAULT_SIGNED_ARRAY = os.getenv("HRMS_DEFAULT_SIGNED_ARRAY", "MTI4fDExMDd8cy5vc2F0d2FsQHRoZXN5bmFwc2VzLmNvbXxTdXBlciBBZG1pbg==")
 

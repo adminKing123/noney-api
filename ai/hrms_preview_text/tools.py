@@ -19,6 +19,7 @@ from .utils import (
     get_holiday_and_leave_calendar,
     get_webex_token,
     fill_work_log,
+    get_employee_image,
 )
 from .schemas import (
     FindUserInput,
@@ -41,6 +42,7 @@ from .schemas import (
     ModuleInput,
     ActivityInput,
     WorkLogInput,
+    GetUserImageInput,
 )
 
 @tool(args_schema=FindUserInput)
@@ -627,6 +629,35 @@ def fill_work_log_tool(
         work_desc=work_desc,
     )
 
+@tool(args_schema=GetUserImageInput)
+def get_employee_image_tool(
+    query: str,
+) -> dict:
+    """
+    Retrieve the profile image URL of a specific employee.
+
+    Returns:
+        dict: An object containing the employee's profile image URL.
+            - image_url (str): URL of the employee's profile image.
+
+    Important:
+        Render as markdown image:
+        ![Employee Image](IMAGE_URL_HERE)
+    """
+    user, error = resolve_user(query)
+    if error:
+        return error
+    
+    data = get_webex_token(
+        user_id=user["user_id"],
+        signed_array=user["signed_array"],
+    )
+
+    if data.get("token") is None:
+        return {
+            "error": "Not authorized to fetch employee image for other users."
+        }
+    return get_employee_image(data.get("token"))
 
 tools = [
     find_user_tool, 
@@ -646,4 +677,5 @@ tools = [
     get_holiday_and_leave_calendar_tool,
     get_webex_token_tool,
     fill_work_log_tool,
+    get_employee_image_tool,
 ]
