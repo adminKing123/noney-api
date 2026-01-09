@@ -340,3 +340,36 @@ def get_webex_token(user_id=None, signed_array=None):
     return {
         "error": data.get("message", "Error in getting the token")
     }
+
+def fill_work_log(project_id, module_id, activity_id, work_desc, hour_clocked, user_id=None, signed_array=None):
+    endpoint = "/project/fill_daily_log"
+
+    extra_fields = {
+        "project_id1": project_id,
+        "module_id1": module_id,
+        "activity_id1": activity_id,
+        "work_desc1": work_desc,
+        "hour_clocked1": hour_clocked,
+        "work_quantified11": "",
+        "work_quantified21": "",
+        "log_date1": "",
+        "send_mail1": "false",
+        "project_id2": 0,
+        "module_id2": 0,
+        "activity_id2": 0,
+        "work_quantified12": "",
+        "work_quantified22": "",
+        "log_date2": "",
+        "send_mail2": "false",
+    }
+    payload = build_user_payload(user_id, signed_array, extra_fields)
+    data = post_request(endpoint, payload)
+
+    result = data.get("response_data", data)
+    if data.get("status") == "Success":
+        return {
+            "token": result
+        }
+    return {
+        "error": data.get("message", "Error in getting the token")
+    }
