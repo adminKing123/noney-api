@@ -392,5 +392,5 @@ def get_employee_image(access_token: str) -> dict:
     except:
         return {"error": "Failed to fetch employee image."}
     return {
-        "image_url": data.get("avatar", "Abhinay image is not available.")
+        "image_url": data.get("avatar", "image is not available.")
     }
