@@ -40,6 +40,7 @@ class HrmsPreviewAI(BaseAI):
             system_prompt=self.system_prompt,
             middleware=[HumanInTheLoopMiddleware(
                 interrupt_on={
+                    "fill_work_log_tool": {"allowed_decisions": ["approve", "reject"]},
                     "get_webex_token_tool": {"allowed_decisions": ["approve", "reject"]},
                     "get_csv_of_all_employees": {"allowed_decisions": ["approve", "reject"]},
                     "login_tool": {"allowed_decisions": ["approve", "reject"]},
