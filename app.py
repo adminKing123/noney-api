@@ -78,68 +78,6 @@ def summarise_title():
 
     return jsonify({"summarized_title": summary})
 
-@app.route("/upload_file", methods=["POST"])
-@require_auth
-def upload_file():
-    user_id = request.user.get("user_id", None)
-    chat_id = request.form.get("chat_id")
-    file_id = request.form.get("file_id")
-    file_type = request.form.get("file_type", "")
-
-    if not chat_id or not user_id or not file_id:
-        return jsonify({"error": "chat_id, user_id, and file_id are required"}), 400
-
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-
-    file = request.files["file"]
-
-    if file.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
-
-    file_meta = save_file(file, user_id, file_id, file_type)
-
-    return jsonify(file_meta), 201
-
-@app.route("/delete_file/<filename>", methods=["DELETE"])
-@require_auth
-def delete_file(filename):
-    user_id = request.user.get("user_id")
-
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    # GitHub repo path (same as upload logic)
-    github_path = f"uploads/{user_id}/{filename}"
-    commit_message = f"Delete file {filename} for user {user_id}"
-
-    success = remove_file(
-        file_path=github_path,
-        commit_message=commit_message
-    )
-
-    if not success:
-        return jsonify({"error": "File not found or delete failed"}), 404
-
-    return jsonify({
-        "success": True,
-        "message": "File deleted successfully"
-    }), 200
-
-@app.route("/uploads/<filename>", methods=["GET"])
-def download_file(filename):
-    upload_dir = CONFIG.UPLOADS.UPLOAD_FOLDER
-    file_path = os.path.join(upload_dir, filename)
-
-    if not os.path.exists(file_path):
-        abort(404)
-
-    return send_from_directory(
-        upload_dir,
-        filename,
-        as_attachment=True
-    )
-
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "ok"}), 200

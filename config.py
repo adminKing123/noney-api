@@ -29,7 +29,7 @@ class CONFIG:
     FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "")
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     LRU_CACHE_SIZE = int(os.getenv("LRU_CACHE_SIZE", "128"))
-    GEMINI_MESSAGE_LIMIT = int(os.getenv("GEMINI_MESSAGE_LIMIT", "10"))
+    GEMINI_MESSAGE_LIMIT = int(os.getenv("GEMINI_MESSAGE_LIMIT", "40"))
     
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
     GITHUB_BRANCH_NAME = os.getenv("GITHUB_BRANCH_NAME", "main")

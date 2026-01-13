@@ -29,7 +29,7 @@ class Chat:
             # "updated_at": firestore.SERVER_TIMESTAMP
         })
 
-    def get_messages(self, userId, chatId, limit=20, should_yeild=False):
+    def get_messages(self, userId, chatId, limit=CONFIG.GEMINI_MESSAGE_LIMIT, should_yeild=False):
         messages_ref = self.client.collection("users").document(userId).collection("chats").document(chatId).collection("messages").order_by("created_at", direction=firestore.Query.ASCENDING).limit(limit)
         if should_yeild:
             messages_docs = messages_ref.stream()
