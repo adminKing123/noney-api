@@ -50,7 +50,7 @@ def save_file(file, user_id, file_id, file_type=""):
             #     f"{CONFIG.GITHUB_BRANCH_NAME}/"
             #     f"{github_path}"
             # )
-            "download_url": f"https://sourceapis.onrender.com/download/{github_path}"
+            "download_url": f"{CONFIG.CDN_URL}/download/{github_path}"
         }
 
     except Exception as e:

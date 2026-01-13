@@ -30,6 +30,7 @@ class CONFIG:
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     LRU_CACHE_SIZE = int(os.getenv("LRU_CACHE_SIZE", "128"))
     GEMINI_MESSAGE_LIMIT = int(os.getenv("GEMINI_MESSAGE_LIMIT", "40"))
+    CDN_URL = os.getenv("CDN_URL", "https://sourceapis.onrender.com")
     
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
     GITHUB_BRANCH_NAME = os.getenv("GITHUB_BRANCH_NAME", "main")
