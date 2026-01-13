@@ -43,13 +43,6 @@ def save_file(file, user_id, file_id, file_type=""):
             "filename": filename,
             "file_type": file_type,
             "size": len(file_content),
-            # "download_url": (
-            #     f"https://raw.githubusercontent.com/"
-            #     f"{CONFIG.GITHUB_USERNAME}/"
-            #     f"{CONFIG.GITHUB_REPO_NAME}/"
-            #     f"{CONFIG.GITHUB_BRANCH_NAME}/"
-            #     f"{github_path}"
-            # )
             "download_url": f"{CONFIG.CDN_URL}/download/{github_path}"
         }
 
