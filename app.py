@@ -5,28 +5,29 @@ import os
 from db import db
 from ai import AIProvider
 from middleware.auth import require_auth
+import json
 
 app = Flask(__name__)
 CORS(app)
 
+def stream_generator(ai, payload):
+    for chunk in ai.stream(payload):
+        event = chunk.get("event")
+        data = chunk.get("data")
+        yield f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
 @app.route("/generate", methods=["POST"])
 @require_auth
 def stream():
-    payload = request.json
+    payload = request.json or {}
     model = payload.get("model", {})
     model_id = model.get("id", CONFIG.MODELS.DEFAULT_MODEL)
-    prompt = payload.get("prompt", "")
-    chat_uid = payload.get("chat_uid", None)
-    descisions = payload.get("descisions", None)
+    
+    payload["user"] = request.user
     ai_provider = AIProvider()
     ai = ai_provider.get(model_id)
     return Response(
-        ai.stream({
-            "prompt": prompt,
-            "chat_uid": chat_uid,
-            "user": request.user,
-            "descisions": descisions,
-        }),
+        stream_generator(ai, payload),
         mimetype="text/event-stream"
     )
 

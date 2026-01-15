@@ -11,6 +11,42 @@ class User:
         decoded = auth.verify_id_token(token)
         return decoded
 
+class MsgEntity:
+    def __init__(self, data):
+        self.id = data.get("id")
+        self.chat_id = data.get("chat_id")
+
+        self.prompt = data.get("prompt")
+        self.answer = data.get("answer", [])
+        self.sources = data.get("sources", [])
+        self.answer_files = data.get("answer_files", [])
+        self.steps = data.get("steps", [])
+
+        self.model = data.get("model")
+        self.google_search = data.get("google_search", False)
+        self.generate_image = data.get("generate_image", False)
+
+        self.created_at = data.get("created_at")
+        self.updated_at = data.get("updated_at")
+
+        self.interrupt = data.get("interrupt", None)
+        self.files = data.get("files", [])
+        
+        self.descisions = data.get("descisions", None)
+        self.deep_research = data.get("deep_research", False)
+        self.action_type = data.get("action_type", None)
+
+
+class Msg:
+    def __init__(self, client):
+        self.client = client
+
+    def get_new_msg(self, id):
+        data = {
+            "id": id
+        }
+        return MsgEntity(data)
+
 class Chat:
     def __init__(self, client):
         self.client = client
@@ -47,6 +83,7 @@ class DB:
 
         self.chat = Chat(self.client)
         self.user = User(self.client)
+        self.msg = Msg(self.client)
 
 
 db = DB()

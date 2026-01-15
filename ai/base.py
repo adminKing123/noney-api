@@ -1,12 +1,14 @@
 import uuid
-import json
 from abc import ABC, abstractmethod
 
 class BaseAI(ABC):
     """Base class every provider must follow."""
 
     def _event(self, event, data):
-        return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+        return {
+            "event": event,
+            "data": data
+        }
 
     def _step(self, data):
         return self._event("step", {"id": str(uuid.uuid4()), "data": data})
