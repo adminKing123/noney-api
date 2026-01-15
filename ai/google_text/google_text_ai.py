@@ -30,13 +30,12 @@ class GeminiTextAI(BaseAI):
         start_time = time.time()
         user = payload.get("user", {})
         user_id = user.get("user_id", None)
-        chat_uid = payload.get("chat_uid", None)
+        chat_id = payload.get("chat_id", None)
         prompt = payload.get("prompt", "")
 
         yield self._send_step("info", "Summarizing context")
-        ctx = ContextProvider.get(self.model_name, user_id, chat_uid, self.system_prompt)
+        ctx = ContextProvider.get(self.model_name, user_id, chat_id, self.system_prompt)
         context = ctx.build_context(prompt)
-
         ai_response = ""
         yield self._start()
 

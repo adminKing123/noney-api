@@ -54,13 +54,13 @@ class HrmsPreviewAI(BaseAI):
         start_time = time.time()
         user = payload.get("user", {})
         user_id = user.get("user_id", None)
-        chat_uid = payload.get("chat_uid", None)
+        chat_id = payload.get("chat_id", None)
         prompt = payload.get("prompt", "")
         descisions = payload.get("descisions", None)
 
         continuing_after_interrupt = descisions and len(descisions) > 0
 
-        config = {"configurable": {"thread_id": chat_uid}}
+        config = {"configurable": {"thread_id": chat_id}}
 
         if not continuing_after_interrupt:
             yield self._send_step("info", "Summarizing context")
@@ -71,9 +71,9 @@ class HrmsPreviewAI(BaseAI):
         dynamic_system_prompt = f"""{self.system_prompt} USER CONTEXT: emailid: {user.get("email", "N/A")}"""
 
 
-        ctx = ContextProvider.get(self.model_name, user_id, chat_uid, dynamic_system_prompt)
+        ctx = ContextProvider.get(self.model_name, user_id, chat_id, dynamic_system_prompt)
         context = ctx.build_context(prompt)
-
+        
         ai_response = ""
 
         if not continuing_after_interrupt:
@@ -92,7 +92,7 @@ class HrmsPreviewAI(BaseAI):
         for mode, chunk in self.agent.stream(
             payload,
             stream_mode=["updates", "messages"],
-            context={ "user_id": user_id, "chat_uid": chat_uid, "email": user.get("email", "")},
+            context={ "user_id": user_id, "chat_id": chat_id, "email": user.get("email", "")},
             config=config,
         ):
             if mode == "messages":

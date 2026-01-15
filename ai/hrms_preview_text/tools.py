@@ -382,7 +382,7 @@ def get_csv_of_all_employees(runtime: ToolRuntime) -> dict:
     return generate_csv(
         find_user("", None),
         runtime.context.get("user_id"),
-        runtime.context.get("chat_uid")
+        runtime.context.get("chat_id")
     )
 
 @tool(args_schema=EmpLeavesInput)

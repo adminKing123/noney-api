@@ -384,7 +384,7 @@ def get_headers(access_token: str) -> dict:
 
 def get_employee_image(access_token: str) -> dict:
     url = f"{WEBEX_API_BASE}/people/me"
-    print(access_token)
+    
     res = requests.get(url, headers=get_headers(access_token))
     try:
         res.raise_for_status()

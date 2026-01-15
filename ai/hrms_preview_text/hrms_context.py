@@ -6,16 +6,16 @@ from config import CONFIG
 class HrmsContext:
     MESSAGES_LIMIT = CONFIG.GEMINI_MESSAGE_LIMIT
 
-    def __init__(self, user_id, chat_uid, system_prompt=None):
+    def __init__(self, user_id, chat_id, system_prompt=None):
         self.user_id = user_id
-        self.chat_uid = chat_uid
+        self.chat_id = chat_id
         self.system_prompt = system_prompt
         self.messages = list(self._get_messages())
 
     def _get_messages(self):
-        if (not self.user_id) or (not self.chat_uid):
+        if (not self.user_id) or (not self.chat_id):
             return
-        messages = db.chat.get_messages(self.user_id, self.chat_uid, limit=self.MESSAGES_LIMIT, should_yeild=True)
+        messages = db.chat.get_messages(self.user_id, self.chat_id, limit=self.MESSAGES_LIMIT, should_yeild=True)
         for msg in messages:
             # steps = msg.get("steps", [])
             # for step in steps:
@@ -42,7 +42,7 @@ class HrmsContext:
             self.messages.append(message)
 
     def build_context(self, prompt):
-        if (not self.user_id) or (not self.chat_uid):
+        if (not self.user_id) or (not self.chat_id):
             return [HumanMessage(content=prompt)]
         else:
             self.append(HumanMessage(content=prompt))
@@ -52,5 +52,5 @@ class HrmsContext:
             return context
 
 @lru_cache(maxsize=CONFIG.LRU_CACHE_SIZE)
-def get_hrms_context(user_id, chat_uid, system_prompt=None):
-    return HrmsContext(user_id, chat_uid, system_prompt)
+def get_hrms_context(user_id, chat_id, system_prompt=None):
+    return HrmsContext(user_id, chat_id, system_prompt)
