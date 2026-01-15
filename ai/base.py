@@ -54,27 +54,23 @@ class BaseAI(ABC):
         })
     
     def _tool_call(self, tool_name, tool_args):
-        return self._event("step", {
-            "data": {
-                "id": str(uuid.uuid4()),
-                "title": f"Calling tool: {tool_name}",
-                "tool_name": tool_name,
-                "tool_args": tool_args,
-                "type": "tool_call"
-            }
-        })
+        return self._step([{
+            "id": str(uuid.uuid4()),
+            "title": f"Calling tool: {tool_name}",
+            "tool_name": tool_name,
+            "tool_args": tool_args,
+            "type": "tool_call"
+        }])
     
     def _tool_result(self, tool_id, tool_name, tool_result):
-        return self._event("step", {
-            "data": {
-                "id": str(uuid.uuid4()),
-                "title": f"Tool result from: {tool_name}",
-                "tool_id": tool_id,
-                "tool_name": tool_name,
-                "tool_result": tool_result,
-                "type": "tool_result"
-            }
-        })
+        return self._step([            {
+            "id": str(uuid.uuid4()),
+            "title": f"Tool result from: {tool_name}",
+            "tool_id": tool_id,
+            "tool_name": tool_name,
+            "tool_result": tool_result,
+            "type": "tool_result"
+        }])
 
     @abstractmethod
     def stream(self, payload):

@@ -36,16 +36,55 @@ class MsgEntity:
         self.deep_research = data.get("deep_research", False)
         self.action_type = data.get("action_type", None)
 
+        self.duration = data.get("duration", None)
+
+    def get_dict(self):
+        payload = {}
+        payload["id"] = self.id
+        payload["prompt"] = self.prompt
+        payload["answer"] = self.answer
+        payload["sources"] = self.sources
+        payload["answer_files"] = self.answer_files
+        payload["steps"] = self.steps
+        payload["model"] = self.model
+        payload["google_search"] = self.google_search
+        payload["generate_image"] = self.generate_image
+        payload["created_at"] = self.created_at
+        payload["updated_at"] = self.updated_at
+        payload["interrupt"] = self.interrupt
+        payload["files"] = self.files
+        payload["deep_research"] = self.deep_research
+        payload["duration"] = self.duration
+        return payload
 
 class Msg:
     def __init__(self, client):
         self.client = client
 
-    def get_new_msg(self, id):
+    def get_new_msg(self, id, default_data=None):
+        if default_data is None:
+            default_data = {}
+
         data = {
-            "id": id
+            "id": id,
+            **default_data
         }
         return MsgEntity(data)
+    
+    def get_msg_by_id(self, chatId, msgId):
+        messages_ref = self.client.collection("chats").document(chatId).collection("messages").document(msgId)
+        msg_doc = messages_ref.get()
+        if msg_doc.exists:
+            return MsgEntity(msg_doc.to_dict())
+        return None
+
+
+    def save_message(self, chatId, msg_dict):
+        messages_ref = self.client.collection("chats").document(chatId).collection("messages")
+        msg_id = msg_dict.get("id")
+        if msg_id:
+            messages_ref.document(msg_id).set(msg_dict)
+        return msg_id
 
 class Chat:
     def __init__(self, client):
