@@ -12,7 +12,8 @@ CORS(app)
 @app.route("/generate", methods=["POST"])
 @require_auth
 def stream():
-    model_id = request.json.get("model_id", CONFIG.MODELS.DEFAULT_MODEL)
+    model = request.json.get("model", {})
+    model_id = model.get("id", CONFIG.MODELS.DEFAULT_MODEL)
     prompt = request.json.get("prompt", "")
     chat_uid = request.json.get("chat_uid", None)
     descisions = request.json.get("descisions", None)
