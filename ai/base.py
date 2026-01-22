@@ -36,6 +36,14 @@ class BaseAI(ABC):
         }
         return self._event("text", data)
     
+    def _send_generated_images(self, data, index=0):
+        data = {
+            "id": str(uuid.uuid4()),
+            "data": data,
+            "index": index,
+        }
+        return self._event("generated_images", data)
+    
     def _interrupt(self, data):
         return self._event("interrupt", {"id": str(uuid.uuid4()), "data": data})
     

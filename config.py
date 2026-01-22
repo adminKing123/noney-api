@@ -19,6 +19,9 @@ class Models:
     
     NONEY_HRMS_ASSISTANT_20241001 = "noney-hrms-assistant-20241001"
     NONEY_HRMS_ASSISTANT_PRO_20241001 = "noney-hrms-assistant-pro-20241001"
+
+    NONEY_IMAGE_GEN_20241001 = "noney-image-gen-20241001"
+
     DEFAULT_MODEL = NONEY_1_0_TWINKLE_20241001
 
 class Uploads:
@@ -110,4 +113,11 @@ You are an expert HRMS assistant AI specialized in handling Human Resource Manag
         "top_k": None,
         "model_id": "gemini-3-pro-preview",
         "system_prompt": AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_20241001]["system_prompt"]
+    }
+
+    AI_MAPPINGS[MODELS.NONEY_IMAGE_GEN_20241001] = {
+        "temperature": 0.7,
+        "top_p": 1.0,
+        "top_k": 40,
+        "model_id": "imagen-4.0-generate-001",
     }

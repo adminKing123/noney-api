@@ -35,6 +35,11 @@ def stream_generator(ai, payload):
                 msg.answer[index]["data"] += eventdata or ""
             elif index == len(msg.answer):
                 msg.answer.append({"id": eventid, "type": "text", "data": eventdata or ""})
+        if eventtype == "generated_images":
+            if index < len(msg.answer):
+                msg.answer[index]["data"] += eventdata or []
+            elif index == len(msg.answer):
+                msg.answer.append({"id": eventid, "type": "generated_images", "data": eventdata or []})
         elif eventtype == "step":
             msg.steps.extend(eventdata)
         elif eventtype == "source":
