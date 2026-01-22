@@ -35,7 +35,7 @@ def stream_generator(ai, payload):
                 msg.answer[index]["data"] += eventdata or ""
             elif index == len(msg.answer):
                 msg.answer.append({"id": eventid, "type": "text", "data": eventdata or ""})
-        if eventtype == "generated_images":
+        elif eventtype == "generated_images":
             if index < len(msg.answer):
                 msg.answer[index]["data"] += eventdata or []
             elif index == len(msg.answer):
@@ -56,7 +56,7 @@ def stream_generator(ai, payload):
             msg.answer[index] = {"id": eventid, "type": eventtype, "data": eventdata}
 
         yield f"event: {eventtype}\ndata: {json.dumps(data)}\n\n"
-
+    
     db.msg.save_message(payload.get("chat_id"), msg.get_dict())
 
 @app.route("/generate", methods=["POST"])
