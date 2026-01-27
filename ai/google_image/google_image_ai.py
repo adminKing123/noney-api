@@ -6,6 +6,7 @@ from utils.files import save_file
 import io
 from werkzeug.datastructures import FileStorage
 import uuid
+from db import db
 
 class GeminiImageAI(BaseAI):
     MAPPINGS = CONFIG.AI_MAPPINGS
@@ -65,6 +66,7 @@ class GeminiImageAI(BaseAI):
                 file_id=file_id,
                 file_type="image/png"
             )
+            db.file.add_file(user_id, save_file_result, chat_id=chat_id)
             yield self._send_generated_images([save_file_result], index=index)
         end_time = time.time()
         duration = end_time - start_time
