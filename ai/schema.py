@@ -8,11 +8,10 @@ class TitleSummary(BaseModel):
 
 ValidAspectRatio = Literal[
     "1:1",
-    "16:9",
     "9:16",
+    "16:9",
     "4:3",
     "3:4",
-    "21:9"
 ]
 
 class AspectRatioDetection(BaseModel):
