@@ -64,3 +64,6 @@ class GeminiTextAI(BaseAI):
     def invoke(self, payload):
         prompt = payload.get("prompt", "")
         return self.model.invoke([HumanMessage(content=prompt)])
+
+    def with_structured_output(self, *args, **kwargs):
+        return self.model.with_structured_output(*args, **kwargs)

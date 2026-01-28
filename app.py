@@ -6,6 +6,7 @@ from db import db
 from ai import AIProvider
 from middleware.auth import require_auth
 import json
+from ai.schema import TitleSummary
 
 app = Flask(__name__)
 CORS(app)
@@ -110,15 +111,19 @@ def summarise_title():
         return jsonify({"error": "Prompt is required"}), 400
 
     summarise_prompt = f"Summarize this into a short title under 100 characters (only plain text):\n\n{prompt}"
+
     ai_provider = AIProvider()
     ai = ai_provider.get(CONFIG.MODELS.DEFAULT_MODEL)
-    response = ai.invoke({
-        "prompt": summarise_prompt,
-        "user": request.user
-    })
-    summary = response.content.strip()
+    
+    response = ai.with_structured_output(
+        TitleSummary,
+        method="json_schema"
+    ).invoke(summarise_prompt)
 
-    # Ensure max 100 characters even if model exceeds
+    if not response or not response.title:
+        return jsonify({"summarized_title": prompt[:24]})
+    
+    summary = response.title.strip()
     summary = summary[:100]
 
     return jsonify({"summarized_title": summary})
