@@ -1,5 +1,7 @@
 import time
 from google import genai
+from ai.google_text.google_text_ai import GeminiTextAI
+from ai.schema import AspectRatioDetection
 from ai.base import BaseAI
 from config import CONFIG
 from utils.files import save_file
@@ -38,8 +40,25 @@ class GeminiImageAI(BaseAI):
 
         file_id = str(uuid.uuid4())
         index = 0
-        
-        yield self._send_step("image_generation", "Generating image")
+
+        ai = GeminiTextAI(model_name=CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001)
+
+        yield self._send_step("info", "Thinking")
+
+        response = ai.with_structured_output(
+            AspectRatioDetection,
+            method="json_schema"
+        ).invoke(prompt)
+
+        aspect_ratio = None
+
+        if not response or not response.aspect_ratio:
+            aspect_ratio = AspectRatioDetection(aspect_ratio="1:1").aspect_ratio
+        else:
+            aspect_ratio = response.aspect_ratio
+        yield self._send_step("image_generation", "Generating image", {
+            "aspect_ratio": aspect_ratio
+        })
         
         response = self.client.models.generate_images(
             model=self.details.get("model_id"),
@@ -47,6 +66,7 @@ class GeminiImageAI(BaseAI):
             config=genai.types.GenerateImagesConfig(
                 number_of_images=1,
                 output_mime_type="image/png",
+                aspect_ratio=aspect_ratio
             )
         )
 
@@ -59,13 +79,13 @@ class GeminiImageAI(BaseAI):
                 filename=f"{file_id}.png",
                 content_type="image/png"
             )
-            yield self._send_step("image_generation", "Preparing generated image")
             save_file_result = save_file(
                 file=fake_file,
                 user_id=user_id,
                 file_id=file_id,
                 file_type="image/png"
             )
+            save_file_result["aspect_ratio"] = aspect_ratio
             db.file.add_file(user_id, save_file_result, chat_id=chat_id)
             yield self._send_generated_images([save_file_result], index=index)
         end_time = time.time()
