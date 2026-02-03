@@ -109,8 +109,6 @@ def build_user_payload(user_id=None, signed_array=None, extra_fields=None):
         payload.update(extra_fields)
     return payload
 
-# ---------------- API Functions ---------------- #
-
 def fetch_data_from_endpoint(endpoint: str, user_id=None, signed_array=None):
     payload = build_user_payload(user_id, signed_array)
     return post_request(endpoint, payload)

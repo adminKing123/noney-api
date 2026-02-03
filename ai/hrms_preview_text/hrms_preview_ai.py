@@ -11,7 +11,6 @@ from ..contextprovider import ContextProvider
 from config import CONFIG
 from db.firebase_checkpoint_saver import FirebaseSaver
 
-# _shared_checkpointer = FirebaseSaver()
 _shared_checkpointer = InMemorySaver()
 
 class HrmsPreviewAI(BaseAI):

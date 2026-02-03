@@ -138,10 +138,6 @@ class EmpWebexTokenInput(BaseModel):
         description="Name, user_id, employee_id or email of the employee whose Webex token you want to retrieve."
     )
 
-
-
-# Work Log Input Schema
-
 class ProjectInput(BaseModel):
     project_id: str = Field(
         default=None,
