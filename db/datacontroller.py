@@ -140,61 +140,6 @@ class File:
         except Exception as e:
             print(f"Error adding file: {e}")
 
-class ConnectedApps:
-    def __init__(self, client):
-        self.client = client
-    
-    def get_user_connected_apps(self, user_id):
-        """Get all connected apps for a user"""
-        try:
-            user_ref = self.client.collection("users").document(user_id)
-            user_doc = user_ref.get()
-            
-            if user_doc.exists:
-                data = user_doc.to_dict()
-                return data.get("connected_apps", {})
-            return {}
-        except Exception as e:
-            print(f"Error getting connected apps: {e}")
-            return {}
-    
-    def set_app_connected(self, user_id, app_id, app_data):
-        """Mark an app as connected for a user"""
-        try:
-            user_ref = self.client.collection("users").document(user_id)
-            user_ref.set({
-                "connected_apps": {
-                    app_id: app_data
-                }
-            }, merge=True)
-        except Exception as e:
-            print(f"Error setting app connected: {e}")
-            raise
-    
-    def set_app_disconnected(self, user_id, app_id):
-        """Remove an app connection for a user"""
-        try:
-            user_ref = self.client.collection("users").document(user_id)
-            user_ref.update({
-                f"connected_apps.{app_id}": firestore.DELETE_FIELD
-            })
-        except Exception as e:
-            print(f"Error disconnecting app: {e}")
-            raise
-    
-    def update_app_data(self, user_id, app_id, data):
-        """Update app data (e.g., last sync time)"""
-        try:
-            user_ref = self.client.collection("users").document(user_id)
-            update_data = {}
-            for key, value in data.items():
-                update_data[f"connected_apps.{app_id}.{key}"] = value
-            
-            user_ref.update(update_data)
-        except Exception as e:
-            print(f"Error updating app data: {e}")
-            raise
-
 class DB:
     def __init__(self):
         cred = credentials.Certificate(json.loads(CONFIG.FIREBASE_CREDENTIALS))
@@ -205,6 +150,5 @@ class DB:
         self.user = User(self.client)
         self.msg = Msg(self.client)
         self.file = File(self.client)
-        self.connected_apps = ConnectedApps(self.client)
 
 db = DB()
