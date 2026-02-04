@@ -139,6 +139,44 @@ class File:
             return doc_ref.id
         except Exception as e:
             print(f"Error adding file: {e}")
+    
+    def get_file(self, file_id):
+        """
+        Get file metadata from Firebase
+        
+        Args:
+            file_id: The file ID to retrieve
+            
+        Returns:
+            File data dictionary or None if not found
+        """
+        try:
+            file_ref = self.client.collection("files").document(file_id)
+            file_doc = file_ref.get()
+            if file_doc.exists:
+                return file_doc.to_dict()
+            return None
+        except Exception as e:
+            print(f"Error getting file: {e}")
+            return None
+    
+    def remove_file(self, file_id):
+        """
+        Remove file metadata from Firebase
+        
+        Args:
+            file_id: The file ID to remove
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            file_ref = self.client.collection("files").document(file_id)
+            file_ref.delete()
+            return True
+        except Exception as e:
+            print(f"Error removing file: {e}")
+            return False
 
 class DB:
     def __init__(self):

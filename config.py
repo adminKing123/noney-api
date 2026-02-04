@@ -27,13 +27,22 @@ class Models:
 class Uploads:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 
+class Upload1:
+    GITHUB_TOKEN = os.getenv("GITHUB1_TOKEN", "")
+    GITHUB_BRANCH_NAME = os.getenv("GITHUB1_BRANCH_NAME", "main")
+    GITHUB_REPO_NAME = os.getenv("GITHUB1_REPO_NAME", "")
+    GITHUB_USERNAME = os.getenv("GITHUB1_USERNAME", "")
+    UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
+
 class CONFIG:
+    PORT = int(os.getenv("PORT", "5000"))
+    HOST = os.getenv("HOST", "https://noney-api.onrender.com")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "")
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     LRU_CACHE_SIZE = int(os.getenv("LRU_CACHE_SIZE", "128"))
     GEMINI_MESSAGE_LIMIT = int(os.getenv("GEMINI_MESSAGE_LIMIT", "40"))
-    CDN_URL = os.getenv("CDN_URL", "https://sourceapis.onrender.com")
+    CDN_URL = os.getenv("CDN_URL", "https://noney-api.onrender.com")
     
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
     GITHUB_BRANCH_NAME = os.getenv("GITHUB_BRANCH_NAME", "main")
@@ -41,7 +50,7 @@ class CONFIG:
     GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "")
 
     MODELS = Models()
-    UPLOADS = Uploads()
+    UPLOAD1 = Upload1()
     HRMS = Hrms()
 
     AI_MAPPINGS = {}
