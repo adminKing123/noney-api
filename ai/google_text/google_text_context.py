@@ -18,8 +18,21 @@ class GoogleTextContext:
         messages = db.chat.get_messages(self.user_id, self.chat_id, limit=self.MESSAGES_LIMIT, should_yeild=True)
         for msg in messages:
             prompt = msg.get("prompt", None)
+            content_parts = []
             if prompt:
-                user_message = HumanMessage(content=prompt)
+                content_parts.append({
+                    "type": "text",
+                    "text": prompt
+                })
+            for file in msg.get("files", []):
+                file_uri = file.get("genai_file", {}).get("uri", None)
+                if file_uri:
+                    content_parts.append({
+                        "type": "media",
+                        "file_uri": file_uri,
+                        "mime_type": file.get("genai_file", {}).get("mime_type", None),
+                    })
+            user_message = HumanMessage(content=content_parts)
             yield user_message
             answer = msg.get("answer", None)
             if answer:
@@ -33,11 +46,28 @@ class GoogleTextContext:
         if hasattr(self, "messages"):
             self.messages.append(message)
 
-    def build_context(self, prompt):
+    def build_context(self, prompt, files=[]):
+        content_parts=[]
+
+        if prompt:
+            content_parts.append({
+                "type": "text",
+                "text": prompt
+            })
+        
+        for file in files:
+            file_uri = file.get("genai_file", {}).get("uri", None)
+            if file_uri:
+                content_parts.append({
+                    "type": "media",
+                    "file_uri": file_uri,
+                    "mime_type": file.get("genai_file", {}).get("mime_type", None),
+                })
+
         if (not self.user_id) or (not self.chat_id):
-            return [HumanMessage(content=prompt)]
+            return [HumanMessage(content=content_parts)]
         else:
-            self.append(HumanMessage(content=prompt))
+            self.append(HumanMessage(content=content_parts))
             context = self.messages
             if self.system_prompt:
                 context = [SystemMessage(content=self.system_prompt)] + self.messages

@@ -4,9 +4,12 @@ from werkzeug.utils import secure_filename
 from config import CONFIG
 import requests
 from flask import Response, stream_with_context
+from google import genai
 
 github = Github(CONFIG.UPLOAD1.GITHUB_TOKEN)
 repo = github.get_user().get_repo(CONFIG.UPLOAD1.GITHUB_REPO_NAME)
+
+client = genai.Client()
 
 
 def download_file_stream(github_path):
@@ -82,6 +85,8 @@ def save_file(file, user_id, file_id, file_type=""):
         if not success:
             raise Exception("GitHub upload failed")
 
+        genai_file = client.files.upload(file=local_path)
+
         if os.path.exists(local_path):
             os.remove(local_path)
 
@@ -92,7 +97,14 @@ def save_file(file, user_id, file_id, file_type=""):
             "filename": filename,
             "file_type": file_type,
             "size": len(file_content),
-            "download_url": f"{CONFIG.HOST}/download/{github_path}"
+            "download_url": f"{CONFIG.HOST}/download/{github_path}",
+            "genai_file": {
+                "expiration_time": genai_file.expiration_time,
+                "mime_type": genai_file.mime_type,
+                "name": genai_file.name,
+                "uri": genai_file.uri,
+                "size_bytes": genai_file.size_bytes
+            }
         }
 
     except Exception as e:

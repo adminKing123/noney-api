@@ -35,7 +35,7 @@ class GeminiTextAI(BaseAI):
 
         yield self._send_step("info", "Summarizing context")
         ctx = ContextProvider.get(self.model_name, user_id, chat_id, self.system_prompt)
-        context = ctx.build_context(prompt)
+        context = ctx.build_context(prompt, files=payload.get("files", []))
         ai_response = ""
         yield self._start()
 
@@ -63,7 +63,22 @@ class GeminiTextAI(BaseAI):
 
     def invoke(self, payload):
         prompt = payload.get("prompt", "")
-        return self.model.invoke([HumanMessage(content=prompt)])
+        content_parts=[]
+        if prompt:
+            content_parts.append({
+                "type": "text",
+                "text": prompt
+            })
+        for file in payload.get("files", []):
+            file_uri = file.get("genai_file", {}).get("uri", None)
+            if file_uri:
+                content_parts.append({
+                    "type": "media",
+                    "file_uri": file_uri,
+                    "mime_type": file.get("genai_file", {}).get("mime_type", None),
+                })
+
+        return self.model.invoke([HumanMessage(content=content_parts)])
 
     def with_structured_output(self, *args, **kwargs):
         return self.model.with_structured_output(*args, **kwargs)
