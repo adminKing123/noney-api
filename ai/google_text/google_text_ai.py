@@ -73,8 +73,8 @@ class GeminiTextAI(BaseAI):
             file_uri = file.get("genai_file", {}).get("uri", None)
             if file_uri:
                 content_parts.append({
-                    "type": "media",
-                    "file_uri": file_uri,
+                    "type": "file",
+                    "file_id": file_uri,
                     "mime_type": file.get("genai_file", {}).get("mime_type", None),
                 })
 

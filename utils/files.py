@@ -5,6 +5,7 @@ from config import CONFIG
 import requests
 from flask import Response, stream_with_context
 from google import genai
+from datetime import datetime
 
 github = Github(CONFIG.UPLOAD1.GITHUB_TOKEN)
 repo = github.get_user().get_repo(CONFIG.UPLOAD1.GITHUB_REPO_NAME)
@@ -99,7 +100,7 @@ def save_file(file, user_id, file_id, file_type=""):
             "size": len(file_content),
             "download_url": f"{CONFIG.HOST}/download/{github_path}",
             "genai_file": {
-                "expiration_time": genai_file.expiration_time,
+                "expiration_time": isinstance(genai_file.expiration_time, datetime) and genai_file.expiration_time.isoformat() or genai_file.expiration_time,
                 "mime_type": genai_file.mime_type,
                 "name": genai_file.name,
                 "uri": genai_file.uri,

@@ -71,7 +71,7 @@ class HrmsPreviewAI(BaseAI):
 
 
         ctx = ContextProvider.get(self.model_name, user_id, chat_id, dynamic_system_prompt)
-        context = ctx.build_context(prompt)
+        context = ctx.build_context(prompt, files=payload.get("files", []))
         
         ai_response = ""
 
