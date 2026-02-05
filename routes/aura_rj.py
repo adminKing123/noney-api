@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 import base64
 import random
@@ -10,6 +11,23 @@ from google import genai
 from google.genai import types
 from middleware.auth import require_auth
 import wave
+
+def nearest_15_min_around(now=None):
+    if now is None:
+        now = datetime.now()
+
+    # round to nearest 15 minutes (ABSOLUTE)
+    rounded = now + timedelta(minutes=7.5)
+    rounded = rounded.replace(
+        minute=(rounded.minute // 15) * 15,
+        second=0,
+        microsecond=0
+    )
+
+    date_str = rounded.strftime("%Y-%m-%d")
+    time_str = rounded.strftime("%I:%M %p").lstrip("0")
+
+    return f"{date_str} {time_str} around"
 
 # Set up the wave file to save the output:
 def wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
@@ -215,9 +233,9 @@ def get_track():
 
     prompt = ""
     if length_of_songs_played > 0:
-        prompt = f"Next Song Details: {song_str}"
+        prompt = f"Next Song Details: {song_str}, Current Time: {nearest_15_min_around()}"
     else:
-        prompt = f"You are starting your radio show. First Song Details: {song_str}"
+        prompt = f"You are starting your radio show. First Song Details: {song_str}, Current Time: {nearest_15_min_around()}"
 
     rebuilt_context.append(HumanMessage(content=prompt))
 
