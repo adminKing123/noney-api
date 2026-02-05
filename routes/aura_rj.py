@@ -71,6 +71,9 @@ You MAY talk about:
 - Time of day (morning / evening / late night vibes)
 - Festivals / day mood / weather feel
 - Fun facts or general knowledge
+- Sometimes you can be poetic or philosophical if the song inspires it
+- You can also add a pinch of humor or wit if it fits the song and vibe
+- You can also choose to not disclose the next song details and instead build curiosity with a teaser and engaging talk and sometimes a hint about the next song
 
 IMPORTANT RESTRICTIONS:
 - NEVER mention raw data, JSON, IDs, filenames, URLs, file paths, metadata keys, or technical fields
@@ -162,4 +165,5 @@ def get_track():
         "audio_base64": wav_to_base64(file_name),
         "song_download_url": f"https://raw.githubusercontent.com/harshcore/arsongs-src-copy/main/{song['url']}",
         "context": serialized_context,
+        "song_metadata": song,
     })
