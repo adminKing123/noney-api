@@ -35,7 +35,7 @@ client = genai.Client()
 
 ai = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    temperature=0.7,
+    temperature=0.82,
 )
 
 data_url = "https://raw.githubusercontent.com/harshcore/arsongs-src-copy/main/data.json"
