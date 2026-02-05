@@ -3,6 +3,7 @@ from google import genai
 from ai.google_text.google_text_ai import GeminiTextAI
 from ai.schema import AspectRatioDetection
 from ai.base import BaseAI
+from ..contextprovider import ContextProvider
 from config import CONFIG
 from utils.files import save_file
 import io
@@ -40,6 +41,11 @@ class GeminiImageAI(BaseAI):
 
         file_id = str(uuid.uuid4())
         index = 0
+
+        # Build context for image generation
+        yield self._send_step("info", "Analyzing context")
+        ctx = ContextProvider.get(self.model_name, user_id, chat_id, self.system_prompt)
+        context = ctx.build_context(prompt, files=payload.get("files", []))
 
         ai = GeminiTextAI(model_name=CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001)
 
@@ -88,6 +94,7 @@ class GeminiImageAI(BaseAI):
             save_file_result["aspect_ratio"] = aspect_ratio
             db.file.add_file(user_id, save_file_result, chat_id=chat_id)
             yield self._send_generated_images([save_file_result], index=index)
+        
         end_time = time.time()
         duration = end_time - start_time
         yield self._send_duration(duration)
