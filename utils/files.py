@@ -58,19 +58,17 @@ def get_mime_type(filename):
         '.flac': 'audio/flac',
     }
     
-    # Text-based files that should be treated as text/plain
     TEXT_BASED_EXTENSIONS = {
         '.json', '.txt', '.md', '.csv', '.log', '.xml', '.yaml', '.yml',
         '.ini', '.conf', '.cfg', '.sql', '.py', '.js', '.ts', '.jsx', '.tsx',
         '.java', '.c', '.cpp', '.h', '.hpp', '.cs', '.rb', '.go', '.php',
         '.html', '.htm', '.css', '.scss', '.sass', '.less', '.sh', '.bash',
         '.env', '.gitignore', '.dockerignore', '.toml', '.properties',
-        '.sqlite', '.sqlite3', '.db'  # SQLite files can be read as text
+        '.sqlite', '.sqlite3', '.db',
     }
     
     ext = os.path.splitext(filename)[1].lower()
     
-    # Check if it's a natively supported type
     if ext in SUPPORTED_IMAGE_TYPES:
         return SUPPORTED_IMAGE_TYPES[ext]
     if ext in SUPPORTED_VIDEO_TYPES:
@@ -80,20 +78,14 @@ def get_mime_type(filename):
     if ext == '.pdf':
         return 'application/pdf'
     
-    # Check if it's a text-based file
     if ext in TEXT_BASED_EXTENSIONS:
         return 'text/plain'
     
-    # Try to get mime type using mimetypes module
     guessed_type, _ = mimetypes.guess_type(filename)
     if guessed_type:
-        # If it's any text type, use text/plain
         if guessed_type.startswith('text/'):
             return 'text/plain'
         return guessed_type
-    
-    # Default to text/plain for unknown types
-    # This allows Gemini to process them as text
     return 'text/plain'
 
 
