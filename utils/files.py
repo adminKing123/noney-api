@@ -6,11 +6,95 @@ import requests
 from flask import Response, stream_with_context
 from google import genai
 from datetime import datetime
+import mimetypes
 
 github = Github(CONFIG.UPLOAD1.GITHUB_TOKEN)
 repo = github.get_user().get_repo(CONFIG.UPLOAD1.GITHUB_REPO_NAME)
 
 client = genai.Client()
+
+
+def get_mime_type(filename):
+    """
+    Determine the appropriate MIME type for a file, with special handling for
+    text-based files that Gemini can process.
+    
+    For unsupported file types, map them to text/plain so they can be processed as text.
+    
+    Args:
+        filename: Name of the file
+        
+    Returns:
+        MIME type string
+    """
+    # Supported Gemini file types
+    SUPPORTED_IMAGE_TYPES = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp',
+        '.heic': 'image/heic',
+        '.heif': 'image/heif',
+    }
+    
+    SUPPORTED_VIDEO_TYPES = {
+        '.mp4': 'video/mp4',
+        '.mpeg': 'video/mpeg',
+        '.mov': 'video/mov',
+        '.avi': 'video/avi',
+        '.flv': 'video/x-flv',
+        '.mpg': 'video/mpg',
+        '.webm': 'video/webm',
+        '.wmv': 'video/wmv',
+        '.3gpp': 'video/3gpp',
+    }
+    
+    SUPPORTED_AUDIO_TYPES = {
+        '.wav': 'audio/wav',
+        '.mp3': 'audio/mp3',
+        '.aiff': 'audio/aiff',
+        '.aac': 'audio/aac',
+        '.ogg': 'audio/ogg',
+        '.flac': 'audio/flac',
+    }
+    
+    # Text-based files that should be treated as text/plain
+    TEXT_BASED_EXTENSIONS = {
+        '.json', '.txt', '.md', '.csv', '.log', '.xml', '.yaml', '.yml',
+        '.ini', '.conf', '.cfg', '.sql', '.py', '.js', '.ts', '.jsx', '.tsx',
+        '.java', '.c', '.cpp', '.h', '.hpp', '.cs', '.rb', '.go', '.php',
+        '.html', '.htm', '.css', '.scss', '.sass', '.less', '.sh', '.bash',
+        '.env', '.gitignore', '.dockerignore', '.toml', '.properties',
+        '.sqlite', '.sqlite3', '.db'  # SQLite files can be read as text
+    }
+    
+    ext = os.path.splitext(filename)[1].lower()
+    
+    # Check if it's a natively supported type
+    if ext in SUPPORTED_IMAGE_TYPES:
+        return SUPPORTED_IMAGE_TYPES[ext]
+    if ext in SUPPORTED_VIDEO_TYPES:
+        return SUPPORTED_VIDEO_TYPES[ext]
+    if ext in SUPPORTED_AUDIO_TYPES:
+        return SUPPORTED_AUDIO_TYPES[ext]
+    if ext == '.pdf':
+        return 'application/pdf'
+    
+    # Check if it's a text-based file
+    if ext in TEXT_BASED_EXTENSIONS:
+        return 'text/plain'
+    
+    # Try to get mime type using mimetypes module
+    guessed_type, _ = mimetypes.guess_type(filename)
+    if guessed_type:
+        # If it's any text type, use text/plain
+        if guessed_type.startswith('text/'):
+            return 'text/plain'
+        return guessed_type
+    
+    # Default to text/plain for unknown types
+    # This allows Gemini to process them as text
+    return 'text/plain'
 
 
 def download_file_stream(github_path):
@@ -86,7 +170,14 @@ def save_file(file, user_id, file_id, file_type=""):
         if not success:
             raise Exception("GitHub upload failed")
 
-        genai_file = client.files.upload(file=local_path)
+        # Determine appropriate mime type
+        mime_type = get_mime_type(filename)
+        
+        # Upload to Gemini with explicit mime type
+        genai_file = client.files.upload(
+            file=local_path,
+            config=dict(mime_type=mime_type)
+        )
 
         if os.path.exists(local_path):
             os.remove(local_path)

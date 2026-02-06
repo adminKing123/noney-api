@@ -75,11 +75,12 @@ class ContextProvider:
             })
         for file in files:
             file_uri = file.get("genai_file", {}).get("uri", None)
-            if file_uri:
+            mime_type = file.get("genai_file", {}).get("mime_type", None)
+            if file_uri and mime_type:
                 content_parts.append({
-                    "type": "file",
-                    "file_id": file_uri,
-                    "mime_type": file.get("genai_file", {}).get("mime_type", None),
+                    "type": "media",
+                    "mime_type": mime_type,
+                    "file_uri": file_uri,
                 })
         return content_parts
 
