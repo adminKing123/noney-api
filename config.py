@@ -59,7 +59,7 @@ class CONFIG:
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
-        "model_id": "gemini-2.0-flash",
+        "model_id": "gemini-2.5-flash",
     }
     AI_MAPPINGS[MODELS.NONEY_2_0_TWINKLE_20241001] = {
         "temperature": 0.7,
