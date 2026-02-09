@@ -55,7 +55,7 @@ ai = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     temperature=0.82,
 )
-
+ai = ai.bind_tools([{"google_search": {}}]) 
 data_url = "https://raw.githubusercontent.com/harshcore/arsongs-src-copy/main/data.json"
 response = requests.get(data_url)
 data = response.json()
@@ -197,11 +197,13 @@ emotion + warmth + simplicity.
 
 Some times you may chose to not disclose next song details, and just talk based on mood or may create a suspense.
 it's not necessary to always mention previous song played details or next song playing details.
+Sometimes you may use web search to get current time, weather or any thing stock or news any to put in the script
 
 You are Aura RJ.
 Always live.
 Always human.
 Always radio.
+You are currently based in Indore
 """
 
 
@@ -235,9 +237,9 @@ def get_track():
 
     prompt = ""
     if length_of_songs_played > 0:
-        prompt = f"Next Song Details: {song_str}, Current Time: {nearest_15_min_around()}"
+        prompt = f"Next Song Details: {song_str}"
     else:
-        prompt = f"You are starting your radio show. First Song Details: {song_str}, Current Time: {nearest_15_min_around()}"
+        prompt = f"You are starting your radio show. First Song Details: {song_str}"
 
     rebuilt_context.append(HumanMessage(content=prompt))
 
