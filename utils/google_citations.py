@@ -5,15 +5,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-# ---------------------------------------------------
-# URL Helpers
-# ---------------------------------------------------
-
 def extract_real_url(possible_redirect_url: str) -> str:
-    """
-    Handles Google / tracking redirect URLs:
-    example: https://google.com/url?target=https://site.com
-    """
     try:
         parsed = urlparse(possible_redirect_url)
         qs = parse_qs(parsed.query)
@@ -31,7 +23,7 @@ def extract_real_url(possible_redirect_url: str) -> str:
 
 def clean_domain(url: str) -> str:
     try:
-        return urlparse(url).hostname.replace("www.", "")
+        return (urlparse(url).hostname or "").replace("www.", "")
     except:
         return ""
 
@@ -42,10 +34,16 @@ def get_meta(soup: BeautifulSoup, name: str) -> str:
         tag = soup.find("meta", attrs={"name": name})
     return tag.get("content", "").strip() if tag and tag.get("content") else ""
 
+def build_fallback_metadata(src, url, error=None):
+    domain = clean_domain(url)
 
-# ---------------------------------------------------
-# Core Metadata Extraction
-# ---------------------------------------------------
+    return {
+        "from": src.get("from") or domain or "Unknown Source",
+        "url": url,
+        "domain": domain,
+        "headline": src.get("from") or domain or "Unavailable page",
+        "summary": "",
+    }
 
 def extract_metadata(html: str, final_url: str, fallback_from=None):
     soup = BeautifulSoup(html, "lxml")
@@ -56,7 +54,7 @@ def extract_metadata(html: str, final_url: str, fallback_from=None):
 
     headline = (
         get_meta(soup, "og:title")
-        or (soup.title.string.strip() if soup.title and soup.title.string else "No title found")
+        or (soup.title.string.strip() if soup.title and soup.title.string else domain or "No title")
     )
 
     summary = (
@@ -73,24 +71,37 @@ def extract_metadata(html: str, final_url: str, fallback_from=None):
         "summary": summary,
     }
 
-
-# ---------------------------------------------------
-# Async Fetch
-# ---------------------------------------------------
-
 async def fetch_one(session, src):
-    try:
-        initial_url = extract_real_url(src["url"])
+    initial_url = extract_real_url(src["url"])
 
-        async with session.get(initial_url, allow_redirects=True, timeout=10) as resp:
+    try:
+        async with session.get(initial_url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=10)) as resp:
             final_url = str(resp.url)
+
+            if resp.status >= 400:
+                return build_fallback_metadata(src, final_url, f"HTTP {resp.status}")
+
             html = await resp.text(errors="ignore")
+
+        if not html or len(html) < 50:
+            return build_fallback_metadata(src, final_url, "Empty response")
 
         return extract_metadata(html, final_url, src.get("from"))
 
+    except asyncio.TimeoutError:
+        return build_fallback_metadata(src, initial_url, "Timeout")
+
+    except aiohttp.ClientConnectorError:
+        return build_fallback_metadata(src, initial_url, "DNS/Connection failed")
+
+    except aiohttp.ClientSSLError:
+        return build_fallback_metadata(src, initial_url, "SSL error")
+
+    except aiohttp.ClientError as err:
+        return build_fallback_metadata(src, initial_url, f"Network error: {err}")
+
     except Exception as err:
-        print(f"Failed to fetch {src.get('url')}: {err}")
-        return None
+        return build_fallback_metadata(src, initial_url, f"Parse error: {err}")
 
 
 async def fetch_all_metadata(sources, concurrency=10):
@@ -100,16 +111,11 @@ async def fetch_all_metadata(sources, concurrency=10):
         tasks = [fetch_one(session, src) for src in sources]
         results = await asyncio.gather(*tasks)
 
-    return [r for r in results if r]
+    return results
 
 
 def get_metadata_parallel(sources, concurrency=10):
     return asyncio.run(fetch_all_metadata(sources, concurrency))
-
-
-# ---------------------------------------------------
-# Grounding Integration (same as your earlier API)
-# ---------------------------------------------------
 
 def get_citations_from_grounding(grounding_chunks):
     sources = []
