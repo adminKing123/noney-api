@@ -66,7 +66,7 @@ class GeminiTextAI(BaseAI):
             yield self._send_step("fetch_source_information", "Preparing Citations")
             for grounding_metadata in grounding_metadatas:
                 if grounding_metadata.get("grounding_chunks", False):
-                    yield self._source(get_citations_from_grounding(grounding_metadata["grounding_chunks"]))
+                    yield self._source(get_citations_from_grounding(grounding_metadata["grounding_chunks"], grounding_metadata.get("grounding_supports", [])))
 
         end_time = time.time()
         duration = end_time - start_time

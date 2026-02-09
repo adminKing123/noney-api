@@ -117,14 +117,18 @@ async def fetch_all_metadata(sources, concurrency=10):
 def get_metadata_parallel(sources, concurrency=10):
     return asyncio.run(fetch_all_metadata(sources, concurrency))
 
-def get_citations_from_grounding(grounding_chunks):
-    sources = []
+def get_citations_from_grounding(grounding_chunks, grounding_supports=[]):
+    links = []
 
     for chunk in grounding_chunks:
         if chunk.get("web", {}).get("uri"):
-            sources.append({
+            links.append({
                 "url": chunk["web"]["uri"],
                 "from": chunk["web"].get("title"),
             })
-
-    return get_metadata_parallel(sources)
+    sources = get_metadata_parallel(links)
+    for support in grounding_supports:
+        for index in support.get("grounding_chunk_indices", []):
+            if isinstance(index, int) and 0 <= index < len(sources):
+                sources[index]["support"] = support
+    return sources
