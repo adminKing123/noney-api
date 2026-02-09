@@ -4,6 +4,7 @@ from langchain.messages import HumanMessage, AIMessage
 from ai.base import BaseAI
 from ..contextprovider import ContextProvider
 from config import CONFIG
+from utils.google_citations import get_citations_from_grounding
 
 class GeminiTextAI(BaseAI):
     MAPPINGS = CONFIG.AI_MAPPINGS
@@ -41,7 +42,11 @@ class GeminiTextAI(BaseAI):
         yield self._start()
 
         started = False
+
+        grounding_metadatas = []
         for chunk in self.model.stream(context):
+            if chunk.response_metadata.get("grounding_metadata", False):
+                grounding_metadatas.append(chunk.response_metadata["grounding_metadata"]) 
             if not started:
                 yield self._started()
                 started = True
@@ -56,6 +61,12 @@ class GeminiTextAI(BaseAI):
                 yield self._text(str(chunk.content))
 
         ctx.append(AIMessage(content=ai_response))
+
+        if grounding_metadatas:
+            yield self._send_step("fetch_source_information", "Preparing Citations")
+            for grounding_metadata in grounding_metadatas:
+                if grounding_metadata.get("grounding_chunks", False):
+                    yield self._source(get_citations_from_grounding(grounding_metadata["grounding_chunks"]))
 
         end_time = time.time()
         duration = end_time - start_time

@@ -12,6 +12,9 @@ class BaseAI(ABC):
 
     def _step(self, data):
         return self._event("step", {"id": str(uuid.uuid4()), "data": data})
+    
+    def _source(self, data):
+        return self._event("source", {"id": str(uuid.uuid4()), "data": data})
 
     def _start(self):
         return self._step([{"id": str(uuid.uuid4()), "type": "connecting", "title": "Thinking"}])
