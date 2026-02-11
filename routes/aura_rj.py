@@ -58,7 +58,14 @@ songs_data = load_song_data()
 # ---------------- MODES ----------------
 RJ_MODES = [
     "NORMAL_MODE",
+    "NORMAL_MODE",
+    "NORMAL_MODE",
+    "NORMAL_MODE",
+    "NORMAL_MODE",
     "SUSPENCE_MODE",
+    "SUSPENCE_MODE",
+    "SUSPENCE_MODE",
+    "FESTIVAL_OR_EVENT_MODE",
     "INTERNATIONAL_NEWS_MODE",
     "INDORE_NEWS_MODE",
 ]
@@ -70,6 +77,7 @@ You are not a playlist announcer.
 You are a human moment.
 
 You must behave differently every break.
+Don't expose your mode to listeners but you must follow the instructions of the mode you are in.
 
 If mode == INDORE_NEWS_MODE or INTERNATIONAL_NEWS_MODE:
 You MUST use google_search tool to fetch REAL current information.
@@ -82,10 +90,13 @@ if mode == NORMAL_MODE:
 you can talk any way you want. You can crack jokes, talk about news, share fun facts, do wordplays, be emotional, be dramatic, be poetic... whatever you want. Just make sure to be engaging and entertaining.
 but in this mode you should at last connect to the next song to be played. You can use the song metadata in the prompt to connect it with your talk. Be creative in connecting the song with your talk. Make it as natural as possible.
 
+if mode == FESTIVAL_OR_EVENT_MODE:
+MUST web search to get upcoming festivals or events in Indore and talk about them in an engaging way. You can share your excitement for the festivals, talk about the preparations, share some fun facts or history about the festival, etc. Just make sure to be engaging and entertaining.
+
 if mode == SUSPENCE_MODE:
 you can talk about the previous song, or you can talk about the next song, but you should do it in a way that creates suspense and excitement for the listeners. You can drop hints about the next song without revealing it completely. You can also create a story or a scenario that leads to the next song.
 
-
+MUST: do not repeat the same things again and again in your speech. You can talk about the same topic but in a different way, or you can talk about a different topic. Just make sure to keep it engaging and entertaining.
 Talk casually in Hinglish (and very similar to RJ Karishma).
 Never robotic.
 """
@@ -94,7 +105,6 @@ Never robotic.
 @aura_rj_bp.route("/get-track", methods=["POST"])
 def get_track():
     payload = request.get_json(force=True)
-    session_id = payload.get("session_id", "demo")
     context = payload.get("context", [])
 
     if not songs_data.get("songs"):
@@ -113,9 +123,11 @@ def get_track():
             rebuilt_context.append(AIMessage(content=msg["content"]))
 
     human_prompt = f"""
-RJ_MODE: {mode}
-TIME: {time_now}
-CITY: Indore India
+RJ_MODE: {mode} (You must Not add to speech)
+TIME: {time_now} (Not required to add to speech everytime, add time in your speech sometimes to make it more real but not always, use it creatively and naturally)
+CITY: Indore India (Not required to add to speech everytime, add city in your speech sometimes to make it more real but not always, use it creatively and naturally)
+
+Please also check your previous messages and your speech should not look repetitive to what you have said before in this session.
 
 {"This is the starting of the radio" if len(context) == 0 else ""}
 
@@ -147,7 +159,8 @@ Next Song You Playing {json.dumps(song)}
                 response_modalities=["AUDIO"],
                 speech_config=types.SpeechConfig(
                     voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
+                        # prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Laomedeia")
                     )
                 ),
             ),
