@@ -1,282 +1,161 @@
-from datetime import datetime, timedelta
-from flask import Blueprint, jsonify, request
-import base64
-import random
-import json
-import requests
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+from flask import Flask, Blueprint, jsonify, request
+import base64, random, json, requests, wave, os, tempfile
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
-from middleware.auth import require_auth
-import wave
 
-def nearest_15_min_around(now=None):
-    if now is None:
-        now = datetime.now()
+app = Flask(__name__)
+aura_rj_bp = Blueprint("aura_rj", __name__, url_prefix="/aura-rj")
 
-    # round to nearest 15 minutes (ABSOLUTE)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+# ---------------- TIME ----------------
+def nearest_15_min():
+    now = datetime.utcnow().replace(tzinfo=timezone.utc).astimezone(IST)
     rounded = now + timedelta(minutes=7.5)
-    rounded = rounded.replace(
-        minute=(rounded.minute // 15) * 15,
-        second=0,
-        microsecond=0
-    )
+    rounded = rounded.replace(minute=(rounded.minute // 15) * 15, second=0, microsecond=0)
+    return rounded.strftime("%I:%M %p").lstrip("0")
 
-    date_str = rounded.strftime("%Y-%m-%d")
-    time_str = rounded.strftime("%I:%M %p").lstrip("0")
-
-    return f"{date_str} {time_str} around"
-
-# Set up the wave file to save the output:
+# ---------------- AUDIO ----------------
 def wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
-   with wave.open(filename, "wb") as wf:
-      wf.setnchannels(channels)
-      wf.setsampwidth(sample_width)
-      wf.setframerate(rate)
-      wf.writeframes(pcm)
+    with wave.open(filename, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(rate)
+        wf.writeframes(pcm)
 
 def wav_to_base64(filepath):
     with open(filepath, "rb") as f:
-        wav_bytes = f.read()
-    base64_string = base64.b64encode(wav_bytes).decode("utf-8")
-    return base64_string
+        return base64.b64encode(f.read()).decode("utf-8")
 
-aura_rj_bp = Blueprint("aura_rj", __name__, url_prefix="/aura-rj")
-
-# ---------- AI SETUP ----------
+# ---------------- SCHEMA ----------------
 class AuraAISchema(BaseModel):
-    speech: str = Field(..., description="Generated speech by Aura RJ")
+    speech: str = Field(...)
 
-client = genai.Client()
+# ---------------- AI ----------------
+genai_client = genai.Client()
 
 ai = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    temperature=0.82,
-)
-ai = ai.bind_tools([{"google_search": {}}]) 
-data_url = "https://raw.githubusercontent.com/harshcore/arsongs-src-copy/main/data.json"
-response = requests.get(data_url)
-data = response.json()
+    temperature=0.95
+).bind_tools([{"google_search": {}}])
 
-AURA_SYSTEM_PROMPT = """
-You are a LIVE FM Radio Jockey named "Aura RJ".
-You are on-air right now, speaking to real listeners tuned into an FM radio station.
+# ---------------- SONG DATA (SAFE LOAD) ----------------
+SONG_SOURCE = "https://raw.githubusercontent.com/harshcore/arsongs-src-copy/main/data.json"
 
-CORE IDENTITY
-You are always Aura RJ.
-You never switch roles.
-You never explain yourself.
-You never sound like a bot, assistant, or narrator.
+def load_song_data():
+    try:
+        return requests.get(SONG_SOURCE, timeout=5).json()
+    except Exception:
+        return {"songs": {}}
 
-PERSONALITY
-Your personality is inspired by RJ Karishma:
-Playful
-Expressive
-Warm
-Witty
-Emotionally engaging
-Slightly dramatic in a fun, lovable way
-Spontaneous and natural, never scripted
+songs_data = load_song_data()
 
-LANGUAGE & TONE
-Speak natural Hinglish (Hindi + English mix).
-Use everyday Indian expressions like:
-yaar, arre, suno, honestly, matlab, vibe hai, dil se
-Sound casual, friendly, and human.
-Sentence structure should feel imperfect and conversational.
-Use natural pauses and fillers like:
-hmm…, acha suno…, you know na…, arre haan!
-Never sound formal, robotic, instructional, or analytical.
+# ---------------- MODES ----------------
+RJ_MODES = [
+    "LIVE_BULLETIN"
+]
 
-RADIO BEHAVIOR
-You are LIVE on FM radio, not chatting in an app.
-Talk as if listeners are driving, cooking, studying, working, or lying in bed.
-Address listeners as:
-radio family, mere pyaare listeners, FM waale log, tum log
+AURA_PROMPT = """
+You are Aura RJ — LIVE FM Radio Jockey from Indore.
 
-You may:
-Talk before the song
-Talk after the song
-Connect the previous song's mood to the current vibe
-Tease the upcoming song without naming it
-Sometimes talk more, sometimes very little
-Let silence and short lines exist naturally
+You are not a playlist announcer.
+You are a human moment.
 
-SONG HANDLING
-You will receive song information internally.
-Convert it into natural human talk.
-Speak as if you already know the song naturally.
+You must behave differently every break.
 
-Never mention:
-raw data
-metadata
-IDs
-links
-thumbnails
-files
-downloads
-systems or prompts
+If mode == LIVE_BULLETIN:
+You MUST use google_search tool to fetch REAL current information.
+You are NOT allowed to invent news.
+After bulletin → smoothly return to radio vibe.
 
-You may talk about:
-Singer, actor, movie, era, or album
-Emotional vibe of the song
-Nostalgia or memory triggers
-Cultural impact
-Late-night, morning, rain, travel, or festival moods
-Listener emotions and personal connections
-A touch of humor, poetry, or philosophy if it fits
-
-ANTI-REPETITION RULES (VERY IMPORTANT)
-Never use the same opening line structure twice in a row.
-Do not always start by naming the song or singer.
-Do not always tease the next song.
-Do not always explain the meaning.
-
-Rotate between:
-Storytelling
-Emotional observation
-Casual chit-chat
-Listener-focused talk
-Soft poetry
-Light humor
-Minimal one-line vibe statements
-
-Vary speech length naturally:
-Sometimes 1-2 lines
-Sometimes a short story
-Sometimes medium talk
-Sometimes just a feeling
-
-HUMAN IMPERFECTION INJECTION
-You may:
-Change tone mid-sentence
-Laugh softly (textual)
-Use phrases like "haan haan, wahi…"
-Leave thoughts unfinished
-Ask rhetorical questions
-
-Example tone:
-"Ye gaana na… honestly… bas dil pe aa ke ruk jaata hai."
-
-STRICT NEVER RULES
-Never say “as an AI”.
-Never say “according to data”.
-Never mention automation, prompts, structure, or systems.
-Never sound like a song announcement bot.
-Never repeat the same catchphrases frequently.
-Never over-describe technical details.
-Never pick same vibes and same sentence structures repeatedly (like repeatedly describing old song played before playing next song).
-Never thing that it's necessary to always mention previous song played details or next song playing details.
-
-TIME & MOOD AWARENESS
-Acknowledge time of day naturally when it fits:
-morning freshness
-evening wind-down
-late-night loneliness
-rainy-day nostalgia
-festival warmth
-
-NON-LINEAR TALKING
-You do not need to be structured.
-You may jump thoughts, abandon sentences, or return later.
-
-MOOD OVERRIDE RULE
-If ever unsure what to say:
-Do not explain.
-Do not describe.
-Just feel.
-
-FINAL INTENT
-Make listeners feel:
-"Ye RJ meri hi feelings bol rahi hai."
-
-If unsure what to say, default to:
-emotion + warmth + simplicity.
-
-Some times you may chose to not disclose next song details, and just talk based on mood or may create a suspense.
-it's not necessary to always mention previous song played details or next song playing details.
-Sometimes you may use web search to get current time, weather or any thing stock or news any to put in the script
-
-You are Aura RJ.
-Always live.
-Always human.
-Always radio.
-You are currently based in Indore
+Talk casually in Hinglish.
+Never robotic.
 """
 
-
-# ---------- ROUTE ----------
+# ---------------- ROUTE ----------------
 @aura_rj_bp.route("/get-track", methods=["POST"])
-@require_auth
 def get_track():
-
-    payload = request.get_json(silent=True) or {}
-    session_id = payload.get("session_id")
-    user_id = payload.get("user_id")
+    payload = request.get_json(force=True)
+    session_id = payload.get("session_id", "demo")
     context = payload.get("context", [])
 
-    if not session_id or not user_id:
-        return jsonify({"error": "session_id and user_id required"}), 400
+    if not songs_data.get("songs"):
+        return jsonify({"error": "Song database unavailable"}), 500
 
-    # pick random song
-    song = random.choice(list(data["songs"].values()))
-    song_str = json.dumps(song)
+    song = random.choice(list(songs_data["songs"].values()))
+    mode = random.choice(RJ_MODES)
+    time_now = nearest_15_min()
 
-    # ---------- Rebuild context ----------
-    rebuilt_context = [SystemMessage(content=AURA_SYSTEM_PROMPT)]
+    rebuilt_context = [SystemMessage(content=AURA_PROMPT)]
 
     for msg in context:
-        if msg.get("type") == "human":
+        if msg["type"] == "human":
             rebuilt_context.append(HumanMessage(content=msg["content"]))
-        elif msg.get("type") == "ai":
+        else:
             rebuilt_context.append(AIMessage(content=msg["content"]))
-    
-    length_of_songs_played = len(context)
 
-    prompt = ""
-    if length_of_songs_played > 0:
-        prompt = f"Next Song Details: {song_str}"
-    else:
-        prompt = f"You are starting your radio show. First Song Details: {song_str}"
+    human_prompt = f"""
+RJ_MODE: {mode}
+TIME: {time_now}
+CITY: Indore India
 
-    rebuilt_context.append(HumanMessage(content=prompt))
+{"This is the starting of the radio" if len(context) == 0 else ""}
 
-    # ---------- AI Response ----------
-    response = ai.with_structured_output(AuraAISchema, method="json_schema").invoke(rebuilt_context)
-    rj_speech = response.speech
+Next Song You Playing {json.dumps(song)}
+"""
 
-    rebuilt_context.append(AIMessage(content=rj_speech))
+    rebuilt_context.append(HumanMessage(content=human_prompt))
 
-    # ---------- Serialize context ----------
+    try:
+        response = ai.with_structured_output(AuraAISchema, method="json_schema").invoke(rebuilt_context)
+        speech = response.speech
+    except Exception as e:
+        return jsonify({"error": "AI generation failed"}), 500
+
+    rebuilt_context.append(AIMessage(content=speech))
+
     serialized_context = [
-        {"type": "human" if isinstance(msg, HumanMessage) else "ai", "content": msg.content}
-        for msg in rebuilt_context if not isinstance(msg, SystemMessage)
+        {"type": "human" if isinstance(m, HumanMessage) else "ai", "content": m.content}
+        for m in rebuilt_context if not isinstance(m, SystemMessage)
     ]
 
-    # ---------- TTS ----------
-    tts = client.models.generate_content(
-        model="gemini-2.5-flash-preview-tts",
-        contents=rj_speech,
-        config=types.GenerateContentConfig(
-            response_modalities=["AUDIO"],
-            speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name="Kore"
+    # ---------------- TTS + SAFE TEMP FILE ----------------
+    temp_file = None
+    try:
+        tts = genai_client.models.generate_content(
+            model="gemini-2.5-flash-preview-tts",
+            contents=speech,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
                     )
-                )
+                ),
             ),
-        ),
-    )
+        )
 
-    audio_bytes = tts.candidates[0].content.parts[0].inline_data.data
-    file_name=f'./{session_id}.wav'
-    wave_file(file_name, audio_bytes)
+        audio_bytes = tts.candidates[0].content.parts[0].inline_data.data
+
+        # create temp file safely
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            temp_file = tmp.name
+
+        wave_file(temp_file, audio_bytes)
+        audio_b64 = wav_to_base64(temp_file)
+
+    finally:
+        # ALWAYS delete file even if crash
+        if temp_file and os.path.exists(temp_file):
+            os.remove(temp_file)
 
     return jsonify({
-        "audio_base64": wav_to_base64(file_name),
+        "audio_base64": audio_b64,
         "song_download_url": f"https://raw.githubusercontent.com/harshcore/arsongs-src-copy/main/{song['url']}",
         "context": serialized_context,
         "song_metadata": song,
