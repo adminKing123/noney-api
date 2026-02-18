@@ -34,6 +34,12 @@ class Upload1:
     GITHUB_USERNAME = os.getenv("GITHUB1_USERNAME", "")
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 
+class CryptoCompositeKey:
+    SECRET_KEY = os.getenv("CRYPTO_SECRET_KEY", "").encode()
+    SALT = os.getenv("CRYPTO_SALT", "").encode()
+    SEPARATOR = os.getenv("CRYPTO_SEPARATOR", "~")
+    NONCE_SIZE = int(os.getenv("CRYPTO_NONCE_SIZE", "12"))
+
 class CONFIG:
     PORT = int(os.getenv("PORT", "5000"))
     HOST = os.getenv("HOST", "https://noney-api.onrender.com")
@@ -48,6 +54,8 @@ class CONFIG:
     GITHUB_BRANCH_NAME = os.getenv("GITHUB_BRANCH_NAME", "main")
     GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "")
     GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "")
+
+    CRYPTOCOMPOSITEKEY = CryptoCompositeKey()
 
     MODELS = Models()
     UPLOAD1 = Upload1()
