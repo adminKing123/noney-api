@@ -404,10 +404,11 @@ employees_table_view_config = {
     "query_params": {
         "limit": 10,
         "page": 1,
+        "search": "",
     },
 }
 
-def get_employees_table(page=1, limit=10) -> str:
+def get_employees_table(page=1, limit=10, search="") -> str:
     endpoint = "/user/get_users"
     payload = build_user_payload()
     data = post_request(endpoint, payload)
@@ -425,8 +426,20 @@ def get_employees_table(page=1, limit=10) -> str:
         {"_k": "firm_name", "_v": "Firm Name", "_t": "str"},
     ]
 
-
     all_users = data.get("response_data", [])
+    
+    if search:
+        search_lower = search.lower().strip()
+        all_users = [
+            user for user in all_users
+            if search_lower in str(user.get("employee_id", "")).lower() or
+               search_lower in str(user.get("name", "")).lower() or
+               search_lower in str(user.get("username", "")).lower() or
+               search_lower in str(user.get("designation", "")).lower() or
+               search_lower in str(user.get("team_lead", "")).lower()
+        ]
+    
+    total_count = len(all_users)
     offset = (page - 1) * limit
 
     users = []
@@ -441,7 +454,7 @@ def get_employees_table(page=1, limit=10) -> str:
         "pagination": {
             "page": page,
             "limit": limit,
-            "total": len(data.get("response_data", [])),
+            "total": total_count,
         }
     }
     return _data
