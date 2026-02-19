@@ -20,6 +20,8 @@ from .utils import (
     get_webex_token,
     fill_work_log,
     get_employee_image,
+
+    employees_table_view_config,
 )
 from .schemas import (
     FindUserInput,
@@ -360,6 +362,7 @@ def get_project_activities_tool(
 def get_csv_of_all_employees(runtime: ToolRuntime) -> dict:
     """
     Generate a CSV file containing details of all employees in the HRMS system.
+    Give csv only when asked to provide csv or file of employees or directory.
 
     This tool fetches all employee records, generates a CSV file,
     uploads it, and returns metadata about the generated file
@@ -659,6 +662,19 @@ def get_employee_image_tool(
         }
     return get_employee_image(data.get("token"))
 
+@tool
+def get_all_employees_table_view() -> dict:
+    """
+    Give a table view of all employees when asked to show employee directory or list of employees.
+    IMPORTANT:
+    put the return value as:
+    ```tableview
+    {JSON_DATA_HERE}
+    ```
+    """
+    return employees_table_view_config
+
+
 tools = [
     find_user_tool, 
     get_today_log_status_tool, 
@@ -678,4 +694,5 @@ tools = [
     get_webex_token_tool,
     fill_work_log_tool,
     get_employee_image_tool,
+    get_all_employees_table_view,
 ]

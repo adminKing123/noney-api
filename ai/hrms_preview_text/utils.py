@@ -392,3 +392,56 @@ def get_employee_image(access_token: str) -> dict:
     return {
         "image_url": data.get("avatar", "image is not available.")
     }
+
+
+# apis
+
+employees_table_view_config = {
+    "table_name": "Synapses All Employees",
+    "uri": "/hrms/employees",
+    "type": "TABLE_PAGINATED",
+    "method": "GET",
+    "query_params": {
+        "limit": 10,
+        "page": 1,
+    },
+}
+
+def get_employees_table(page=1, limit=10) -> str:
+    endpoint = "/user/get_users"
+    payload = build_user_payload()
+    data = post_request(endpoint, payload)
+
+    cols = [
+        {"_k": "employee_id", "_v": "ID", "_t": "str"},
+        {"_k": "name", "_v": "Name", "_t": "str"},
+        {"_k": "username", "_v": "Email", "_t": "str"},
+        {"_k": "gender", "_v": "Gender", "_t": "str"},
+        {"_k": "designation", "_v": "Designation", "_t": "str"},
+        {"_k": "team_lead", "_v": "Team Lead", "_t": "str"},
+        {"_k": "createdby", "_v": "Created By", "_t": "str"},
+        {"_k": "status", "_v": "Status", "_t": "str"},
+        {"_k": "joining_date", "_v": "Joining Date", "_t": "str"},
+        {"_k": "firm_name", "_v": "Firm Name", "_t": "str"},
+    ]
+
+
+    all_users = data.get("response_data", [])
+    offset = (page - 1) * limit
+
+    users = []
+    for user in all_users[offset: offset+limit]:
+        for col in cols:
+            user[col["_k"]] = user.get(col["_k"], "")
+        users.append(user)
+
+    _data = {
+        "cols": cols,
+        "data": users,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": len(data.get("response_data", [])),
+        }
+    }
+    return _data
