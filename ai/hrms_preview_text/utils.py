@@ -405,25 +405,45 @@ employees_table_view_config = {
         "limit": 10,
         "page": 1,
         "search": "",
+        "sort_by": "",
+        "sort_order": "",
     },
+    "sortable_columns": ["name", "user_id", "employee_id", "designation", "status", "joining_date"],
 }
 
-def get_employees_table(page=1, limit=10, search="") -> str:
+def get_employees_table(page=1, limit=10, search="", sort_by="", sort_order="asc") -> str:
     endpoint = "/user/get_users"
     payload = build_user_payload()
     data = post_request(endpoint, payload)
 
     cols = [
-        {"_k": "employee_id", "_v": "ID", "_t": "str"},
+        {"_k": "user_id", "_v": "ID", "_t": "str"},
         {"_k": "name", "_v": "Name", "_t": "str"},
         {"_k": "username", "_v": "Email", "_t": "str"},
         {"_k": "gender", "_v": "Gender", "_t": "str"},
+        {"_k": "status", "_v": "Status", "_t": "str"},
         {"_k": "designation", "_v": "Designation", "_t": "str"},
+        {"_k": "employee_id", "_v": "Employee ID", "_t": "str"},
+        {"_k": "user_type", "_v": "User Type", "_t": "str"},
         {"_k": "team_lead", "_v": "Team Lead", "_t": "str"},
         {"_k": "createdby", "_v": "Created By", "_t": "str"},
-        {"_k": "status", "_v": "Status", "_t": "str"},
-        {"_k": "joining_date", "_v": "Joining Date", "_t": "str"},
         {"_k": "firm_name", "_v": "Firm Name", "_t": "str"},
+        {"_k": "org_name", "_v": "Org Name", "_t": "str"},
+        {"_k": "is_org_manager", "_v": "Is Org Manager", "_t": "bool"},
+        {"_k": "joining_date", "_v": "Joining Date", "_t": "str"},
+        {"_k": "leaving_date", "_v": "Leaving Date", "_t": "str"},
+        {"_k": "training_completion_date", "_v": "Training Completion Date", "_t": "str"},
+        {"_k": "reporting_time", "_v": "Reporting Time", "_t": "str"},
+        {"_k": "workinghour", "_v": "Working Hour", "_t": "str"},
+        {"_k": "monthly_worklog_hr", "_v": "Monthly Worklog Hour", "_t": "str"},
+        {"_k": "comp_off", "_v": "Comp Off", "_t": "str"},
+        {"_k": "emergency_leave", "_v": "Emergency Leave", "_t": "str"},
+        {"_k": "casual_leave", "_v": "Casual Leave", "_t": "str"},
+        {"_k": "extended_leave", "_v": "Extended Leave", "_t": "str"},
+        {"_k": "firm_id", "_v": "Firm ID", "_t": "str"},
+        {"_k": "org_team_id", "_v": "Org Team ID", "_t": "str"},
+        {"_k": "team_lead_id", "_v": "Team Lead ID", "_t": "str"},
+        {"_k": "created_date", "_v": "Created Date", "_t": "str"},
     ]
 
     all_users = data.get("response_data", [])
@@ -433,11 +453,58 @@ def get_employees_table(page=1, limit=10, search="") -> str:
         all_users = [
             user for user in all_users
             if search_lower in str(user.get("employee_id", "")).lower() or
+               search_lower in str(user.get("user_id", "")).lower() or
                search_lower in str(user.get("name", "")).lower() or
                search_lower in str(user.get("username", "")).lower() or
                search_lower in str(user.get("designation", "")).lower() or
                search_lower in str(user.get("team_lead", "")).lower()
         ]
+    
+    # Apply sorting if sort_by is specified (supports multiple columns)
+    if sort_by:
+        sort_columns = [col.strip() for col in sort_by.split(",") if col.strip()]
+        sort_orders = [order.strip() for order in sort_order.split(",") if order.strip()]
+        
+        # Ensure we have matching orders for all columns (default to asc)
+        while len(sort_orders) < len(sort_columns):
+            sort_orders.append("asc")
+        
+        sortable_cols = ["name", "user_id", "employee_id", "designation", "status", "joining_date"]
+        
+        # Date columns that need special parsing
+        date_columns = ["joining_date", "leaving_date", "created_date", "training_completion_date"]
+        
+        # Filter to only valid sortable columns
+        valid_sorts = [(col, order) for col, order in zip(sort_columns, sort_orders) if col in sortable_cols]
+        
+        if valid_sorts:
+            try:
+                # Multi-column sort: sort by each column in reverse order (last to first)
+                # This ensures the first column has highest priority
+                # Python's sort is stable by default, so this works correctly
+                for col, order in reversed(valid_sorts):
+                    reverse = order.lower() == "desc"
+                    
+                    # Handle date columns differently
+                    if col in date_columns:
+                        def date_sort_key(x):
+                            date_str = x.get(col, "")
+                            if not date_str:
+                                return datetime.min if not reverse else datetime.max
+                            try:
+                                return datetime.strptime(date_str, DATE_FMT)
+                            except:
+                                return datetime.min if not reverse else datetime.max
+                        
+                        all_users.sort(key=date_sort_key, reverse=reverse)
+                    else:
+                        # String sorting for other columns
+                        all_users.sort(
+                            key=lambda x: str(x.get(col, "")).lower() if x.get(col) else "",
+                            reverse=reverse
+                        )
+            except Exception:
+                pass  # If sorting fails, just use unsorted data
     
     total_count = len(all_users)
     offset = (page - 1) * limit
