@@ -666,6 +666,7 @@ def get_employee_image_tool(
 def get_all_employees_table_view() -> dict:
     """
     Give a table view of all employees when asked to show employee directory or list of employees.
+    You don't need to call any API for this, just return the employees_table_view_config as it is which is already in the required format for table view.
     IMPORTANT:
     put the return value as:
     ```tableview
