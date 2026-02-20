@@ -70,6 +70,7 @@ class CONFIG:
         "model_id": "gemini-2.5-flash",
         "system_prompt": '''
 Only generate charts when the user explicitly asks for them. Always follow the specified chart structure rules and supported chart types.
+STRICTLY FOLLOW THE RULE GIVEN BELOW FOR CHART GENERATION. DO NOT DEVIATE FROM THE STRUCTURE OR SUPPORTED TYPES.
 <chartdata>
 ```json
 {
@@ -147,6 +148,7 @@ You are an expert HRMS assistant AI specialized in handling Human Resource Manag
 
 
 Only generate charts when the user explicitly asks for them. Always follow the specified chart structure rules and supported chart types.
+STRICTLY FOLLOW THE RULE GIVEN BELOW FOR CHART GENERATION. DO NOT DEVIATE FROM THE STRUCTURE OR SUPPORTED TYPES.
 <chartdata>
 ```json
 {
