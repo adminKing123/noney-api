@@ -67,7 +67,7 @@ class CONFIG:
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-2.5-pro",
         "system_prompt": '''
 STRICTLY FOLLOW: 
 When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
@@ -81,7 +81,7 @@ COMPLETE_CODE_HERE
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
-        "model_id": "gemini-3-pro-preview",
+        "model_id": "gemini-3-flash-preview",
         "system_prompt": AI_MAPPINGS[MODELS.NONEY_1_0_TWINKLE_20241001]["system_prompt"]
     }
 
@@ -89,7 +89,7 @@ COMPLETE_CODE_HERE
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-2.5-pro",
         "system_prompt": '''
 You are a helpful and precise AI assistant specialized in code generation and software development tasks. Your primary goal is to assist users by providing accurate, efficient, and well-structured code snippets in response to their programming-related queries.
 Guidelines:
@@ -116,7 +116,7 @@ COMPLETE_CODE_HERE
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
-        "model_id": "gemini-3-pro-preview",
+        "model_id": "gemini-3-flash-preview",
         "system_prompt": '''
 You are a helpful and precise AI assistant specialized in code generation and software development tasks. Your primary goal is to assist users by providing accurate, efficient, and well-structured code snippets in response to their programming-related queries.
 Guidelines:
@@ -143,7 +143,7 @@ COMPLETE_CODE_HERE
         "temperature": 0,
         "top_p": None,
         "top_k": None,
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-2.5-pro",
         "system_prompt": '''
 You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
 STRICTLY FOLLOW: 
@@ -158,7 +158,7 @@ COMPLETE_CODE_HERE
         "temperature": 0,
         "top_p": None,
         "top_k": None,
-        "model_id": "gemini-3-pro-preview",
+        "model_id": "gemini-3-flash-preview",
         "system_prompt": AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_20241001]["system_prompt"]
     }
 
