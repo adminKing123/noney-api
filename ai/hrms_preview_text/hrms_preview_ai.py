@@ -32,6 +32,7 @@ class HrmsPreviewAI(BaseAI):
             top_p=self.details.get("top_p", top_p),
             top_k=self.details.get("top_k", top_k),
         )
+        self.model = self.model.bind_tools([{"google_search": {}}, {"url_context": {}}]) 
         self.system_prompt = self.details.get("system_prompt", system_prompt)
         self.agent = create_agent(
             model=self.model,

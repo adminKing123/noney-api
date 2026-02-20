@@ -69,27 +69,12 @@ class CONFIG:
         "top_k": 40,
         "model_id": "gemini-2.5-flash",
         "system_prompt": '''
-Only generate charts when the user explicitly asks for them. Always follow the specified chart structure rules and supported chart types.
-STRICTLY FOLLOW THE RULE GIVEN BELOW FOR CHART GENERATION. DO NOT DEVIATE FROM THE STRUCTURE OR SUPPORTED TYPES.
-<chartdata>
-```json
-{
-  "meta_data": {
-    "type": "bar",
-    "title": "Chart Title"
-  },
-  "data": proper_chart_js_data_object
-}
-```
-</chartdata>
+STRICTLY FOLLOW: 
+When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
+put the generate code in a single file as
 
-Chart Structure Rules:
-1. Always wrap chart JSON in <chartdata> tags with ```json code fence
-2. meta_data.type: chart type (required)
-3. meta_data.title: descriptive title (required)
-4. data: follows Chart.js format with labels and datasets
-5. Use appropriate colors for better visualization
-6. Keep datasets simple and relevant to the query
+```htmlview
+COMPLETE_CODE_HERE
 '''
     }
     AI_MAPPINGS[MODELS.NONEY_2_0_TWINKLE_20241001] = {
@@ -97,6 +82,7 @@ Chart Structure Rules:
         "top_p": 1.0,
         "top_k": 40,
         "model_id": "gemini-3-pro-preview",
+        "system_prompt": AI_MAPPINGS[MODELS.NONEY_1_0_TWINKLE_20241001]["system_prompt"]
     }
 
     AI_MAPPINGS[MODELS.NONEY_CODE_GEN_20241001] = {
@@ -116,6 +102,14 @@ Guidelines:
 7. If the request is outside the scope of programming or code generation, politely inform the user that you are specialized in software engineering tasks only.
 8. Always answer in module-level code snippets, avoid writing full applications unless explicitly requested.
 9. Strict: Don't answer anything outside Software Engineering Scope, and always maintain professionalism.
+
+
+STRICTLY FOLLOW: 
+When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
+put the generate code in a single file as
+
+```htmlview
+COMPLETE_CODE_HERE
 '''
     }
     AI_MAPPINGS[MODELS.NONEY_CODE_GEN_PRO_20241001] = {
@@ -135,6 +129,13 @@ Guidelines:
 7. If the request is outside the scope of programming or code generation, politely inform the user that you are specialized in software engineering tasks only.
 8. Always answer in module-level code snippets, avoid writing full applications unless explicitly requested.
 9. Strict: Don't answer anything outside Software Engineering Scope, and always maintain professionalism.
+
+STRICTLY FOLLOW: 
+When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
+put the generate code in a single file as
+
+```htmlview
+COMPLETE_CODE_HERE
 '''
     }
 
@@ -145,29 +146,12 @@ Guidelines:
         "model_id": "gemini-2.5-flash",
         "system_prompt": '''
 You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
+STRICTLY FOLLOW: 
+When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
+put the generate code in a single file as
 
-
-Only generate charts when the user explicitly asks for them. Always follow the specified chart structure rules and supported chart types.
-STRICTLY FOLLOW THE RULE GIVEN BELOW FOR CHART GENERATION. DO NOT DEVIATE FROM THE STRUCTURE OR SUPPORTED TYPES.
-<chartdata>
-```json
-{
-  "meta_data": {
-    "type": "bar",
-    "title": "Chart Title"
-  },
-  "data": proper_chart_js_data_object
-}
-```
-</chartdata>
-
-Chart Structure Rules:
-1. Always wrap chart JSON in <chartdata> tags with ```json code fence
-2. meta_data.type: chart type (required)
-3. meta_data.title: descriptive title (required)
-4. data: follows Chart.js format with labels and datasets
-5. Use appropriate colors for better visualization
-6. Keep datasets simple and relevant to the query
+```htmlview
+COMPLETE_CODE_HERE
 '''
     }
     AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001] = {
