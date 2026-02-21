@@ -35,6 +35,14 @@ all_models_data = {
         "TEXT": {
             "models": [
                 {
+                    "id": "noney-1.0-fast-20241001",
+                    "name": "AURA 1.0 Fast",
+                    "google_search": False,
+                    "active": "True",
+                    "from": "NONEY",
+                    "description": "Fastest"
+                },
+                {
                     "id": "noney-1.0-twinkle-20241001",
                     "name": "AURA 1.0 Twinkle",
                     "google_search": False,
@@ -52,12 +60,12 @@ all_models_data = {
                 }
             ],
             "default_model": {
-                "id": "noney-1.0-twinkle-20241001",
-                "name": "AURA 1.0 Twinkle",
+                "id": "noney-1.0-fast-20241001",
+                "name": "AURA 1.0 Fast",
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
-                "description": "High-end and smart."
+                "description": "Fastest"
             }
         },
         "CODE": {
