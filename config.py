@@ -11,6 +11,7 @@ class Hrms:
     DEFAULT_SIGNED_ARRAY = os.getenv("HRMS_DEFAULT_SIGNED_ARRAY", "MTI4fDExMDd8cy5vc2F0d2FsQHRoZXN5bmFwc2VzLmNvbXxTdXBlciBBZG1pbg==")
 
 class Models:
+    NONEY_1_0_FAST_20241001 = "noney-1.0-FAST-20241001"
     NONEY_1_0_TWINKLE_20241001 = "noney-1.0-twinkle-20241001"
     NONEY_2_0_TWINKLE_20241001 = "noney-2.0-twinkle-20241001"
 
@@ -63,19 +64,19 @@ class CONFIG:
 
     AI_MAPPINGS = {}
 
+    AI_MAPPINGS[MODELS.NONEY_1_0_FAST_20241001] = {
+        "temperature": 0.7,
+        "top_p": 1.0,
+        "top_k": 40,
+        "model_id": "gemini-2.5-flash",
+        "system_prompt": ''''''
+    }
     AI_MAPPINGS[MODELS.NONEY_1_0_TWINKLE_20241001] = {
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
         "model_id": "gemini-2.5-pro",
-        "system_prompt": '''
-STRICTLY FOLLOW: 
-When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
-put the generate code in a single file as
-
-```htmlview
-COMPLETE_CODE_HERE
-'''
+        "system_prompt": ''''''
     }
     AI_MAPPINGS[MODELS.NONEY_2_0_TWINKLE_20241001] = {
         "temperature": 0.7,
@@ -102,14 +103,6 @@ Guidelines:
 7. If the request is outside the scope of programming or code generation, politely inform the user that you are specialized in software engineering tasks only.
 8. Always answer in module-level code snippets, avoid writing full applications unless explicitly requested.
 9. Strict: Don't answer anything outside Software Engineering Scope, and always maintain professionalism.
-
-
-STRICTLY FOLLOW: 
-When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
-put the generate code in a single file as
-
-```htmlview
-COMPLETE_CODE_HERE
 '''
     }
     AI_MAPPINGS[MODELS.NONEY_CODE_GEN_PRO_20241001] = {
@@ -129,13 +122,6 @@ Guidelines:
 7. If the request is outside the scope of programming or code generation, politely inform the user that you are specialized in software engineering tasks only.
 8. Always answer in module-level code snippets, avoid writing full applications unless explicitly requested.
 9. Strict: Don't answer anything outside Software Engineering Scope, and always maintain professionalism.
-
-STRICTLY FOLLOW: 
-When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
-put the generate code in a single file as
-
-```htmlview
-COMPLETE_CODE_HERE
 '''
     }
 
@@ -146,12 +132,6 @@ COMPLETE_CODE_HERE
         "model_id": "gemini-2.5-pro",
         "system_prompt": '''
 You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
-STRICTLY FOLLOW: 
-When user ask to generate website and don't mention any language only then generate in HTML, CSS and JavaScript only and write code as given below only (and always write code completely with proper UI/UX pricipals).
-put the generate code in a single file as
-
-```htmlview
-COMPLETE_CODE_HERE
 '''
     }
     AI_MAPPINGS[MODELS.NONEY_HRMS_ASSISTANT_PRO_20241001] = {
