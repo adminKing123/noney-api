@@ -47,7 +47,7 @@ class GeminiImageAI(BaseAI):
         ctx = ContextProvider.get(self.model_name, user_id, chat_id, self.system_prompt)
         context = ctx.build_context(prompt, files=payload.get("files", []))
 
-        ai = GeminiTextAI(model_name=CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001)
+        ai = GeminiTextAI(model_name=CONFIG.MODELS.DEFAULT_MODEL)
 
         yield self._send_step("info", "Thinking")
 

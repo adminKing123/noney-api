@@ -87,6 +87,7 @@ class ContextProvider:
     def _supports_files(self):
         """Check if model supports file attachments"""
         return self.model_name in [
+            CONFIG.MODELS.NONEY_1_0_FAST_20241001,
             CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001,
             CONFIG.MODELS.NONEY_2_0_TWINKLE_20241001,
             CONFIG.MODELS.NONEY_CODE_GEN_20241001,

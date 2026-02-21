@@ -66,6 +66,7 @@ def stream():
     payload["user"] = request.user
     ai_provider = AIProvider()
     ai = ai_provider.get(model_id)
+    print(ai, model_id)
     return Response(
         stream_generator(ai, payload),
         mimetype="text/event-stream"

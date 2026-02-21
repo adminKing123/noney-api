@@ -5,6 +5,8 @@ from config import CONFIG
 
 class AIProvider:
     def get(self, model_name):
+        if (model_name == CONFIG.MODELS.NONEY_1_0_FAST_20241001):
+            return GeminiTextAI(model_name=CONFIG.MODELS.NONEY_1_0_FAST_20241001)
         if (model_name == CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001):
             return GeminiTextAI(model_name=CONFIG.MODELS.NONEY_1_0_TWINKLE_20241001)
         if (model_name == CONFIG.MODELS.NONEY_2_0_TWINKLE_20241001):

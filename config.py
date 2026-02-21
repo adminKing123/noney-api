@@ -11,7 +11,7 @@ class Hrms:
     DEFAULT_SIGNED_ARRAY = os.getenv("HRMS_DEFAULT_SIGNED_ARRAY", "MTI4fDExMDd8cy5vc2F0d2FsQHRoZXN5bmFwc2VzLmNvbXxTdXBlciBBZG1pbg==")
 
 class Models:
-    NONEY_1_0_FAST_20241001 = "noney-1.0-FAST-20241001"
+    NONEY_1_0_FAST_20241001 = "noney-1.0-fast-20241001"
     NONEY_1_0_TWINKLE_20241001 = "noney-1.0-twinkle-20241001"
     NONEY_2_0_TWINKLE_20241001 = "noney-2.0-twinkle-20241001"
 
@@ -23,7 +23,7 @@ class Models:
 
     NONEY_IMAGE_GEN_20241001 = "noney-image-gen-20241001"
 
-    DEFAULT_MODEL = NONEY_1_0_TWINKLE_20241001
+    DEFAULT_MODEL = NONEY_1_0_FAST_20241001
 
 class Uploads:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")

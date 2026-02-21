@@ -40,7 +40,7 @@ all_models_data = {
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
-                    "description": "Fastest"
+                    "description": "Fastest and most cost-effective."
                 },
                 {
                     "id": "noney-1.0-twinkle-20241001",
@@ -65,7 +65,7 @@ all_models_data = {
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
-                "description": "Fastest"
+                "description": "Fastest and most cost-effective."
             }
         },
         "CODE": {
