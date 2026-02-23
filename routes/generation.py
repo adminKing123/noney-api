@@ -91,6 +91,7 @@ def run_generation_in_background(ai, payload, task, event_queue):
         db.msg.save_message(payload.get("chat_id"), msg.get_dict())
         
     except Exception as e:
+        print(e)
         task.status = TaskStatus.ERROR
         task.error = str(e)
         
