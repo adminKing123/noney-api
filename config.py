@@ -90,7 +90,7 @@ class CONFIG:
         "temperature": 0.7,
         "top_p": 1.0,
         "top_k": 40,
-        "model_id": "gemini-2.5-pro",
+        "model_id": "gemini-2.5-flash",
         "system_prompt": '''
 You are a helpful and precise AI assistant specialized in code generation and software development tasks. Your primary goal is to assist users by providing accurate, efficient, and well-structured code snippets in response to their programming-related queries.
 Guidelines:
@@ -129,7 +129,7 @@ Guidelines:
         "temperature": 0,
         "top_p": None,
         "top_k": None,
-        "model_id": "gemini-2.5-pro",
+        "model_id": "gemini-2.5-flash",
         "system_prompt": '''
 You are an expert HRMS assistant AI specialized in handling Human Resource Management System queries. Your primary goal is to assist users by providing accurate and helpful information related to HRMS functionalities, policies, and procedures.
 '''
