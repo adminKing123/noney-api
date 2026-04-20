@@ -56,6 +56,10 @@ class CONFIG:
     GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "")
     GITHUB_USERNAME = os.getenv("GITHUB_USERNAME", "")
 
+    # ElevenLabs TTS
+    ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+    ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "")
+
     CRYPTOCOMPOSITEKEY = CryptoCompositeKey()
 
     MODELS = Models()
