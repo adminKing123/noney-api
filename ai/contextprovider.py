@@ -100,23 +100,37 @@ class ContextProvider:
         if hasattr(self, "messages"):
             self.messages.append(message)
 
-    def build_context(self, prompt, files=[]):
-        """Build context for the AI model"""
+    def build_context(self, prompt, files=[], effective_system_prompt=None):
+        """Build context for the AI model.
+
+        Args:
+            prompt: The user's input text.
+            files: Optional list of attached files.
+            effective_system_prompt: Full system prompt to use for this request,
+                including any runtime extensions (e.g. output-mode additions).
+                When omitted the instance's base system_prompt is used.
+                This allows per-request overrides without polluting the LRU cache key.
+        """
         # Build new message based on model type
         if self._supports_files():
             content_parts = self._build_content_parts(prompt, files)
             new_message = HumanMessage(content=content_parts)
         else:
             new_message = HumanMessage(content=prompt)
-        
+
+        # Determine which system prompt to prepend for this specific request
+        active_system_prompt = effective_system_prompt if effective_system_prompt is not None else self.system_prompt
+
         # Return context with or without history
         if (not self.user_id) or (not self.chat_id):
+            if active_system_prompt:
+                return [SystemMessage(content=active_system_prompt), new_message]
             return [new_message]
         else:
             self.append(new_message)
             context = self.messages
-            if self.system_prompt:
-                context = [SystemMessage(content=self.system_prompt)] + self.messages
+            if active_system_prompt:
+                context = [SystemMessage(content=active_system_prompt)] + self.messages
             return context
 
     @staticmethod

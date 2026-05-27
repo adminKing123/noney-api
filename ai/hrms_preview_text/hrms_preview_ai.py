@@ -67,12 +67,13 @@ class HrmsPreviewAI(BaseAI):
         else:
             yield self._send_step("info", "Proceeding after human-in-the-loop decisions")
 
-        
-        dynamic_system_prompt = f"""{self.system_prompt} USER CONTEXT: emailid: {user.get("email", "N/A")}"""
-
-
-        ctx = ContextProvider.get(self.model_name, user_id, chat_id, dynamic_system_prompt)
-        context = ctx.build_context(prompt, files=payload.get("files", []))
+        # Build effective system prompt: base + user context + output-mode extensions.
+        # Cache key uses the stable base prompt so conversation history is shared
+        # across requests regardless of user-context or output-mode variations.
+        user_context = f"USER CONTEXT: emailid: {user.get('email', 'N/A')}"
+        effective_system_prompt = self._build_system_prompt(payload, extra_parts=[user_context])
+        ctx = ContextProvider.get(self.model_name, user_id, chat_id, self.system_prompt)
+        context = ctx.build_context(prompt, files=payload.get("files", []), effective_system_prompt=effective_system_prompt)
         
         ai_response = ""
 

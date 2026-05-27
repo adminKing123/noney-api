@@ -1,8 +1,30 @@
 import uuid
 from abc import ABC, abstractmethod
+from .prompt_extensions import HTML_PREVIEW_EXTENSION, CHART_VIEW_EXTENSION
 
 class BaseAI(ABC):
     """Base class every provider must follow."""
+
+    def _build_system_prompt(self, payload, extra_parts=None):
+        """Assemble the effective system prompt for a single request.
+
+        Starts from the model's base system prompt (from config), appends any
+        caller-supplied ``extra_parts`` (e.g. per-user context for HRMS), then
+        appends output-mode extensions when the user has enabled them.
+
+        Args:
+            payload:     The raw request payload dict.
+            extra_parts: Optional list of additional prompt strings to insert
+                         between the base prompt and the output-mode extensions.
+        """
+        parts = [self.system_prompt] if self.system_prompt else []
+        if extra_parts:
+            parts.extend(extra_parts)
+        if payload.get("generate_html"):
+            parts.append(HTML_PREVIEW_EXTENSION)
+        if payload.get("generate_charts"):
+            parts.append(CHART_VIEW_EXTENSION)
+        return "\n".join(parts) if parts else None
 
     def _event(self, event, data):
         return {

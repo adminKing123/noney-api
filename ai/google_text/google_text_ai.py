@@ -36,8 +36,11 @@ class GeminiTextAI(BaseAI):
         prompt = payload.get("prompt", "")
 
         yield self._send_step("info", "Summarizing context")
+        effective_system_prompt = self._build_system_prompt(payload)
+        # Cache key uses the base system prompt so conversation history is
+        # shared across requests regardless of output-mode extensions.
         ctx = ContextProvider.get(self.model_name, user_id, chat_id, self.system_prompt)
-        context = ctx.build_context(prompt, files=payload.get("files", []))
+        context = ctx.build_context(prompt, files=payload.get("files", []), effective_system_prompt=effective_system_prompt)
         ai_response = ""
         yield self._start()
 
