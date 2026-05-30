@@ -1,0 +1,11 @@
+# cloudbuild.yaml
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'REGION-docker.pkg.dev/aura-hypen-497709/flask-repo/flask-app:v1', '.']
+
+images:
+- 'REGION-docker.pkg.dev/aura-hypen-497709/flask-repo/flask-app:v1'
+
+# This is the key part to fix the logging error
+options:
+  logging: CLOUD_LOGGING_ONLY # Directs logs to Cloud Logging only
