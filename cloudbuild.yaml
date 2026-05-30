@@ -1,9 +1,9 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'us-central1-docker.pkg.dev/aura-hypen-497709/flask-repo/flask-app:v1', '.'] # Changed REGION to us-central1
+  args: ['build', '-t', 'asia-south1-docker.pkg.dev/aura-hypen-497709/backend-repo/flask-app:v1', '.']
 
 images:
-- 'us-central1-docker.pkg.dev/aura-hypen-497709/flask-repo/flask-app:v1' # Changed REGION to us-central1
+- 'asia-south1-docker.pkg.dev/aura-hypen-497709/backend-repo/flask-app:v1'
 
 options:
   logging: CLOUD_LOGGING_ONLY
