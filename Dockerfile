@@ -19,7 +19,7 @@ ENV PORT 8080
 EXPOSE 8080
 
 # Add your environment variables here as requested
-ENV CDN_URL=https://noney-api-an60.onrender.com
+ENV CDN_URL=https://flask-app-446814703652.europe-west1.run.app
 ENV CRYPTO_NONCE_SIZE=12
 ENV CRYPTO_SALT=my-static-salt-1234
 ENV CRYPTO_SECRET_KEY=super-secret-password
@@ -33,7 +33,7 @@ ENV GITHUB1_REPO_NAME=dummy-src
 ENV GITHUB1_TOKEN=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
 ENV GITHUB1_USERNAME=experimental-core
 ENV GOOGLE_API_KEY=AIzaSyDyBrmnaq33cVFVbG6l8Y_XsoGL0EawoWk
-ENV HOST=https://noney-api-an60.onrender.com
+ENV HOST=https://flask-app-446814703652.europe-west1.run.app
 
 # Run the Flask application using Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
