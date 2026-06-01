@@ -4,6 +4,7 @@ from ai.google_text.google_text_ai import GeminiTextAI
 from ai.schema import AspectRatioDetection
 from ai.base import BaseAI
 from ..contextprovider import ContextProvider
+from ..pricing import calculate_image
 from config import CONFIG
 from utils.files import save_file
 import io
@@ -94,6 +95,12 @@ class GeminiImageAI(BaseAI):
             save_file_result["aspect_ratio"] = aspect_ratio
             db.file.add_file(user_id, save_file_result, chat_id=chat_id)
             yield self._send_generated_images([save_file_result], index=index)
+
+        # Emit token usage and per-image cost
+        num_images_generated = len(response.generated_images) if response.generated_images else 0
+        gemini_model_id = self.details.get("model_id", "")
+        usage_info = calculate_image(gemini_model_id, num_images=num_images_generated)
+        yield self._send_usage(usage_info)
         
         end_time = time.time()
         duration = end_time - start_time

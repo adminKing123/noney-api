@@ -3,6 +3,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.messages import HumanMessage, AIMessage
 from ai.base import BaseAI
 from ..contextprovider import ContextProvider
+from ..pricing import calculate_text
 from config import CONFIG
 from utils.google_citations import get_citations_from_grounding
 
@@ -45,11 +46,22 @@ class GeminiTextAI(BaseAI):
         yield self._start()
 
         started = False
+        accumulated_input_tokens = 0
+        accumulated_output_tokens = 0
 
         grounding_metadatas = []
         for chunk in self.model.stream(context):
             if chunk.response_metadata.get("grounding_metadata", False):
-                grounding_metadatas.append(chunk.response_metadata["grounding_metadata"]) 
+                grounding_metadatas.append(chunk.response_metadata["grounding_metadata"])
+
+            # Accumulate usage across all chunks — prompt_token_count (input)
+            # only appears on the last streaming chunk; candidates_token_count
+            # (output) is a per-chunk delta on every chunk.
+            um = getattr(chunk, "usage_metadata", None)
+            if um:
+                accumulated_input_tokens += um.get("input_tokens", 0)
+                accumulated_output_tokens += um.get("output_tokens", 0)
+
             if not started:
                 yield self._started()
                 started = True
@@ -70,6 +82,26 @@ class GeminiTextAI(BaseAI):
             for grounding_metadata in grounding_metadatas:
                 if grounding_metadata.get("grounding_chunks", False):
                     yield self._source(get_citations_from_grounding(grounding_metadata["grounding_chunks"], grounding_metadata.get("grounding_supports", [])))
+
+        # langchain-google-genai 3.x streaming omits prompt_token_count from
+        # intermediate chunks; it only appears in the final summary chunk which
+        # LangChain may skip when there is no text content.  Fall back to
+        # Gemini's count_tokens API (free, exact) when streaming gives us 0.
+        if accumulated_input_tokens == 0:
+            try:
+                accumulated_input_tokens = self.model.get_num_tokens_from_messages(context)
+            except Exception:
+                accumulated_input_tokens = 0
+
+        # Emit token usage and cost after all content has been streamed
+        if accumulated_input_tokens > 0 or accumulated_output_tokens > 0:
+            gemini_model_id = self.details.get("model_id", "")
+            usage_info = calculate_text(
+                gemini_model_id,
+                accumulated_input_tokens,
+                accumulated_output_tokens,
+            )
+            yield self._send_usage(usage_info)
 
         end_time = time.time()
         duration = end_time - start_time

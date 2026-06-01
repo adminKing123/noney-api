@@ -8,6 +8,7 @@ from ai.base import BaseAI
 from langchain.agents import create_agent
 from .tools import tools
 from ..contextprovider import ContextProvider
+from ..pricing import calculate_text
 from config import CONFIG
 from db.firebase_checkpoint_saver import FirebaseSaver
 
@@ -84,7 +85,9 @@ class HrmsPreviewAI(BaseAI):
 
         did_interrupted = False
         index = 0
-        
+        accumulated_input_tokens = 0
+        accumulated_output_tokens = 0
+
         if continuing_after_interrupt:
             payload = Command(resume={"decisions": descisions})
         else:
@@ -110,6 +113,11 @@ class HrmsPreviewAI(BaseAI):
                     # ctx.append(ToolMessage(name=msg.name, content=msg.content, tool_call_id=msg.tool_call_id))
                     yield self._tool_result(msg.tool_call_id, msg.name, msg.content)
 
+
+                # Accumulate token usage from each AI chunk
+                if isinstance(msg, AIMessageChunk) and getattr(msg, "usage_metadata", None):
+                    accumulated_input_tokens += msg.usage_metadata.get("input_tokens", 0)
+                    accumulated_output_tokens += msg.usage_metadata.get("output_tokens", 0)
 
                 if isinstance(msg, AIMessageChunk) and msg.content:
                     if (not started):
@@ -139,6 +147,27 @@ class HrmsPreviewAI(BaseAI):
         ctx.append(AIMessage(content=ai_response))
         end_time = time.time()
         duration = end_time - start_time
+
+        # langchain-google-genai 3.x streaming omits prompt_token_count from
+        # intermediate chunks (same issue as GeminiTextAI).  For the agent loop
+        # each LLM call's last chunk should provide it, but if the total is
+        # still 0 we fall back to counting the initial context as a minimum.
+        if accumulated_input_tokens == 0 and not continuing_after_interrupt:
+            try:
+                accumulated_input_tokens = self.model.get_num_tokens_from_messages(context)
+            except Exception:
+                accumulated_input_tokens = 0
+
+        # Emit token usage and cost
+        if accumulated_input_tokens > 0 or accumulated_output_tokens > 0:
+            gemini_model_id = self.details.get("model_id", "")
+            usage_info = calculate_text(
+                gemini_model_id,
+                accumulated_input_tokens,
+                accumulated_output_tokens,
+            )
+            yield self._send_usage(usage_info)
+
         yield self._send_duration(duration)
         if not did_interrupted:
             yield self._end()

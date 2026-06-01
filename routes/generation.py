@@ -4,6 +4,7 @@ from db import db
 from ai import AIProvider
 from config import CONFIG
 from utils.task_manager import task_manager, TaskStatus
+from datetime import datetime, timezone
 import json
 import queue
 import threading
@@ -69,6 +70,17 @@ def run_generation_in_background(ai, payload, task, event_queue):
                 msg.sources.extend(eventdata)
             elif eventtype == "duration":
                 msg.duration = eventdata.get("seconds", None)
+            elif eventtype == "usage":
+                # Persist token counts and cost onto the message entity
+                usage_data = eventdata or {}
+                msg.tokens = {
+                    "input": usage_data.get("input_tokens", 0),
+                    "output": usage_data.get("output_tokens", 0),
+                    "total": usage_data.get("total_tokens", 0),
+                }
+                msg.cost_usd = usage_data.get("cost_usd", 0.0)
+                if usage_data.get("images_generated"):
+                    msg.images_generated = usage_data.get("images_generated", 0)
             elif eventtype == "file":
                 msg.answer_files.extend([eventdata])
             elif eventtype == "interrupt":
@@ -87,8 +99,37 @@ def run_generation_in_background(ai, payload, task, event_queue):
         
         if task.status == TaskStatus.RUNNING:
             task.status = TaskStatus.COMPLETED
-        
+
         db.msg.save_message(payload.get("chat_id"), msg.get_dict())
+
+        # Resolved model ID string (set by stream() before spawning this thread)
+        resolved_model_id = payload.get("_model_id")
+
+        # Update chat-level aggregate token/cost counters.
+        # Pass the resolved string model ID, NOT msg.model which is the full dict.
+        if msg.tokens and msg.tokens.get("total", 0) > 0:
+            db.chat.update_usage(
+                payload.get("chat_id"),
+                msg.tokens,
+                msg.cost_usd or 0.0,
+                model=resolved_model_id,
+            )
+
+            # Record into the user's persistent usage collection.
+            # Structured as users/{uid}/usage/{chat_id}/messages/{msg_id}
+            # so data survives chat deletion and mirrors the real collections.
+            user_id = payload.get("user", {}).get("uid")
+            if user_id:
+                now_iso = datetime.now(timezone.utc).isoformat()
+                db.analytics.record_generation(
+                    user_id,
+                    chat_id=payload.get("chat_id"),
+                    message_id=payload.get("id"),
+                    tokens=msg.tokens,
+                    cost_usd=msg.cost_usd or 0.0,
+                    model_id=resolved_model_id,
+                    now_iso=now_iso,
+                )
         
     except Exception as e:
         print(e)
@@ -147,6 +188,9 @@ def stream():
     
     payload["user"] = request.user
     user_id = request.user.get("uid", "unknown")
+    # Inject the resolved model ID string so the background thread can use it
+    # directly without having to unpack the model dict again.
+    payload["_model_id"] = model_id
     
     existing_task = task_manager.get_task_by_message_id(message_id)
     if existing_task and existing_task.status == TaskStatus.RUNNING:

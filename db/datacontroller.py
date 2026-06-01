@@ -39,6 +39,11 @@ class MsgEntity:
 
         self.duration = data.get("duration", None)
 
+        # Token usage and cost tracking (populated after generation completes)
+        self.tokens = data.get("tokens", {"input": 0, "output": 0, "total": 0})
+        self.cost_usd = data.get("cost_usd", None)
+        self.images_generated = data.get("images_generated", 0)
+
     def get_dict(self):
         payload = {}
         payload["id"] = self.id
@@ -56,6 +61,9 @@ class MsgEntity:
         payload["files"] = self.files
         payload["deep_research"] = self.deep_research
         payload["duration"] = self.duration
+        payload["tokens"] = self.tokens
+        payload["cost_usd"] = self.cost_usd
+        payload["images_generated"] = self.images_generated
         return payload
 
 class Msg:
@@ -104,6 +112,34 @@ class Chat:
             "title": new_title,
             # "updated_at": firestore.SERVER_TIMESTAMP
         })
+
+    def update_usage(self, chat_id: str, tokens: dict, cost_usd: float, model: str = None):
+        """
+        Atomically increment the chat document's aggregate token counters
+        and total cost. Optionally records the AURA model ID used so that
+        the analytics dashboard can group usage by model.
+
+        Args:
+            chat_id:  Firestore chat document ID.
+            tokens:   dict with keys 'input', 'output', 'total' (int counts).
+            cost_usd: Cost in USD for this generation call (float).
+            model:    AURA model ID string (e.g. 'noney-1.0-fast-20241001').
+        """
+        try:
+            chat_ref = self.client.collection("chats").document(chat_id)
+            update_data = {
+                "total_tokens.input": firestore.Increment(tokens.get("input", 0)),
+                "total_tokens.output": firestore.Increment(tokens.get("output", 0)),
+                "total_tokens.total": firestore.Increment(tokens.get("total", 0)),
+                "total_cost_usd": firestore.Increment(cost_usd or 0.0),
+            }
+            # Record the primary model so analytics can group by it.
+            # Only set once; subsequent messages in the same chat do not overwrite.
+            if model:
+                update_data["model"] = model
+            chat_ref.update(update_data)
+        except Exception as e:
+            print(f"[DB] Failed to update chat usage for {chat_id}: {e}")
 
     def get_messages(self, userId, chatId, limit=CONFIG.GEMINI_MESSAGE_LIMIT, should_yeild=False):
         messages_ref = self.client.collection("chats").document(chatId).collection("messages").order_by("created_at", direction=firestore.Query.ASCENDING).limit(limit)
@@ -178,6 +214,134 @@ class File:
             print(f"Error removing file: {e}")
             return False
 
+class Analytics:
+    """
+    Persists per-generation token and cost usage under the requesting user's
+    own Firestore sub-tree, mirroring the structure of the main chats /
+    messages collections so that usage data is never lost when a chat is deleted.
+
+    Firestore layout
+    ----------------
+    users/{user_id}/
+      usage/                                ← collection
+        {chat_id}                           ← document  (chat-level aggregate)
+          chat_id      : str
+          model        : str                (AURA model ID of last generation)
+          total_tokens : { input, output, total }
+          total_cost_usd : float
+          generation_count : int
+          created_at   : ISO-8601 str       (first generation timestamp)
+          updated_at   : ISO-8601 str       (latest generation timestamp)
+
+          messages/                         ← sub-collection
+            {message_id}                    ← document  (per-message record)
+              message_id  : str
+              chat_id     : str
+              model       : str
+              tokens      : { input, output, total }
+              cost_usd    : float
+              created_at  : ISO-8601 str
+    """
+
+    def __init__(self, client):
+        self.client = client
+
+    def record_generation(
+        self,
+        user_id: str,
+        chat_id: str,
+        message_id: str,
+        tokens: dict,
+        cost_usd: float,
+        model_id: str,
+        now_iso: str,
+    ) -> None:
+        """
+        Persist one generation's usage data with two atomic Firestore operations.
+
+        1. Creates / overwrites the per-message usage document (idempotent
+           — safe to re-run on retry because it uses set(), not add()).
+        2. Atomically increments the parent chat-level usage document.
+           If the chat usage document does not exist yet it is initialised
+           first, then the increments are applied.
+
+        Args:
+            user_id:    Firebase UID of the requesting user.
+            chat_id:    Firestore chat document ID.
+            message_id: Firestore message document ID.
+            tokens:     dict with keys 'input', 'output', 'total' (int).
+            cost_usd:   Estimated USD cost for this generation call.
+            model_id:   AURA model ID string (e.g. 'noney-1.0-fast-20241001').
+            now_iso:    UTC ISO-8601 timestamp string.
+        """
+        try:
+            inp   = tokens.get("input",  0)
+            out   = tokens.get("output", 0)
+            total = tokens.get("total",  0)
+            cost  = cost_usd or 0.0
+            model = model_id or "unknown"
+
+            user_usage_col = (
+                self.client
+                .collection("users")
+                .document(user_id)
+                .collection("usage")
+            )
+
+            # ── 1. Per-message usage document ──────────────────────────────────
+            # Use set() so repeated calls with the same message_id are idempotent.
+            msg_ref = (
+                user_usage_col
+                .document(chat_id)
+                .collection("messages")
+                .document(message_id)
+            )
+            msg_ref.set({
+                "message_id": message_id,
+                "chat_id":    chat_id,
+                "model":      model,
+                "tokens": {
+                    "input":  inp,
+                    "output": out,
+                    "total":  total,
+                },
+                "cost_usd":   cost,
+                "created_at": now_iso,
+            })
+
+            # ── 2. Chat-level aggregate document (atomic dot-notation increments) ──
+            chat_ref = user_usage_col.document(chat_id)
+            increment_data = {
+                "total_tokens.input":  firestore.Increment(inp),
+                "total_tokens.output": firestore.Increment(out),
+                "total_tokens.total":  firestore.Increment(total),
+                "total_cost_usd":      firestore.Increment(cost),
+                "generation_count":    firestore.Increment(1),
+                # Reflect the most recent model used in this chat
+                "model":      model,
+                "updated_at": now_iso,
+            }
+            try:
+                chat_ref.update(increment_data)
+            except Exception:
+                # Document does not exist yet — initialise it, then apply increments.
+                chat_ref.set({
+                    "chat_id":  chat_id,
+                    "model":    model,
+                    "total_tokens": {"input": 0, "output": 0, "total": 0},
+                    "total_cost_usd":   0.0,
+                    "generation_count": 0,
+                    "created_at": now_iso,
+                    "updated_at": now_iso,
+                })
+                chat_ref.update(increment_data)
+
+        except Exception as e:
+            # Analytics failures must never surface to the generation response.
+            print(f"[Analytics] record_generation failed "
+                  f"(user={user_id}, chat={chat_id}, msg={message_id}): {e}")
+
+
 class DB:
     def __init__(self):
         cred = credentials.Certificate(json.loads(CONFIG.FIREBASE_CREDENTIALS))
@@ -188,5 +352,6 @@ class DB:
         self.user = User(self.client)
         self.msg = Msg(self.client)
         self.file = File(self.client)
+        self.analytics = Analytics(self.client)
 
 db = DB()

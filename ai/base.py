@@ -85,6 +85,21 @@ class BaseAI(ABC):
                 "seconds": seconds
             }
         })
+
+    def _send_usage(self, usage_data: dict):
+        """
+        Emit a usage event carrying token counts and calculated cost.
+
+        Args:
+            usage_data: dict returned by ai.pricing.calculate_text()
+                        or ai.pricing.calculate_image(), containing at minimum:
+                          input_tokens, output_tokens, total_tokens,
+                          cost_usd, model_id
+        """
+        return self._event("usage", {
+            "id": str(uuid.uuid4()),
+            "data": usage_data,
+        })
     
     def _tool_call(self, tool_name, tool_args):
         return self._step([{
