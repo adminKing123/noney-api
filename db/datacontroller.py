@@ -255,6 +255,8 @@ class Analytics:
         cost_usd: float,
         model_id: str,
         now_iso: str,
+        images_generated: int = 0,
+        generation_type: str = "text",
     ) -> None:
         """
         Persist one generation's usage data with two atomic Firestore operations.
@@ -265,14 +267,23 @@ class Analytics:
            If the chat usage document does not exist yet it is initialised
            first, then the increments are applied.
 
+        Supports both text/token-based models and image generation models
+        (e.g. Imagen 4) which have zero tokens but non-zero per-image cost.
+        ``generation_type`` is stored on each per-message doc and also
+        written (not incremented) on each per-model entry so the analytics
+        dashboard can distinguish token-priced vs image-priced vs future
+        video/audio models.
+
         Args:
-            user_id:    Firebase UID of the requesting user.
-            chat_id:    Firestore chat document ID.
-            message_id: Firestore message document ID.
-            tokens:     dict with keys 'input', 'output', 'total' (int).
-            cost_usd:   Estimated USD cost for this generation call.
-            model_id:   AURA model ID string (e.g. 'noney-1.0-fast-20241001').
-            now_iso:    UTC ISO-8601 timestamp string.
+            user_id:          Firebase UID of the requesting user.
+            chat_id:          Firestore chat document ID.
+            message_id:       Firestore message document ID.
+            tokens:           dict with keys 'input', 'output', 'total' (int).
+            cost_usd:         Estimated USD cost for this generation call.
+            model_id:         AURA model ID string (e.g. 'noney-1.0-fast-20241001').
+            now_iso:          UTC ISO-8601 timestamp string.
+            images_generated: Number of images produced (0 for text models).
+            generation_type:  'text' | 'image'  (default 'text').
         """
         try:
             inp   = tokens.get("input",  0)
@@ -297,16 +308,21 @@ class Analytics:
                 .document(message_id)
             )
             msg_ref.set({
-                "message_id": message_id,
-                "chat_id":    chat_id,
-                "model":      model,
+                "message_id":       message_id,
+                "chat_id":          chat_id,
+                "model":            model,
+                # 'generation_type' lets analytics distinguish image models
+                # (cost-per-image, zero tokens) from text models (token-priced).
+                # Extend with 'video' / 'audio' when those routes are added.
+                "generation_type":  generation_type,
                 "tokens": {
                     "input":  inp,
                     "output": out,
                     "total":  total,
                 },
-                "cost_usd":   cost,
-                "created_at": now_iso,
+                "images_generated": images_generated,
+                "cost_usd":         cost,
+                "created_at":       now_iso,
             })
 
             # ── 2. Chat-level aggregate document (atomic dot-notation increments) ──
@@ -317,34 +333,40 @@ class Analytics:
 
             chat_ref = user_usage_col.document(chat_id)
             increment_data = {
-                # ── Chat-level totals ─────────────────────────────────────────
-                "total_tokens.input":  firestore.Increment(inp),
-                "total_tokens.output": firestore.Increment(out),
-                "total_tokens.total":  firestore.Increment(total),
-                "total_cost_usd":      firestore.Increment(cost),
-                "generation_count":    firestore.Increment(1),
-                "updated_at":          now_iso,
+                # ── Chat-level totals (universal across all model types) ──────
+                "total_tokens.input":      firestore.Increment(inp),
+                "total_tokens.output":     firestore.Increment(out),
+                "total_tokens.total":      firestore.Increment(total),
+                "total_images_generated":  firestore.Increment(images_generated),
+                "total_cost_usd":          firestore.Increment(cost),
+                "generation_count":        firestore.Increment(1),
+                "updated_at":              now_iso,
                 # ── Per-model breakdown within this chat ──────────────────────
-                # Multiple models can be used in a single chat; track each one.
-                f"by_model.{safe}.model_id":      model,
-                f"by_model.{safe}.count":         firestore.Increment(1),
-                f"by_model.{safe}.input_tokens":  firestore.Increment(inp),
-                f"by_model.{safe}.output_tokens": firestore.Increment(out),
-                f"by_model.{safe}.total_tokens":  firestore.Increment(total),
-                f"by_model.{safe}.cost_usd":      firestore.Increment(cost),
+                # Multiple models can be used in a single chat; each gets its
+                # own sub-map. generation_type is a plain string assignment
+                # (not an Increment) — it is idempotent for the same model.
+                f"by_model.{safe}.model_id":         model,
+                f"by_model.{safe}.generation_type":  generation_type,
+                f"by_model.{safe}.count":            firestore.Increment(1),
+                f"by_model.{safe}.input_tokens":     firestore.Increment(inp),
+                f"by_model.{safe}.output_tokens":    firestore.Increment(out),
+                f"by_model.{safe}.total_tokens":     firestore.Increment(total),
+                f"by_model.{safe}.images_generated": firestore.Increment(images_generated),
+                f"by_model.{safe}.cost_usd":         firestore.Increment(cost),
             }
             try:
                 chat_ref.update(increment_data)
             except Exception:
                 # Document does not exist yet — initialise it, then apply increments.
                 chat_ref.set({
-                    "chat_id":      chat_id,
-                    "total_tokens": {"input": 0, "output": 0, "total": 0},
-                    "total_cost_usd":   0.0,
-                    "generation_count": 0,
-                    "by_model":         {},
-                    "created_at": now_iso,
-                    "updated_at": now_iso,
+                    "chat_id":               chat_id,
+                    "total_tokens":          {"input": 0, "output": 0, "total": 0},
+                    "total_images_generated": 0,
+                    "total_cost_usd":        0.0,
+                    "generation_count":      0,
+                    "by_model":              {},
+                    "created_at":            now_iso,
+                    "updated_at":            now_iso,
                 })
                 chat_ref.update(increment_data)
 

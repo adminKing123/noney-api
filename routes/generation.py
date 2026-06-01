@@ -107,7 +107,11 @@ def run_generation_in_background(ai, payload, task, event_queue):
 
         # Update chat-level aggregate token/cost counters.
         # Pass the resolved string model ID, NOT msg.model which is the full dict.
-        if msg.tokens and msg.tokens.get("total", 0) > 0:
+        # Image generation models (Imagen 4, etc.) have zero tokens but non-zero
+        # cost, so we guard on cost_usd > 0 as well as total_tokens > 0.
+        has_tokens = msg.tokens and msg.tokens.get("total", 0) > 0
+        has_cost   = (msg.cost_usd or 0.0) > 0
+        if has_tokens or has_cost:
             db.chat.update_usage(
                 payload.get("chat_id"),
                 msg.tokens,
@@ -120,6 +124,7 @@ def run_generation_in_background(ai, payload, task, event_queue):
             # so data survives chat deletion and mirrors the real collections.
             user_id = payload.get("user", {}).get("uid")
             if user_id:
+                images_generated = getattr(msg, "images_generated", 0) or 0
                 now_iso = datetime.now(timezone.utc).isoformat()
                 db.analytics.record_generation(
                     user_id,
@@ -129,6 +134,10 @@ def run_generation_in_background(ai, payload, task, event_queue):
                     cost_usd=msg.cost_usd or 0.0,
                     model_id=resolved_model_id,
                     now_iso=now_iso,
+                    images_generated=images_generated,
+                    # Derive type from what was produced — extensible later
+                    # for video ('video') and audio ('audio') routes.
+                    generation_type="image" if images_generated > 0 else "text",
                 )
         
     except Exception as e:
