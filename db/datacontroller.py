@@ -310,27 +310,39 @@ class Analytics:
             })
 
             # ── 2. Chat-level aggregate document (atomic dot-notation increments) ──
+            # Dots in model IDs (e.g. noney-1.0-fast-20241001) are replaced with
+            # underscores so they are safe to use as Firestore map keys via
+            # dot-notation. The original model ID is stored in model_id alongside.
+            safe = model.replace(".", "_")
+
             chat_ref = user_usage_col.document(chat_id)
             increment_data = {
+                # ── Chat-level totals ─────────────────────────────────────────
                 "total_tokens.input":  firestore.Increment(inp),
                 "total_tokens.output": firestore.Increment(out),
                 "total_tokens.total":  firestore.Increment(total),
                 "total_cost_usd":      firestore.Increment(cost),
                 "generation_count":    firestore.Increment(1),
-                # Reflect the most recent model used in this chat
-                "model":      model,
-                "updated_at": now_iso,
+                "updated_at":          now_iso,
+                # ── Per-model breakdown within this chat ──────────────────────
+                # Multiple models can be used in a single chat; track each one.
+                f"by_model.{safe}.model_id":      model,
+                f"by_model.{safe}.count":         firestore.Increment(1),
+                f"by_model.{safe}.input_tokens":  firestore.Increment(inp),
+                f"by_model.{safe}.output_tokens": firestore.Increment(out),
+                f"by_model.{safe}.total_tokens":  firestore.Increment(total),
+                f"by_model.{safe}.cost_usd":      firestore.Increment(cost),
             }
             try:
                 chat_ref.update(increment_data)
             except Exception:
                 # Document does not exist yet — initialise it, then apply increments.
                 chat_ref.set({
-                    "chat_id":  chat_id,
-                    "model":    model,
+                    "chat_id":      chat_id,
                     "total_tokens": {"input": 0, "output": 0, "total": 0},
                     "total_cost_usd":   0.0,
                     "generation_count": 0,
+                    "by_model":         {},
                     "created_at": now_iso,
                     "updated_at": now_iso,
                 })
