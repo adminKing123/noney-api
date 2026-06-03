@@ -3,7 +3,6 @@ from .chats import chats_bp
 from .health import health_bp
 from .files import files_bp
 from .aura_rj import aura_rj_bp
-from .aura_voice import aura_voice_bp
 from .get_config import get_config_bp
 from .hrms import hrms_bp
 from .tts import tts_bp
@@ -14,7 +13,6 @@ def register_blueprints(app):
     app.register_blueprint(health_bp)
     app.register_blueprint(files_bp)
     app.register_blueprint(aura_rj_bp)
-    app.register_blueprint(aura_voice_bp)
     app.register_blueprint(get_config_bp)
     app.register_blueprint(hrms_bp)
     app.register_blueprint(tts_bp)
