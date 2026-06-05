@@ -406,14 +406,18 @@ class Workflow:
         now = datetime.utcnow().isoformat() + "Z"
         doc_ref = self._col().document()
         data = {
-            "id":         doc_ref.id,
-            "owner_id":   owner_id,
-            "name":       name,
-            "status":     "inactive",
-            "nodes":      [],
-            "edges":      [],
-            "created_at": now,
-            "updated_at": now,
+            "id":             doc_ref.id,
+            "owner_id":       owner_id,
+            "name":           name,
+            "status":         "inactive",
+            "nodes":          [],
+            "edges":          [],
+            # Compilation state — populated on first activation.
+            "compiled_at":    None,
+            "graph_hash":     None,
+            "compiled_graph": None,
+            "created_at":     now,
+            "updated_at":     now,
         }
         doc_ref.set(data)
         return data
@@ -468,6 +472,43 @@ class Workflow:
         now = datetime.utcnow().isoformat() + "Z"
         self._col().document(workflow_id).update({"status": status, "updated_at": now})
         return {**existing, "status": status, "updated_at": now}
+
+    def save_compilation(
+        self,
+        workflow_id: str,
+        owner_id: str,
+        compiled_graph: dict,
+        graph_hash: str,
+        compiled_at: str,
+    ) -> dict | None:
+        """
+        Persist the compiled execution plan and set status to 'active'.
+
+        Returns the updated workflow dict, or None if not found / not authorised.
+        """
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return None
+        now = datetime.utcnow().isoformat() + "Z"
+        update = {
+            "compiled_graph": compiled_graph,
+            "graph_hash":     graph_hash,
+            "compiled_at":    compiled_at,
+            "status":         "active",
+            "updated_at":     now,
+        }
+        self._col().document(workflow_id).update(update)
+        return {**existing, **update}
+
+    def list_active(self) -> list:
+        """
+        Return every active workflow document (any owner).
+
+        Used by the RuntimeManager to restore running executions after a server
+        restart.  No owner-scoping — this is an internal server operation.
+        """
+        docs = self._col().where("status", "==", "active").stream()
+        return [d.to_dict() for d in docs]
 
     def delete(self, workflow_id: str, owner_id: str) -> bool:
         """Delete a workflow. Returns True on success, False if not authorised."""
