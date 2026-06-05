@@ -1,4 +1,4 @@
-import firebase_admin
+﻿import firebase_admin
 from firebase_admin import credentials, firestore, auth
 import json
 from config import CONFIG
@@ -223,8 +223,8 @@ class Analytics:
     Firestore layout
     ----------------
     users/{user_id}/
-      usage/                                ← collection
-        {chat_id}                           ← document  (chat-level aggregate)
+      usage/                                â† collection
+        {chat_id}                           â† document  (chat-level aggregate)
           chat_id      : str
           model        : str                (AURA model ID of last generation)
           total_tokens : { input, output, total }
@@ -233,8 +233,8 @@ class Analytics:
           created_at   : ISO-8601 str       (first generation timestamp)
           updated_at   : ISO-8601 str       (latest generation timestamp)
 
-          messages/                         ← sub-collection
-            {message_id}                    ← document  (per-message record)
+          messages/                         â† sub-collection
+            {message_id}                    â† document  (per-message record)
               message_id  : str
               chat_id     : str
               model       : str
@@ -262,7 +262,7 @@ class Analytics:
         Persist one generation's usage data with two atomic Firestore operations.
 
         1. Creates / overwrites the per-message usage document (idempotent
-           — safe to re-run on retry because it uses set(), not add()).
+           â€” safe to re-run on retry because it uses set(), not add()).
         2. Atomically increments the parent chat-level usage document.
            If the chat usage document does not exist yet it is initialised
            first, then the increments are applied.
@@ -299,7 +299,7 @@ class Analytics:
                 .collection("usage")
             )
 
-            # ── 1. Per-message usage document ──────────────────────────────────
+            # â”€â”€ 1. Per-message usage document â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             # Use set() so repeated calls with the same message_id are idempotent.
             msg_ref = (
                 user_usage_col
@@ -325,7 +325,7 @@ class Analytics:
                 "created_at":       now_iso,
             })
 
-            # ── 2. Chat-level aggregate document (atomic dot-notation increments) ──
+            # â”€â”€ 2. Chat-level aggregate document (atomic dot-notation increments) â”€â”€
             # Dots in model IDs (e.g. noney-1.0-fast-20241001) are replaced with
             # underscores so they are safe to use as Firestore map keys via
             # dot-notation. The original model ID is stored in model_id alongside.
@@ -333,7 +333,7 @@ class Analytics:
 
             chat_ref = user_usage_col.document(chat_id)
             increment_data = {
-                # ── Chat-level totals (universal across all model types) ──────
+                # â”€â”€ Chat-level totals (universal across all model types) â”€â”€â”€â”€â”€â”€
                 "total_tokens.input":      firestore.Increment(inp),
                 "total_tokens.output":     firestore.Increment(out),
                 "total_tokens.total":      firestore.Increment(total),
@@ -341,10 +341,10 @@ class Analytics:
                 "total_cost_usd":          firestore.Increment(cost),
                 "generation_count":        firestore.Increment(1),
                 "updated_at":              now_iso,
-                # ── Per-model breakdown within this chat ──────────────────────
+                # â”€â”€ Per-model breakdown within this chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 # Multiple models can be used in a single chat; each gets its
                 # own sub-map. generation_type is a plain string assignment
-                # (not an Increment) — it is idempotent for the same model.
+                # (not an Increment) â€” it is idempotent for the same model.
                 f"by_model.{safe}.model_id":         model,
                 f"by_model.{safe}.generation_type":  generation_type,
                 f"by_model.{safe}.count":            firestore.Increment(1),
@@ -357,7 +357,7 @@ class Analytics:
             try:
                 chat_ref.update(increment_data)
             except Exception:
-                # Document does not exist yet — initialise it, then apply increments.
+                # Document does not exist yet â€” initialise it, then apply increments.
                 chat_ref.set({
                     "chat_id":               chat_id,
                     "total_tokens":          {"input": 0, "output": 0, "total": 0},
@@ -376,6 +376,108 @@ class Analytics:
                   f"(user={user_id}, chat={chat_id}, msg={message_id}): {e}")
 
 
+class Workflow:
+    """
+    CRUD operations for Fuse workflows.
+
+    Firestore layout
+    ----------------
+    fuse/{workflow_id}          <- document
+        id           : str
+        owner_id     : str      Firebase UID of the creator
+        name         : str
+        status       : "active" | "inactive"
+        nodes        : list     React Flow node list
+        edges        : list     React Flow edge list
+        created_at   : ISO-8601 str
+        updated_at   : ISO-8601 str
+    """
+
+    COLLECTION = "fuse"
+
+    def __init__(self, client):
+        self.client = client
+
+    def _col(self):
+        return self.client.collection(self.COLLECTION)
+
+    def create(self, owner_id: str, name: str) -> dict:
+        """Create a new workflow document and return the full doc."""
+        now = datetime.utcnow().isoformat() + "Z"
+        doc_ref = self._col().document()
+        data = {
+            "id":         doc_ref.id,
+            "owner_id":   owner_id,
+            "name":       name,
+            "status":     "inactive",
+            "nodes":      [],
+            "edges":      [],
+            "created_at": now,
+            "updated_at": now,
+        }
+        doc_ref.set(data)
+        return data
+
+    def list_for_owner(self, owner_id: str) -> list:
+        """Return all workflows owned by owner_id, newest first."""
+        docs = (
+            self._col()
+            .where("owner_id", "==", owner_id)
+            .order_by("created_at", direction=firestore.Query.DESCENDING)
+            .stream()
+        )
+        return [d.to_dict() for d in docs]
+
+    def get(self, workflow_id: str, owner_id: str):
+        """Fetch a single workflow, returning None if not found or not owned."""
+        doc = self._col().document(workflow_id).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict()
+        if data.get("owner_id") != owner_id:
+            return None
+        return data
+
+    def update_name(self, workflow_id: str, owner_id: str, name: str):
+        """Rename a workflow. Returns updated doc or None if not authorised."""
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return None
+        now = datetime.utcnow().isoformat() + "Z"
+        self._col().document(workflow_id).update({"name": name, "updated_at": now})
+        return {**existing, "name": name, "updated_at": now}
+
+    def update_graph(self, workflow_id: str, owner_id: str, nodes: list, edges: list):
+        """Persist the React Flow node/edge graph. Returns updated doc or None."""
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return None
+        now = datetime.utcnow().isoformat() + "Z"
+        self._col().document(workflow_id).update({
+            "nodes":      nodes,
+            "edges":      edges,
+            "updated_at": now,
+        })
+        return {**existing, "nodes": nodes, "edges": edges, "updated_at": now}
+
+    def update_status(self, workflow_id: str, owner_id: str, status: str):
+        """Toggle workflow active / inactive. Returns updated doc or None."""
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return None
+        now = datetime.utcnow().isoformat() + "Z"
+        self._col().document(workflow_id).update({"status": status, "updated_at": now})
+        return {**existing, "status": status, "updated_at": now}
+
+    def delete(self, workflow_id: str, owner_id: str) -> bool:
+        """Delete a workflow. Returns True on success, False if not authorised."""
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return False
+        self._col().document(workflow_id).delete()
+        return True
+
+
 class DB:
     def __init__(self):
         cred = credentials.Certificate(json.loads(CONFIG.FIREBASE_CREDENTIALS))
@@ -387,5 +489,6 @@ class DB:
         self.msg = Msg(self.client)
         self.file = File(self.client)
         self.analytics = Analytics(self.client)
+        self.workflow = Workflow(self.client)
 
 db = DB()
