@@ -84,7 +84,7 @@ class ScheduleExecution:
         logger.info("[FUSE] Schedule fired for workflow '%s'.", self.workflow_id)
 
         try:
-            run_workflow(self.compiled_graph, trigger_data)
+            run_workflow(self.compiled_graph, trigger_data, trigger_type="schedule")
         except Exception:
             logger.exception(
                 "[FUSE] Schedule execution failed for workflow '%s'.", self.workflow_id

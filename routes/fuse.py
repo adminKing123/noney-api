@@ -18,10 +18,33 @@ fuse_bp = Blueprint("fuse", __name__, url_prefix="/fuse")
 @fuse_bp.route("/workflows", methods=["GET"])
 @require_auth
 def list_workflows():
-    """GET /fuse/workflows — list all workflows owned by the authenticated user."""
+    """
+    GET /fuse/workflows
+    ────────────────────
+    List workflows owned by the authenticated user, newest first.
+
+    Query params:
+        limit           (int, default 20, max 100)
+        after_created_at (str ISO-8601)  \u2500 cursor from previous page
+        after_id        (str)            ┘
+    """
     owner_id = request.user["uid"]
-    workflows = db.workflow.list_for_owner(owner_id)
-    return jsonify(workflows)
+
+    try:
+        limit = min(int(request.args.get("limit", 20)), 100)
+    except (ValueError, TypeError):
+        limit = 20
+
+    after_created_at = request.args.get("after_created_at") or None
+    after_id         = request.args.get("after_id") or None
+
+    result = db.workflow.list_for_owner(
+        owner_id,
+        limit=limit,
+        after_created_at=after_created_at,
+        after_id=after_id,
+    )
+    return jsonify(result)
 
 
 @fuse_bp.route("/workflows", methods=["POST"])
@@ -131,13 +154,23 @@ def activate_workflow(workflow_id):
     if errors:
         return jsonify({"success": False, "errors": errors}), 400
 
-    # ── 2. Start execution (stops any prior execution first) ─────────────────
+    # ── 2. Save an immutable compiled-graph version ───────────────────────────
+    version = db.workflow_version.save(
+        workflow_id    = workflow_id,
+        owner_id       = owner_id,
+        graph_hash     = compiled_graph["graph_hash"],
+        compiled_graph = compiled_graph,
+    )
+    # Embed the version_id so the executor can link each run to this version
+    compiled_graph["version_id"] = version["version_id"]
+
+    # ── 3. Start execution (stops any prior execution first) ─────────────────
     try:
         runtime.activate(workflow_id, compiled_graph)
     except Exception as exc:
         return jsonify({"success": False, "errors": [str(exc)]}), 500
 
-    # ── 3. Persist compilation state ──────────────────────────────────────────
+    # ── 4. Persist compilation state on the workflow doc ──────────────────────
     updated = db.workflow.save_compilation(
         workflow_id    = workflow_id,
         owner_id       = owner_id,
@@ -146,7 +179,7 @@ def activate_workflow(workflow_id):
         compiled_at    = compiled_graph["compiled_at"],
     )
 
-    # ── 4. Build webhook URL (only relevant for webhook-triggered workflows) ──
+    # ── 5. Build webhook URL (only relevant for webhook-triggered workflows) ──
     starter_type = compiled_graph["starter"]["node_type"]
     webhook_url = None
     if starter_type == "webhook":
@@ -158,6 +191,7 @@ def activate_workflow(workflow_id):
         "workflow":    updated,
         "compiled_at": compiled_graph["compiled_at"],
         "graph_hash":  compiled_graph["graph_hash"],
+        "version_id":  version["version_id"],
         "webhook_url": webhook_url,
     })
 
@@ -528,3 +562,137 @@ def push_unsubscribe():
 
     db.user.delete_push_subscription(uid, endpoint)
     return jsonify({"success": True})
+
+
+# ─── Runs & Logs ──────────────────────────────────────────────────────────────
+
+@fuse_bp.route("/workflows/<workflow_id>/runs", methods=["GET"])
+@require_auth
+def list_workflow_runs(workflow_id):
+    """
+    GET /fuse/workflows/:id/runs
+    ─────────────────────────────
+    Return the trigger history for a workflow, newest first.
+
+    Query params:
+        limit            (int, default 20, max 100)
+        after_started_at (str ISO-8601)  ─ cursor from previous page
+        after_run_id     (str)           ┘
+    """
+    owner_id = request.user["uid"]
+
+    workflow = db.workflow.get(workflow_id, owner_id)
+    if workflow is None:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    try:
+        limit = min(int(request.args.get("limit", 20)), 100)
+    except (ValueError, TypeError):
+        limit = 20
+
+    after_started_at = request.args.get("after_started_at") or None
+    after_run_id     = request.args.get("after_run_id") or None
+
+    result = db.workflow_run.list_runs_for_workflow(
+        workflow_id,
+        owner_id,
+        limit=limit,
+        after_started_at=after_started_at,
+        after_run_id=after_run_id,
+    )
+    return jsonify(result)
+
+
+@fuse_bp.route("/runs/<run_id>", methods=["GET"])
+@require_auth
+def get_run(run_id):
+    """
+    GET /fuse/runs/:run_id
+    ───────────────────────
+    Return a single run document.
+    """
+    owner_id = request.user["uid"]
+    run = db.workflow_run.get_run(run_id, owner_id)
+    if run is None:
+        return jsonify({"error": "Run not found"}), 404
+    return jsonify(run)
+
+
+@fuse_bp.route("/runs/<run_id>/logs", methods=["GET"])
+@require_auth
+def get_run_logs(run_id):
+    """
+    GET /fuse/runs/:run_id/logs
+    ────────────────────────────
+    Return the per-node execution logs for a run, ordered by start time.
+
+    Query params:
+        limit            (int, default 25, max 100)
+        after_started_at (str ISO-8601)  \u2500 cursor from previous page
+        after_log_id     (str)           ┘
+    """
+    owner_id = request.user["uid"]
+
+    run = db.workflow_run.get_run(run_id, owner_id)
+    if run is None:
+        return jsonify({"error": "Run not found"}), 404
+
+    try:
+        limit = min(int(request.args.get("limit", 25)), 100)
+    except (ValueError, TypeError):
+        limit = 25
+
+    after_started_at = request.args.get("after_started_at") or None
+    after_log_id     = request.args.get("after_log_id") or None
+
+    result = db.workflow_run.list_logs_for_run(
+        run_id,
+        owner_id,
+        limit=limit,
+        after_started_at=after_started_at,
+        after_log_id=after_log_id,
+    )
+    return jsonify(result)
+
+
+# ─── Compiled graph versions ──────────────────────────────────────────────────
+
+@fuse_bp.route("/workflows/<workflow_id>/versions", methods=["GET"])
+@require_auth
+def list_workflow_versions(workflow_id):
+    """
+    GET /fuse/workflows/:id/versions
+    ──────────────────────────────────
+    Return all compiled graph versions for a workflow, newest first.
+    """
+    owner_id = request.user["uid"]
+
+    workflow = db.workflow.get(workflow_id, owner_id)
+    if workflow is None:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    versions = db.workflow_version.list_for_workflow(workflow_id, owner_id)
+    # Strip the compiled_graph dict from the list response to keep it lightweight;
+    # callers that need the full graph can fetch /versions/:version_id directly.
+    slim = [
+        {k: v for k, v in ver.items() if k != "compiled_graph"}
+        for ver in versions
+    ]
+    return jsonify(slim)
+
+
+@fuse_bp.route("/versions/<version_id>", methods=["GET"])
+@require_auth
+def get_version(version_id):
+    """
+    GET /fuse/versions/:version_id
+    ────────────────────────────────
+    Return a single compiled graph version (including the full compiled_graph).
+    """
+    owner_id = request.user["uid"]
+    version  = db.workflow_version.get(version_id)
+    if version is None:
+        return jsonify({"error": "Version not found"}), 404
+    if version.get("owner_id") != owner_id:
+        return jsonify({"error": "Version not found"}), 404
+    return jsonify(version)

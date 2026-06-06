@@ -453,15 +453,38 @@ class Workflow:
         doc_ref.set(data)
         return data
 
-    def list_for_owner(self, owner_id: str) -> list:
-        """Return all workflows owned by owner_id, newest first."""
-        docs = (
+    def list_for_owner(self, owner_id: str, limit: int = 20, after_created_at: str | None = None, after_id: str | None = None) -> dict:
+        """
+        Return workflows owned by owner_id, newest first.
+
+        Cursor pagination: pass after_created_at + after_id (values from the
+        last document of the previous page) to fetch the next page.
+
+        Returns:
+            { "items": [...], "next_cursor": { "after_created_at": ..., "after_id": ... } | None }
+        """
+        q = (
             self._col()
             .where("owner_id", "==", owner_id)
             .order_by("created_at", direction=firestore.Query.DESCENDING)
-            .stream()
         )
-        return [d.to_dict() for d in docs]
+
+        if after_created_at and after_id:
+            # Fetch the cursor document to use as the start_after reference
+            cursor_doc = self._col().document(after_id).get()
+            if cursor_doc.exists:
+                q = q.start_after(cursor_doc)
+
+        docs = list(q.limit(limit + 1).stream())
+        has_more = len(docs) > limit
+        items = [d.to_dict() for d in docs[:limit]]
+
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = {"after_created_at": last["created_at"], "after_id": last["id"]}
+
+        return {"items": items, "next_cursor": next_cursor}
 
     def get(self, workflow_id: str, owner_id: str):
         """Fetch a single workflow, returning None if not found or not owned."""
@@ -550,17 +573,360 @@ class Workflow:
         return True
 
 
+class WorkflowVersion:
+    """
+    Immutable compiled-graph versions for Fuse workflows.
+
+    Each call to activate_workflow compiles the graph and saves a new version
+    document here.  Version documents are NEVER deleted so that historical runs
+    can always be linked back to the exact graph that executed them.
+
+    Firestore layout
+    ----------------
+    fuse_versions/{version_id}
+        version_id    : str   — Firestore document ID
+        workflow_id   : str
+        owner_id      : str   — Firebase UID (for ownership checks / queries)
+        graph_hash    : str   — SHA-256 of the compiled graph
+        compiled_graph: dict  — full compiled graph dict
+        created_at    : ISO-8601 str
+    """
+
+    COLLECTION = "fuse_versions"
+
+    def __init__(self, client):
+        self.client = client
+
+    def _col(self):
+        return self.client.collection(self.COLLECTION)
+
+    def save(
+        self,
+        workflow_id: str,
+        owner_id: str,
+        graph_hash: str,
+        compiled_graph: dict,
+    ) -> dict:
+        """
+        Persist a new compiled graph version and return the saved document.
+
+        If an identical graph_hash already exists for this workflow, the
+        existing version document is returned without creating a duplicate.
+        """
+        # Deduplicate: if the same graph_hash already exists, reuse it.
+        existing = (
+            self._col()
+            .where("workflow_id", "==", workflow_id)
+            .where("graph_hash", "==", graph_hash)
+            .limit(1)
+            .stream()
+        )
+        for doc in existing:
+            return doc.to_dict()
+
+        now = datetime.utcnow().isoformat() + "Z"
+        doc_ref = self._col().document()
+        data = {
+            "version_id":     doc_ref.id,
+            "workflow_id":    workflow_id,
+            "owner_id":       owner_id,
+            "graph_hash":     graph_hash,
+            "compiled_graph": compiled_graph,
+            "created_at":     now,
+        }
+        doc_ref.set(data)
+        return data
+
+    def get(self, version_id: str) -> dict | None:
+        """Fetch a version document by ID."""
+        doc = self._col().document(version_id).get()
+        return doc.to_dict() if doc.exists else None
+
+    def list_for_workflow(self, workflow_id: str, owner_id: str) -> list[dict]:
+        """Return all versions for a workflow, newest first."""
+        docs = (
+            self._col()
+            .where("workflow_id", "==", workflow_id)
+            .where("owner_id", "==", owner_id)
+            .order_by("created_at", direction=firestore.Query.DESCENDING)
+            .stream()
+        )
+        return [d.to_dict() for d in docs]
+
+
+class WorkflowRun:
+    """
+    Execution run records and per-node logs for Fuse workflows.
+
+    Run documents and log documents are NEVER deleted — they serve as an
+    immutable audit trail and will be used for future pricing calculations.
+
+    Firestore layout
+    ----------------
+    fuse_runs/{run_id}                       ← one doc per trigger
+        run_id          : str
+        workflow_id     : str
+        owner_id        : str
+        version_id      : str | None         ← links to fuse_versions
+        trigger_type    : "webhook" | "schedule" | "manual"
+        status          : "running" | "success" | "failed"
+        started_at      : ISO-8601 str
+        finished_at     : ISO-8601 str | None
+        duration_ms     : int | None
+        trigger_data    : dict
+        node_count      : int
+        nodes_succeeded : int
+        nodes_failed    : int
+        error           : str | None         ← top-level error (before any node ran)
+
+    fuse_run_logs/{log_id}                   ← one doc per node execution
+        log_id          : str
+        run_id          : str
+        workflow_id     : str
+        owner_id        : str
+        node_id         : str
+        node_type       : str
+        node_label      : str
+        status          : "success" | "error" | "skipped"
+        started_at      : ISO-8601 str
+        finished_at     : ISO-8601 str
+        duration_ms     : int
+        output          : dict | None
+        error           : str | None         ← exception message (if status == "error")
+        error_type      : str | None         ← exception class name
+    """
+
+    RUNS_COLLECTION = "fuse_runs"
+    LOGS_COLLECTION = "fuse_run_logs"
+
+    def __init__(self, client):
+        self.client = client
+
+    def _runs(self):
+        return self.client.collection(self.RUNS_COLLECTION)
+
+    def _logs(self):
+        return self.client.collection(self.LOGS_COLLECTION)
+
+    # ── Run lifecycle ──────────────────────────────────────────────────────────
+
+    def create_run(
+        self,
+        run_id: str,
+        workflow_id: str,
+        owner_id: str,
+        version_id: str | None,
+        trigger_type: str,
+        trigger_data: dict,
+    ) -> dict:
+        """
+        Write a new run document with status='running'.
+        Returns the created document dict.
+        """
+        now = datetime.utcnow().isoformat() + "Z"
+        data = {
+            "run_id":          run_id,
+            "workflow_id":     workflow_id,
+            "owner_id":        owner_id,
+            "version_id":      version_id,
+            "trigger_type":    trigger_type,
+            "status":          "running",
+            "started_at":      now,
+            "finished_at":     None,
+            "duration_ms":     None,
+            "trigger_data":    trigger_data,
+            "node_count":      0,
+            "nodes_succeeded": 0,
+            "nodes_failed":    0,
+            "error":           None,
+        }
+        self._runs().document(run_id).set(data)
+        return data
+
+    def finish_run(
+        self,
+        run_id: str,
+        status: str,
+        node_count: int,
+        nodes_succeeded: int,
+        nodes_failed: int,
+        started_at: str,
+        error: str | None = None,
+    ) -> None:
+        """
+        Mark a run as finished.  Computes duration from started_at → now.
+        """
+        from datetime import timezone
+        now_dt = datetime.now(timezone.utc)
+        finished_at = now_dt.isoformat().replace("+00:00", "Z")
+
+        # Compute duration in milliseconds
+        try:
+            start_dt = datetime.fromisoformat(started_at.rstrip("Z")).replace(
+                tzinfo=timezone.utc
+            )
+            duration_ms = int((now_dt - start_dt).total_seconds() * 1000)
+        except Exception:
+            duration_ms = None
+
+        self._runs().document(run_id).update({
+            "status":          status,
+            "finished_at":     finished_at,
+            "duration_ms":     duration_ms,
+            "node_count":      node_count,
+            "nodes_succeeded": nodes_succeeded,
+            "nodes_failed":    nodes_failed,
+            "error":           error,
+        })
+
+    def write_node_log(
+        self,
+        run_id: str,
+        workflow_id: str,
+        owner_id: str,
+        node_id: str,
+        node_type: str,
+        node_label: str,
+        status: str,
+        started_at: str,
+        finished_at: str,
+        duration_ms: int,
+        output: dict | None = None,
+        error: str | None = None,
+        error_type: str | None = None,
+    ) -> str:
+        """
+        Write a node execution log document.  Returns the generated log_id.
+        """
+        doc_ref = self._logs().document()
+        data = {
+            "log_id":      doc_ref.id,
+            "run_id":      run_id,
+            "workflow_id": workflow_id,
+            "owner_id":    owner_id,
+            "node_id":     node_id,
+            "node_type":   node_type,
+            "node_label":  node_label,
+            "status":      status,
+            "started_at":  started_at,
+            "finished_at": finished_at,
+            "duration_ms": duration_ms,
+            "output":      output,
+            "error":       error,
+            "error_type":  error_type,
+        }
+        doc_ref.set(data)
+        return doc_ref.id
+
+    # ── Queries ────────────────────────────────────────────────────────────────
+
+    def list_runs_for_workflow(
+        self,
+        workflow_id: str,
+        owner_id: str,
+        limit: int = 20,
+        after_started_at: str | None = None,
+        after_run_id: str | None = None,
+    ) -> dict:
+        """
+        Return the most recent runs for a workflow, newest first.
+
+        Cursor pagination: pass after_started_at + after_run_id (values from
+        the last document of the previous page) to fetch the next page.
+
+        Returns:
+            { "items": [...], "next_cursor": { "after_started_at": ..., "after_run_id": ... } | None }
+        """
+        q = (
+            self._runs()
+            .where("workflow_id", "==", workflow_id)
+            .where("owner_id", "==", owner_id)
+            .order_by("started_at", direction=firestore.Query.DESCENDING)
+        )
+
+        if after_started_at and after_run_id:
+            cursor_doc = self._runs().document(after_run_id).get()
+            if cursor_doc.exists:
+                q = q.start_after(cursor_doc)
+
+        docs = list(q.limit(limit + 1).stream())
+        has_more = len(docs) > limit
+        items = [d.to_dict() for d in docs[:limit]]
+
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = {"after_started_at": last["started_at"], "after_run_id": last["run_id"]}
+
+        return {"items": items, "next_cursor": next_cursor}
+
+    def get_run(self, run_id: str, owner_id: str) -> dict | None:
+        """
+        Fetch a single run document.
+        Returns None if not found or the owner_id does not match.
+        """
+        doc = self._runs().document(run_id).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict()
+        if data.get("owner_id") != owner_id:
+            return None
+        return data
+
+    def list_logs_for_run(
+        self,
+        run_id: str,
+        owner_id: str,
+        limit: int = 25,
+        after_started_at: str | None = None,
+        after_log_id: str | None = None,
+    ) -> dict:
+        """
+        Return node execution logs for a run, ordered by started_at ascending.
+
+        Cursor pagination: pass after_started_at + after_log_id (values from
+        the last document of the previous page) to fetch the next page.
+
+        Returns:
+            { "items": [...], "next_cursor": { "after_started_at": ..., "after_log_id": ... } | None }
+        """
+        q = (
+            self._logs()
+            .where("run_id", "==", run_id)
+            .where("owner_id", "==", owner_id)
+            .order_by("started_at", direction=firestore.Query.ASCENDING)
+        )
+
+        if after_started_at and after_log_id:
+            cursor_doc = self._logs().document(after_log_id).get()
+            if cursor_doc.exists:
+                q = q.start_after(cursor_doc)
+
+        docs = list(q.limit(limit + 1).stream())
+        has_more = len(docs) > limit
+        items = [d.to_dict() for d in docs[:limit]]
+
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = {"after_started_at": last["started_at"], "after_log_id": last["log_id"]}
+
+        return {"items": items, "next_cursor": next_cursor}
+
+
 class DB:
     def __init__(self):
         cred = credentials.Certificate(json.loads(CONFIG.FIREBASE_CREDENTIALS))
         firebase_admin.initialize_app(cred)
         self.client = firestore.client()
 
-        self.chat = Chat(self.client)
-        self.user = User(self.client)
-        self.msg = Msg(self.client)
-        self.file = File(self.client)
+        self.chat     = Chat(self.client)
+        self.user     = User(self.client)
+        self.msg      = Msg(self.client)
+        self.file     = File(self.client)
         self.analytics = Analytics(self.client)
-        self.workflow = Workflow(self.client)
+        self.workflow  = Workflow(self.client)
+        self.workflow_version = WorkflowVersion(self.client)
+        self.workflow_run     = WorkflowRun(self.client)
 
 db = DB()
