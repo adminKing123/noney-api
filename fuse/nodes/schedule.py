@@ -125,7 +125,18 @@ def build_aps_trigger(config: dict):
     date_str = config.get("date", "today") or "today"
     time_str = config.get("time", "08:00") or "08:00"
     repeat   = (config.get("repeat") or "none").lower()
-    tz_name  = config.get("timezone", "UTC") or "UTC"
+    tz_name  = config.get("timezone") or None
+
+    # Fall back to the server's local timezone rather than UTC, so one-shot
+    # "in 5 minutes" presets (which the frontend resolves to local HH:MM) fire
+    # at the right time even if the client didn't persist the timezone field.
+    if not tz_name:
+        import time as _time
+        tz_name = _time.tzname[0] or "UTC"
+        logger.warning(
+            "[FUSE] No timezone in schedule config — falling back to server local '%s'.",
+            tz_name,
+        )
 
     timezone     = _get_timezone(tz_name)
     parsed_date  = _parse_date(date_str)
