@@ -58,6 +58,11 @@ class CONFIG:
 
     # ElevenLabs TTS
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+
+    # Web Push (VAPID) — generate with: python -c "from py_vapid import Vapid; v=Vapid(); v.generate_keys(); print(v.public_key_str, v.private_key_str)"
+    VAPID_PRIVATE_KEY  = os.getenv("VAPID_PRIVATE_KEY", "")
+    VAPID_PUBLIC_KEY   = os.getenv("VAPID_PUBLIC_KEY", "")
+    VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com")
     ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "")
 
     CRYPTOCOMPOSITEKEY = CryptoCompositeKey()

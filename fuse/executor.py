@@ -42,10 +42,11 @@ class ExecutionContext:
     node_outputs : Dict mapping node_id -> output dict produced by that node.
     """
 
-    __slots__ = ("workflow_id", "run_id", "triggered_at", "trigger_data", "node_outputs")
+    __slots__ = ("workflow_id", "owner_id", "run_id", "triggered_at", "trigger_data", "node_outputs")
 
-    def __init__(self, workflow_id: str, trigger_data: dict) -> None:
+    def __init__(self, workflow_id: str, owner_id: str, trigger_data: dict) -> None:
         self.workflow_id  = workflow_id
+        self.owner_id     = owner_id
         self.run_id       = str(uuid.uuid4())
         self.triggered_at = datetime.utcnow().isoformat() + "Z"
         self.trigger_data = trigger_data
@@ -77,7 +78,8 @@ def run_workflow(compiled_graph: dict, trigger_data: dict) -> ExecutionContext:
     from .nodes import HANDLERS  # noqa: PLC0415
 
     workflow_id = compiled_graph.get("workflow_id", "unknown")
-    ctx         = ExecutionContext(workflow_id, trigger_data)
+    owner_id    = compiled_graph.get("owner_id", "")
+    ctx         = ExecutionContext(workflow_id, owner_id, trigger_data)
 
     starter_id = compiled_graph["starter"]["node_id"]
     adjacency  = compiled_graph.get("adjacency", {})

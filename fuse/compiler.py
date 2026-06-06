@@ -109,6 +109,7 @@ def compile_workflow_graph(
     nodes: list,
     edges: list,
     workflow_id: str,
+    owner_id: str = "",
 ) -> tuple[dict | None, list[str]]:
     """
     Compile a React Flow graph into an execution plan.
@@ -229,6 +230,7 @@ def compile_workflow_graph(
     # ── 7. Build the compiled graph ───────────────────────────────────────────
     compiled_graph: dict[str, Any] = {
         "workflow_id":  workflow_id,
+        "owner_id":     owner_id,
         "compiled_at":  datetime.utcnow().isoformat() + "Z",
         "graph_hash":   compute_graph_hash(nodes, edges),
         "starter": {

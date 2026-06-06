@@ -7,10 +7,41 @@ from datetime import datetime
 class User:
     def __init__(self, client):
         self.client = client
-    
+
     def authenticate(self, token):
         decoded = auth.verify_id_token(token)
         return decoded
+
+    # ── Web Push subscription ─────────────────────────────────────────────────
+
+    def _push_col(self, uid: str):
+        """Firestore subcollection: users/{uid}/push_subscriptions"""
+        return self.client.collection("users").document(uid).collection("push_subscriptions")
+
+    def save_push_subscription(self, uid: str, subscription: dict) -> None:
+        """
+        Upsert the user's browser push subscription under a fixed document ID
+        derived from the subscription endpoint so duplicate registrations are
+        de-duped automatically.
+        """
+        import hashlib
+        endpoint = subscription.get("endpoint", "")
+        doc_id   = hashlib.sha256(endpoint.encode()).hexdigest()[:32]
+        self._push_col(uid).document(doc_id).set({
+            **subscription,
+            "uid":        uid,
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+        })
+
+    def get_push_subscriptions(self, uid: str) -> list[dict]:
+        """Return all stored push subscriptions for a user."""
+        return [d.to_dict() for d in self._push_col(uid).stream()]
+
+    def delete_push_subscription(self, uid: str, endpoint: str) -> None:
+        """Remove a subscription by its endpoint URL."""
+        import hashlib
+        doc_id = hashlib.sha256(endpoint.encode()).hexdigest()[:32]
+        self._push_col(uid).document(doc_id).delete()
 
 class MsgEntity:
     def __init__(self, data):

@@ -1,14 +1,18 @@
 """
 fuse/nodes/get_notified.py
 ==========================
-Push-notification action node handler (currently mocked).
+Web push notification action node handler.
 
-All ``variable_text`` / ``variable_textarea`` fields are resolved against the
-current execution context before logging.  When a real push-notification service
-is integrated (e.g. pywebpush), replace the TODO section below with the actual
-delivery call.
+Delivers a real browser push notification to every registered subscription
+of the workflow owner via pywebpush + VAPID.
+
+Requires:
+  - VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY, VAPID_CLAIMS_EMAIL set in CONFIG
+  - At least one push subscription stored under users/{owner_id}/push_subscriptions
+  - pywebpush installed (pip install pywebpush)
 """
 
+import json
 import logging
 
 from .base import NodeHandler
@@ -19,69 +23,123 @@ logger = logging.getLogger(__name__)
 
 class GetNotifiedHandler(NodeHandler):
     """
-    Send a push notification to the workflow owner.
+    Send a web push notification to the workflow owner.
 
-    **Currently mocked** — instead of delivering a real notification the
-    handler prints a formatted summary and logs at INFO level.  To enable real
-    delivery, implement the TODO section and add the necessary push-subscription
-    data to the user model.
-
-    Output: ``{"success": True, "sent": True, "title": str, "body": str}``
+    Output: ``{"success": bool, "sent": int, "failed": int, "title": str, "body": str}``
     """
 
     def execute(self, config: dict, context) -> dict:
         outputs = context.node_outputs
 
-        # ── Resolve all variable tokens in the notification fields ────────────
+        # ── Resolve variable tokens in all notification fields ────────────────
         title     = resolve_variables(config.get("title", ""),     outputs)
         body      = resolve_variables(config.get("body", ""),      outputs)
         icon_url  = resolve_variables(config.get("icon_url", ""),  outputs)
         image_url = resolve_variables(config.get("image_url", ""), outputs)
         click_url = resolve_variables(config.get("click_url", ""), outputs)
         cta_label = resolve_variables(config.get("cta_label", ""), outputs)
+        require_interaction = bool(config.get("require_interaction", False))
 
-        # ── TODO: replace this block with a real web-push delivery ───────────
-        #
-        #   Example (pywebpush):
-        #     from pywebpush import webpush, WebPushException
-        #     subscription = db.user.get_push_subscription(context.owner_id)
-        #     webpush(
-        #         subscription_info=subscription,
-        #         data=json.dumps({"title": title, "body": body, ...}),
-        #         vapid_private_key=CONFIG.VAPID_PRIVATE_KEY,
-        #         vapid_claims={"sub": "mailto:..."},
-        #     )
-        #
-        # ── MOCK: print + log ────────────────────────────────────────────────
-        separator = "=" * 60
-        print(
-            f"\n{separator}\n"
-            f"[FUSE] Push notification (MOCK) sent to user\n"
-            f"  Workflow  : {context.workflow_id}\n"
-            f"  Run       : {context.run_id}\n"
-            f"  Title     : {title}\n"
-            f"  Body      : {body}\n"
-            f"  Icon URL  : {icon_url or '—'}\n"
-            f"  Image URL : {image_url or '—'}\n"
-            f"  Click URL : {click_url or '—'}\n"
-            f"  CTA Label : {cta_label or '—'}\n"
-            f"{separator}\n"
-        )
         logger.info(
-            "[FUSE] get_notified (mock) — workflow=%s run=%s",
-            context.workflow_id, context.run_id,
+            "[FUSE] get_notified — workflow=%s run=%s owner=%s title=%r",
+            context.workflow_id, context.run_id, context.owner_id, title,
         )
-        logger.info("[FUSE]   title     = %r", title)
-        logger.info("[FUSE]   body      = %r", body)
-        logger.info("[FUSE]   icon_url  = %r", icon_url or None)
-        logger.info("[FUSE]   image_url = %r", image_url or None)
-        logger.info("[FUSE]   click_url = %r", click_url or None)
-        logger.info("[FUSE]   cta_label = %r", cta_label or None)
-        # ── END MOCK ──────────────────────────────────────────────────────────
+
+        # ── Guard: owner_id must be set ───────────────────────────────────────
+        if not context.owner_id:
+            logger.warning(
+                "[FUSE] get_notified: no owner_id on context — cannot deliver push."
+            )
+            return {"success": False, "sent": 0, "failed": 0,
+                    "title": title, "body": body, "error": "no owner_id"}
+
+        # ── Guard: VAPID must be configured ───────────────────────────────────
+        from config import CONFIG
+        if not CONFIG.VAPID_PRIVATE_KEY or not CONFIG.VAPID_PUBLIC_KEY:
+            logger.warning(
+                "[FUSE] get_notified: VAPID keys not configured — cannot deliver push."
+            )
+            return {"success": False, "sent": 0, "failed": 0,
+                    "title": title, "body": body, "error": "vapid_not_configured"}
+
+        # ── Load subscriptions ────────────────────────────────────────────────
+        from db import db
+        subscriptions = db.user.get_push_subscriptions(context.owner_id)
+        if not subscriptions:
+            logger.warning(
+                "[FUSE] get_notified: no push subscriptions for owner '%s'.",
+                context.owner_id,
+            )
+            return {"success": False, "sent": 0, "failed": 0,
+                    "title": title, "body": body, "error": "no_subscriptions"}
+
+        # ── Build the notification payload ────────────────────────────────────
+        payload = {
+            "title":               title,
+            "body":                body,
+            "requireInteraction":  require_interaction,
+        }
+        if icon_url:
+            payload["icon"] = icon_url
+        if image_url:
+            payload["image"] = image_url
+        if click_url:
+            payload["url"] = click_url
+        if cta_label:
+            payload["ctaLabel"] = cta_label
+
+        # ── Deliver to each subscription ──────────────────────────────────────
+        from pywebpush import webpush, WebPushException
+
+        vapid_claims = {"sub": CONFIG.VAPID_CLAIMS_EMAIL}
+        sent  = 0
+        failed = 0
+        stale_endpoints: list[str] = []
+
+        for sub in subscriptions:
+            endpoint = sub.get("endpoint", "")
+            try:
+                webpush(
+                    subscription_info={
+                        "endpoint": endpoint,
+                        "keys": sub.get("keys", {}),
+                    },
+                    data=json.dumps(payload),
+                    vapid_private_key=CONFIG.VAPID_PRIVATE_KEY,
+                    vapid_claims=vapid_claims,
+                )
+                sent += 1
+                logger.info(
+                    "[FUSE] get_notified: push sent to endpoint ...%s", endpoint[-30:]
+                )
+            except WebPushException as exc:
+                failed += 1
+                status = getattr(exc.response, "status_code", None)
+                logger.warning(
+                    "[FUSE] get_notified: push failed (status=%s) endpoint=...%s — %s",
+                    status, endpoint[-30:], exc,
+                )
+                # 410 Gone / 404 = subscription expired; clean it up
+                if status in (404, 410):
+                    stale_endpoints.append(endpoint)
+            except Exception as exc:
+                failed += 1
+                logger.exception(
+                    "[FUSE] get_notified: unexpected error for endpoint ...%s — %s",
+                    endpoint[-30:], exc,
+                )
+
+        # Remove expired subscriptions asynchronously
+        for ep in stale_endpoints:
+            try:
+                db.user.delete_push_subscription(context.owner_id, ep)
+            except Exception:
+                pass
 
         return {
-            "success": True,
-            "sent":    True,
+            "success": sent > 0,
+            "sent":    sent,
+            "failed":  failed,
             "title":   title,
             "body":    body,
         }
