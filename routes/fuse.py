@@ -491,6 +491,43 @@ ACTION_NODES = [
             ],
         },
     },
+    {
+        "type": "ai_structured_output",
+        "label": "AI Structured Output",
+        "icon": "TbSparkles",
+        "section": "AI",
+        "description": "Generate structured output from a prompt using AI. Define the expected JSON schema with descriptions for the AI to follow.",
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Prompt",
+                    "fields": [
+                        {
+                            "key": "prompt", 
+                            "label": "Prompt", 
+                            "type": "variable_textarea", 
+                            "placeholder": "Extract information from the provided text...", 
+                            "required": True,
+                            "hint": "Instructions for the AI. Use @ to insert variables."
+                        },
+                    ],
+                },
+                {
+                    "title": "Output Schema",
+                    "fields": [
+                        {
+                            "key": "output_schema", 
+                            "label": "JSON Schema", 
+                            "type": "body_builder", 
+                            "showDescription": True,
+                            "showEnum": True,
+                            "hint": "Define the structure and properties you expect the AI to return. Provide descriptions to help the AI understand the purpose of each field."
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 ]
 
 

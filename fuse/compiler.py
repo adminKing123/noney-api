@@ -28,6 +28,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "webhook":      [],
     "get_notified": ["title", "body"],
     "if_else":      ["condition"],
+    "ai_structured_output": ["prompt", "output_schema"],
 }
 
 

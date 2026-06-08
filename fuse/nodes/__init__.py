@@ -13,6 +13,7 @@ from .webhook      import WebhookHandler
 from .schedule     import ScheduleHandler
 from .if_else      import IfElseHandler
 from .get_notified import GetNotifiedHandler
+from .ai_structured_output import AIStructuredOutputHandler
 
 # Maps the node_type string (from compiled_graph["nodes"][id]["node_type"])
 # to the singleton handler that executes it.
@@ -21,4 +22,5 @@ HANDLERS: dict = {
     "schedule":     ScheduleHandler(),
     "if_else":      IfElseHandler(),
     "get_notified": GetNotifiedHandler(),
+    "ai_structured_output": AIStructuredOutputHandler(),
 }
