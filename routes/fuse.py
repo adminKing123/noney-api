@@ -473,7 +473,7 @@ ACTION_NODES = [
     },
     {
         "type": "if_else",
-        "label": "If / Else",
+        "label": "Check If",
         "icon": "TbGitBranch",
         "section": "Logic",
         "description": "Branch the workflow based on a condition. The True path runs when the condition passes; the False path runs otherwise.",
