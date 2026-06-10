@@ -9,18 +9,20 @@ To add a new node type:
   2. Import it here and add an entry to ``HANDLERS``.
 """
 
-from .webhook      import WebhookHandler
-from .schedule     import ScheduleHandler
-from .if_else      import IfElseHandler
-from .get_notified import GetNotifiedHandler
+from .webhook            import WebhookHandler
+from .schedule           import ScheduleHandler
+from .if_else            import IfElseHandler
+from .get_notified       import GetNotifiedHandler
 from .ai_structured_output import AIStructuredOutputHandler
+from .http_request       import HttpRequestHandler
 
 # Maps the node_type string (from compiled_graph["nodes"][id]["node_type"])
 # to the singleton handler that executes it.
 HANDLERS: dict = {
-    "webhook":      WebhookHandler(),
-    "schedule":     ScheduleHandler(),
-    "if_else":      IfElseHandler(),
-    "get_notified": GetNotifiedHandler(),
+    "webhook":              WebhookHandler(),
+    "schedule":             ScheduleHandler(),
+    "if_else":              IfElseHandler(),
+    "get_notified":         GetNotifiedHandler(),
     "ai_structured_output": AIStructuredOutputHandler(),
+    "http_request":         HttpRequestHandler(),
 }

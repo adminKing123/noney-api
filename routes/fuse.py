@@ -528,6 +528,93 @@ ACTION_NODES = [
             ],
         },
     },
+    {
+        "type": "http_request",
+        "label": "HTTP Request",
+        "icon": "TbWorldWww",
+        "section": "Network",
+        "description": "Make an outbound HTTP request to any URL. Map response fields to variables for use in downstream nodes.",
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Endpoint",
+                    "fields": [
+                        {
+                            "key": "method",
+                            "label": "Method",
+                            "type": "select",
+                            "options": [
+                                {"label": "GET",    "value": "GET"},
+                                {"label": "POST",   "value": "POST"},
+                                {"label": "PUT",    "value": "PUT"},
+                                {"label": "PATCH",  "value": "PATCH"},
+                                {"label": "DELETE", "value": "DELETE"},
+                            ],
+                        },
+                        {
+                            "key": "url",
+                            "label": "URL",
+                            "type": "variable_text",
+                            "placeholder": "https://api.example.com/endpoint",
+                            "required": True,
+                            "hint": "The full URL to request. Use @ to insert a variable.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Query Parameters",
+                    "fields": [
+                        {
+                            "key": "query_params",
+                            "label": "Parameters",
+                            "type": "json_value_builder",
+                            "hint": "Appended to the URL as ?key=value pairs. Use @ to insert variables into values.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Headers",
+                    "fields": [
+                        {
+                            "key": "headers",
+                            "label": "Headers",
+                            "type": "json_value_builder",
+                            "hint": "HTTP headers sent with the request (e.g. Authorization, Content-Type). Use @ to insert variables.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Request Body",
+                    "fields": [
+                        {
+                            "key": "payload",
+                            "label": "Body Fields",
+                            "type": "json_value_builder",
+                            "hint": "Define the JSON body to send (POST, PUT, PATCH). Set key, type and value for each field \u2014 use @ to insert variables.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Response",
+                    "fields": [
+                        {
+                            "key": "response_schema",
+                            "label": "Expected Response Fields",
+                            "type": "body_builder",
+                            "hint": "Declare the fields you expect in the JSON response. Each top-level field becomes a variable: {{node_id.fieldName}}.",
+                        },
+                        {
+                            "key": "timeout",
+                            "label": "Timeout (seconds)",
+                            "type": "number",
+                            "placeholder": "30",
+                            "hint": "Maximum seconds to wait for a response before the node fails.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 ]
 
 

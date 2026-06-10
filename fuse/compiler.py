@@ -29,6 +29,8 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "get_notified": ["title", "body"],
     "if_else":      ["condition"],
     "ai_structured_output": ["prompt", "output_schema"],
+    # url is the only hard-required field; method defaults to GET
+    "http_request": ["url"],
 }
 
 
