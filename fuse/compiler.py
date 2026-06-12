@@ -74,10 +74,24 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
     # Condition builder sanity check
     if node_type == "if_else":
         cond = config.get("condition") or {}
-        if not cond.get("variable"):
-            errors.append("Condition must have a variable selected.")
-        if not cond.get("operator"):
-            errors.append("Condition must have an operator selected.")
+
+        if "conditions" in cond:
+            # ── Compound format: { combinator, conditions: [...] } ────────────
+            sub_conditions = cond.get("conditions") or []
+            if not sub_conditions:
+                errors.append("Condition must have at least one condition row.")
+            else:
+                for idx, sub in enumerate(sub_conditions, start=1):
+                    if not (sub.get("variable") or "").strip():
+                        errors.append(f"Condition {idx}: must have a variable selected.")
+                    if not (sub.get("operator") or "").strip():
+                        errors.append(f"Condition {idx}: must have an operator selected.")
+        else:
+            # ── Legacy single-condition format ────────────────────────────────
+            if not cond.get("variable"):
+                errors.append("Condition must have a variable selected.")
+            if not cond.get("operator"):
+                errors.append("Condition must have an operator selected.")
 
     # Schedule: time must be parseable
     if node_type == "schedule":

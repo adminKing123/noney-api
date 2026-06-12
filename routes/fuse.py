@@ -484,7 +484,7 @@ ACTION_NODES = [
                     "fields": [
                         {
                             "key": "condition", "label": "Condition", "type": "condition_builder",
-                            "hint": "Select a variable, choose an operator, and (if needed) enter a comparison value. Connect the True and False handles on the node to route each branch.",
+                            "hint": "Add one or more conditions. Use the AND / OR toggle between rows to control how they combine. Connect the True and False handles on the node to route each branch.",
                         },
                     ],
                 },
