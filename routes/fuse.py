@@ -46,6 +46,24 @@ def list_workflows():
     )
     return jsonify(result)
 
+@fuse_bp.route("/discover", methods=["GET"])
+@require_auth
+def discover_workflows():
+    """
+    GET /fuse/discover
+    """
+    owner_id = request.user["uid"]
+
+    limit = 15
+
+    workflows = db.workflow.list_for_owner(
+        owner_id,
+        limit=limit,
+    )
+    return jsonify({
+        "workflows": workflows,
+    })
+
 
 @fuse_bp.route("/workflows", methods=["POST"])
 @require_auth
