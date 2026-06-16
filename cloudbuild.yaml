@@ -46,5 +46,5 @@ substitutions:
   _SERVICE_NAME: 'noney-api-prod'
   _REGION: 'asia-south1'
   _PROJ_ID: 'aura-hypen-497709'
-  _SERVICE_ACCOUNT: '446814703652-compute@developer.gserviceaccount.com'
+  _SERVICE_ACCOUNT: 'aura-service-account@aura-hypen-497709.iam.gserviceaccount.com'
   _SECRET_ID: 'noney-api-env'
