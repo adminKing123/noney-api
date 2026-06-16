@@ -34,12 +34,10 @@ steps:
                 - image: ${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest
                   ports:
                     - containerPort: 8080
-                  env:
-                    - name: PORT
-                      value: "8080"
                   volumeMounts:
                     - name: env-volume
-                      mountPath: /app
+                      mountPath: /app/.env
+                      subPath: .env
               volumes:
                 - name: env-volume
                   secret:
