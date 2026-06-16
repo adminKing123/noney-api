@@ -41,7 +41,7 @@ images:
   - '${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}'
 
 substitutions:
-  _REPO_REGION: asia-docker.pkg.dev
+  _REPO_REGION: asia-south1-docker.pkg.dev
   _REPO_NAME: 'aura'
   _SERVICE_NAME: 'noney-api-prod'
   _REGION: 'asia-south1'
