@@ -11,4 +11,4 @@ COPY . .
 ENV PYTHONPATH=/app
 ENV PORT=8080
 
-CMD exec gunicorn --bind :$PORT app:app
+CMD ["python", "app.py"]
