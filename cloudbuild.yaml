@@ -13,46 +13,29 @@ steps:
       - "push"
       - "${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest"
 
-  - id: "Create Cloud Run service YAML"
-    name: "gcr.io/cloud-builders/gcloud"
-    entrypoint: "bash"
-    args:
-      - "-c"
-      - |
-        cat > service.yaml <<EOF
-        apiVersion: serving.knative.dev/v1
-        kind: Service
-        metadata:
-          name: ${_SERVICE_NAME}
-        spec:
-          template:
-            spec:
-              serviceAccountName: ${_SERVICE_ACCOUNT}
-              containers:
-                - image: ${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest
-                  ports:
-                    - containerPort: 8080
-                  volumeMounts:
-                    - name: env-volume
-                      mountPath: /app/secrets
-              volumes:
-                - name: env-volume
-                  secret:
-                    secretName: ${_SECRET_ID}
-                    items:
-                      - key: latest
-                        path: .env
-        EOF
-
   - id: "Cloud Run deploy"
     name: "gcr.io/cloud-builders/gcloud"
     args:
       - "run"
-      - "services"
-      - "replace"
-      - "service.yaml"
+      - "deploy"
+      - "${_SERVICE_NAME}"
+      - "--image"
+      - "${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest"
       - "--region"
       - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--port"
+      - "8080"
+      - "--service-account"
+      - "${_SERVICE_ACCOUNT}"
+      - "--max-instances"
+      - "5"
+      - "--memory"
+      - "512Mi"
+      - "--cpu"
+      - "1"
 
 options:
   logging: CLOUD_LOGGING_ONLY
