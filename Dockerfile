@@ -11,4 +11,4 @@ COPY . .
 ENV PYTHONPATH=/app
 ENV PORT=8080
 
-CMD ["python", "app.py"]
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=8080"]
