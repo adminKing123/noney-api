@@ -26,6 +26,19 @@ class User:
         """
         import hashlib
         endpoint = subscription.get("endpoint", "")
+        if not endpoint:
+            return
+
+        # Remove this endpoint from any other user to prevent cross-account notifications
+        # if the device is shared or a user switches accounts.
+        try:
+            query = self.client.collection_group("push_subscriptions").where("endpoint", "==", endpoint)
+            for doc in query.stream():
+                if doc.to_dict().get("uid") != uid:
+                    doc.reference.delete()
+        except Exception:
+            pass
+
         doc_id   = hashlib.sha256(endpoint.encode()).hexdigest()[:32]
         self._push_col(uid).document(doc_id).set({
             **subscription,
