@@ -1,7 +1,6 @@
 steps:
   - id: 'Docker build'
     name: 'gcr.io/cloud-builders/docker'
-    dir: 'noney-api'
     args: ['build', '-t', '${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}', '.']
 
   - id: 'Container image push'
