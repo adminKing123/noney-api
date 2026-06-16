@@ -9,4 +9,4 @@ COPY . .
 
 ENV PORT=8080
 
-CMD ["sh", "-c", "pwd && ls -la / && ls -la /app && python /app/app.py"]
+CMD ["python", "/app/app.py"]
