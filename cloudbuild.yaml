@@ -1,26 +1,50 @@
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - build
-      - '-t'
-      - 'asia-south1-docker.pkg.dev/aura-hypen-497709/aura/noney-api:latest'
-      - '.'
+  - id: 'Docker build'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}', '.']
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - push
-      - 'asia-south1-docker.pkg.dev/aura-hypen-497709/aura/noney-api:latest'
+  - id: 'Container image push'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}']
 
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
+  - id: 'Cloud run deploy'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'gcloud'
     args:
-      - run
-      - deploy
-      - noney-api
-      - '--image=asia-south1-docker.pkg.dev/aura-hypen-497709/aura/noney-api:latest'
-      - '--region=asia-south1'
-      - '--platform=managed'
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - '${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}'
+      - '--port'
+      - '8080'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
       - '--allow-unauthenticated'
+      - '--service-account'
+      - '${_SERVICE_ACCOUNT}'
+      - '--max-instances'
+      - '5'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--set-secrets'
+      - '/app/.env=${_SECRET_ID}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
 
 images:
-  - 'asia-south1-docker.pkg.dev/aura-hypen-497709/aura/noney-api:latest'
+  - '${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}'
+
+substitutions:
+  _REPO_REGION: asia-docker.pkg.dev
+  _REPO_NAME: 'aura'
+  _SERVICE_NAME: 'noney-api-prod'
+  _REGION: 'asia-south1'
+  _PROJ_ID: 'aura-hypen-497709'
+  _SERVICE_ACCOUNT: '446814703652-compute@developer.gserviceaccount.com'
+  _SECRET_ID: 'noney-api-env'
