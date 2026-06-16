@@ -9,7 +9,7 @@ class User:
         self.client = client
 
     def authenticate(self, token):
-        decoded = auth.verify_id_token(token)
+        decoded = auth.verify_id_token(token, clock_skew_seconds=60)
         return decoded
 
     # ── Web Push subscription ─────────────────────────────────────────────────
