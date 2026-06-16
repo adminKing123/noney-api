@@ -50,7 +50,6 @@ def text_to_speech():
             mimetype="audio/mpeg",
             headers={
                 "Content-Disposition": "inline; filename=speech.mp3",
-                "Transfer-Encoding": "chunked",
             },
         )
 
