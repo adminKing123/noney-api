@@ -8,6 +8,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN pwd
+RUN ls -la
+RUN find .
+
 ENV PYTHONPATH=/app
 ENV PORT=8080
 
