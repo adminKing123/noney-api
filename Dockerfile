@@ -15,4 +15,4 @@ RUN find .
 ENV PYTHONPATH=/app
 ENV PORT=8080
 
-CMD exec gunicorn --bind :$PORT app:app
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--chdir", "/app", "app:app"]
