@@ -13,46 +13,49 @@ steps:
       - "push"
       - "${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest"
 
-  - id: "Create Cloud Run service YAML"
-    name: "gcr.io/cloud-builders/gcloud"
-    entrypoint: "bash"
-    args:
-      - "-c"
-      - |
-        cat > service.yaml <<EOF
-        apiVersion: serving.knative.dev/v1
-        kind: Service
-        metadata:
-          name: ${_SERVICE_NAME}
-        spec:
-          template:
-            spec:
-              serviceAccountName: ${_SERVICE_ACCOUNT}
-              containers:
-                - image: ${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest
-                  ports:
-                    - containerPort: 8080
-                  volumeMounts:
-                    - name: env-volume
-                      mountPath: /app/secrets
-              volumes:
-                - name: env-volume
-                  secret:
-                    secretName: ${_SECRET_ID}
-                    items:
-                      - key: latest
-                        path: .env
-        EOF
-
   - id: "Cloud Run deploy"
     name: "gcr.io/cloud-builders/gcloud"
     args:
       - "run"
-      - "services"
-      - "replace"
-      - "service.yaml"
+      - "deploy"
+      - "${_SERVICE_NAME}"
+      - "--image"
+      - "${_REPO_REGION}/${_PROJ_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest"
       - "--region"
       - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--port"
+      - "8080"
+      - "--service-account"
+      - "${_SERVICE_ACCOUNT}"
+      - "--max-instances"
+      - "5"
+      - "--memory"
+      - "512Mi"
+      - "--cpu"
+      - "1"
+      - "--set-secrets"
+      - >-
+        CDN_URL=CDN_URL:latest,
+        CRYPTO_NONCE_SIZE=CRYPTO_NONCE_SIZE:latest,
+        CRYPTO_SALT=CRYPTO_SALT:latest,
+        CRYPTO_SECRET_KEY=CRYPTO_SECRET_KEY:latest,
+        CRYPTO_SEPARATOR=CRYPTO_SEPARATOR:latest,
+        DEBUG=DEBUG:latest,
+        ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest,
+        ELEVENLABS_VOICE_ID=ELEVENLABS_VOICE_ID:latest,
+        FIREBASE_CREDENTIALS=FIREBASE_CREDENTIALS:latest,
+        GITHUB1_BRANCH_NAME=GITHUB1_BRANCH_NAME:latest,
+        GITHUB1_REPO_NAME=GITHUB1_REPO_NAME:latest,
+        GITHUB1_TOKEN=GITHUB1_TOKEN:latest,
+        GITHUB1_USERNAME=GITHUB1_USERNAME:latest,
+        GOOGLE_API_KEY=GOOGLE_API_KEY:latest,
+        HOST=HOST:latest,
+        VAPID_PUBLIC_KEY=VAPID_PUBLIC_KEY:latest,
+        VAPID_PRIVATE_KEY=VAPID_PRIVATE_KEY:latest,
+        VAPID_CLAIMS_EMAIL=VAPID_CLAIMS_EMAIL:latest
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -67,4 +70,3 @@ substitutions:
   _REGION: "asia-south1"
   _PROJ_ID: "aura-hypen-497709"
   _SERVICE_ACCOUNT: "aura-service-account@aura-hypen-497709.iam.gserviceaccount.com"
-  _SECRET_ID: "noney-api-env"
