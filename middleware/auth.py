@@ -1,7 +1,9 @@
+from functools import wraps
 from db import db
 from flask import request, jsonify
 
 def require_auth(f):
+    @wraps(f)  # ← CRITICAL: without this, multiple protected routes will conflict
     def wrapper(*args, **kwargs):
         auth_header = request.headers.get("Authorization", None)
         if not auth_header:
@@ -14,6 +16,4 @@ def require_auth(f):
             return jsonify({"error": "Invalid or expired token"}), 401
 
         return f(*args, **kwargs)
-
-    wrapper.__name__ = f.__name__
     return wrapper
