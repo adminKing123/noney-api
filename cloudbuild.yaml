@@ -24,8 +24,6 @@ steps:
         kind: Service
         metadata:
           name: ${_SERVICE_NAME}
-          annotations:
-            run.googleapis.com/launch-stage: BETA
         spec:
           template:
             spec:
@@ -36,8 +34,7 @@ steps:
                     - containerPort: 8080
                   volumeMounts:
                     - name: env-volume
-                      mountPath: /app/.env
-                      subPath: .env
+                      mountPath: /app/secrets
               volumes:
                 - name: env-volume
                   secret:
