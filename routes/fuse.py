@@ -650,6 +650,32 @@ def get_action_nodes():
     return jsonify(ACTION_NODES)
 
 
+# ─── Integrations ─────────────────────────────────────────────────────────────
+
+INTEGRATION_NODES = [
+    {
+        "id": "gmail",
+        "name": "Gmail Connect",
+        "description": "Connect your Gmail account to send and receive emails.",
+        "icon": "SiGmail",
+        "configured": False
+    },
+    {
+        "id": "webex",
+        "name": "Webex Connect",
+        "description": "Connect your Webex account to send messages and notifications.",
+        "icon": "SiWebex",
+        "configured": False
+    }
+]
+
+@fuse_bp.route("/integration", methods=["GET"])
+@require_auth
+def get_integrations():
+    """GET /fuse/integration — returns list of integration nodes and their config status."""
+    return jsonify(INTEGRATION_NODES)
+
+
 # ─── Web Push subscription management ────────────────────────────────────────
 
 @fuse_bp.route("/push/vapid-public-key", methods=["GET"])
