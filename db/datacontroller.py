@@ -982,6 +982,11 @@ class Integration:
             return None
         return doc.to_dict()
 
+    def get_all_integrations(self, user_id: str) -> dict:
+        """Fetch all of a user's integration documents."""
+        docs = self._col(user_id).stream()
+        return {doc.id: doc.to_dict() for doc in docs}
+
     def delete_integration(self, user_id: str, integration_id: str) -> bool:
         """Remove an integration configuration."""
         doc_ref = self._col(user_id).document(integration_id)
