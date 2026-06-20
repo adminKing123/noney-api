@@ -776,6 +776,23 @@ def gmail_oauth_callback():
     return redirect(f"{frontend_url}/fuse/integrations")
 
 
+@fuse_bp.route("/integration/<integration_id>", methods=["DELETE"])
+@require_auth
+def revoke_integration(integration_id):
+    """DELETE /fuse/integration/<id> — revokes an integration."""
+    user_id = request.user["uid"]
+    
+    # Actually delete from db
+    success = db.integration.delete_integration(user_id, integration_id)
+    if not success:
+        return jsonify({"error": "Integration not found or already removed"}), 404
+        
+    # If it's a google oauth integration, you could optionally call google's revoke endpoint here
+    # requests.post("https://oauth2.googleapis.com/revoke", params={"token": token})
+    
+    return jsonify({"success": True})
+
+
 # ─── Web Push subscription management ────────────────────────────────────────
 
 @fuse_bp.route("/push/vapid-public-key", methods=["GET"])
