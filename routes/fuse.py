@@ -1,7 +1,8 @@
-from datetime import datetime
+import requests
+import urllib.parse
+from datetime import datetime, timedelta
 
-from flask import Blueprint, request, jsonify
-
+from flask import Blueprint, request, jsonify, redirect
 from db import db
 from fuse.compiler import compile_workflow_graph
 from fuse.executor import run_workflow_async
@@ -673,7 +674,106 @@ INTEGRATION_NODES = [
 @require_auth
 def get_integrations():
     """GET /fuse/integration — returns list of integration nodes and their config status."""
-    return jsonify(INTEGRATION_NODES)
+    user_id = request.user["uid"]
+    
+    # Check configured status for each integration
+    configured_integrations = []
+    for integration in INTEGRATION_NODES:
+        db_integration = db.integration.get_integration(user_id, integration["id"])
+        
+        # Integration is considered configured if we have it in the DB and it's marked as configured
+        is_configured = False
+        if db_integration and db_integration.get("configured", False):
+            is_configured = True
+            
+        configured_integration = dict(integration)
+        configured_integration["configured"] = is_configured
+        configured_integrations.append(configured_integration)
+        
+    return jsonify(configured_integrations)
+
+# ─── Gmail OAuth ──────────────────────────────────────────────────────────────
+
+@fuse_bp.route("/integration/gmail/auth", methods=["GET"])
+@require_auth
+def gmail_oauth_start():
+    """GET /fuse/integration/gmail/auth — starts the Google OAuth flow."""
+    user_id = request.user["uid"]
+    
+    client_id = CONFIG.GOOGLE_OAUTH_CLIENT_ID
+    redirect_uri = CONFIG.GOOGLE_OAUTH_REDIRECT_URI
+    
+    if not client_id or not redirect_uri:
+        return jsonify({"error": "Google OAuth is not configured on the server."}), 503
+        
+    scopes = [
+        "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/gmail.readonly"
+    ]
+    
+    auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(scopes),
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": user_id  # Pass user_id to retrieve it in the callback
+    }
+    
+    url = f"{auth_url}?{urllib.parse.urlencode(params)}"
+    return jsonify({"auth_url": url})
+
+
+@fuse_bp.route("/integration/gmail/callback", methods=["GET"])
+def gmail_oauth_callback():
+    """GET /fuse/integration/gmail/callback — handles Google OAuth redirect."""
+    error = request.args.get("error")
+    if error:
+        return f"OAuth Error: {error}", 400
+        
+    code = request.args.get("code")
+    user_id = request.args.get("state")  # We passed user_id in the state param
+    
+    if not code or not user_id:
+        return "Missing code or state parameter", 400
+        
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        "code": code,
+        "client_id": CONFIG.GOOGLE_OAUTH_CLIENT_ID,
+        "client_secret": CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
+        "redirect_uri": CONFIG.GOOGLE_OAUTH_REDIRECT_URI,
+        "grant_type": "authorization_code"
+    }
+    
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        return f"Failed to get tokens: {response.text}", 400
+        
+    token_data = response.json()
+    
+    # Calculate expiry time
+    expires_in = token_data.get("expires_in", 3600)
+    expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat() + "Z"
+    
+    tokens = {
+        "access_token": token_data.get("access_token"),
+        "refresh_token": token_data.get("refresh_token"),
+        "expires_at": expires_at
+    }
+    
+    # Save tokens to database
+    db.integration.save_integration_tokens(user_id, "gmail", tokens)
+    
+    # Redirect back to the frontend integration page
+    # In a real app, you might want this to be configured via env var too
+    frontend_url = CONFIG.HOST.replace("api.", "").replace(":5000", ":3000")
+    if "localhost" in CONFIG.HOST:
+        frontend_url = "http://localhost:3000"
+        
+    return redirect(f"{frontend_url}/fuse/integrations")
 
 
 # ─── Web Push subscription management ────────────────────────────────────────

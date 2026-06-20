@@ -927,6 +927,70 @@ class WorkflowRun:
         return {"items": items, "next_cursor": next_cursor}
 
 
+class Integration:
+    """
+    CRUD operations for user integrations (like Gmail, Webex).
+
+    Firestore layout
+    ----------------
+    users/{user_id}/
+      integrations/
+        {integration_id}
+          integration_id : str
+          configured     : boolean
+          access_token   : str
+          refresh_token  : str
+          expires_at     : ISO-8601 str
+          updated_at     : ISO-8601 str
+    """
+
+    def __init__(self, client):
+        self.client = client
+
+    def _col(self, user_id: str):
+        return self.client.collection("users").document(user_id).collection("integrations")
+
+    def save_integration_tokens(self, user_id: str, integration_id: str, tokens: dict) -> dict:
+        """
+        Save or update integration tokens for a specific user.
+        """
+        now = datetime.utcnow().isoformat() + "Z"
+        doc_ref = self._col(user_id).document(integration_id)
+        
+        data = {
+            "integration_id": integration_id,
+            "configured": True,
+            "access_token": tokens.get("access_token"),
+            "refresh_token": tokens.get("refresh_token"),
+            "expires_at": tokens.get("expires_at"),
+            "updated_at": now,
+        }
+        
+        # If updating and a new refresh token wasn't provided, preserve the old one
+        if not data["refresh_token"]:
+            existing = doc_ref.get()
+            if existing.exists:
+                data["refresh_token"] = existing.to_dict().get("refresh_token")
+                
+        doc_ref.set(data, merge=True)
+        return data
+
+    def get_integration(self, user_id: str, integration_id: str) -> dict | None:
+        """Fetch integration details. Returns None if not configured."""
+        doc = self._col(user_id).document(integration_id).get()
+        if not doc.exists:
+            return None
+        return doc.to_dict()
+
+    def delete_integration(self, user_id: str, integration_id: str) -> bool:
+        """Remove an integration configuration."""
+        doc_ref = self._col(user_id).document(integration_id)
+        if not doc_ref.get().exists:
+            return False
+        doc_ref.delete()
+        return True
+
+
 class DB:
     def __init__(self):
         cred = credentials.Certificate(json.loads(CONFIG.FIREBASE_CREDENTIALS))
@@ -941,5 +1005,6 @@ class DB:
         self.workflow  = Workflow(self.client)
         self.workflow_version = WorkflowVersion(self.client)
         self.workflow_run     = WorkflowRun(self.client)
+        self.integration      = Integration(self.client)
 
 db = DB()
