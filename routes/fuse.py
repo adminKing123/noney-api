@@ -766,14 +766,8 @@ def gmail_oauth_callback():
     
     # Save tokens to database
     db.integration.save_integration_tokens(user_id, "gmail", tokens)
-    
-    # Redirect back to the frontend integration page
-    # In a real app, you might want this to be configured via env var too
-    frontend_url = CONFIG.HOST.replace("api.", "").replace(":5000", ":3000")
-    if "localhost" in CONFIG.HOST:
-        frontend_url = "http://localhost:3000"
         
-    return redirect(f"{frontend_url}/fuse/integrations")
+    return redirect(f"{CONFIG.FRONTEND_URL}/fuse/integrations")
 
 
 @fuse_bp.route("/integration/<integration_id>", methods=["DELETE"])

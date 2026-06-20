@@ -44,6 +44,7 @@ class CryptoCompositeKey:
 class CONFIG:
     PORT = int(os.getenv("PORT", "5000"))
     HOST = os.getenv("HOST", "https://noney-api.onrender.com")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "")
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
