@@ -1,4 +1,3 @@
-import requests
 import urllib.parse
 from datetime import datetime, timedelta
 
@@ -6,6 +5,8 @@ from flask import Blueprint, request, jsonify, redirect
 from middleware.auth import require_auth
 from db import db
 from config import CONFIG
+from utils.integrations.gmail_utils import refresh_gmail_access_token_if_expired
+import requests # Keep requests here for gmail_oauth_callback and people API
 
 bp = Blueprint("fuse_integrations", __name__)
 
@@ -70,7 +71,9 @@ def gmail_oauth_start():
         
     scopes = [
         "https://www.googleapis.com/auth/gmail.send",
-        "https://www.googleapis.com/auth/gmail.readonly"
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile"
     ]
     
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -130,6 +133,40 @@ def gmail_oauth_callback():
     db.integration.save_integration_tokens(user_id, "gmail", tokens)
         
     return redirect(f"{CONFIG.FRONTEND_URL}/fuse/integrations")
+
+
+@bp.route("/integration/gmail/info", methods=["GET"])
+@require_auth
+def gmail_integration_info():
+    """GET /fuse/integration/gmail/info — returns Gmail integration details."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "gmail")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Gmail integration not found or not configured."}), 404
+
+    integration = refresh_gmail_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Gmail access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Gmail access token not available."}), 500
+
+    # Fetch user's email from Google People API
+    user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        user_info_response = requests.get(user_info_url, headers=headers)
+        user_info_response.raise_for_status() # Raise an exception for HTTP errors
+        user_info = user_info_response.json()
+        integration["email"] = user_info.get("email")
+        integration["name"] = user_info.get("name")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching Gmail user info: {e}")
+        # Optionally handle token expiration specifically if the error indicates it
+        return jsonify({"error": f"Failed to retrieve Gmail user info: {str(e)}"}), 500
+
+    return jsonify(integration)
 
 
 @bp.route("/integration/<integration_id>", methods=["DELETE"])
