@@ -159,6 +159,25 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "send_gmail",
+        "label": "Send Gmail",
+        "icon": "SiGmail",
+        "section": "Notifications",
+        "description": "Send an email using your configured Gmail integration.",
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Email Details",
+                    "fields": [
+                        {"key": "to", "label": "To", "type": "variable_text", "placeholder": "recipient@example.com", "required": True, "hint": "Email address to send to. Use @ to insert a variable."},
+                        {"key": "subject", "label": "Subject", "type": "variable_text", "placeholder": "Email subject", "required": True, "hint": "Subject of the email. Use @ to insert a variable."},
+                        {"key": "body", "label": "Body", "type": "variable_textarea", "placeholder": "Email body content", "required": True, "hint": "Main body of the email. Use @ to insert a variable."},
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "if_else",
         "label": "Check If",
         "icon": "TbGitBranch",

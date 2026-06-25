@@ -15,6 +15,7 @@ from .if_else            import IfElseHandler
 from .get_notified       import GetNotifiedHandler
 from .ai_structured_output import AIStructuredOutputHandler
 from .http_request       import HttpRequestHandler
+from .send_gmail         import SendGmailHandler
 
 # Maps the node_type string (from compiled_graph["nodes"][id]["node_type"])
 # to the singleton handler that executes it.
@@ -25,4 +26,5 @@ HANDLERS: dict = {
     "get_notified":         GetNotifiedHandler(),
     "ai_structured_output": AIStructuredOutputHandler(),
     "http_request":         HttpRequestHandler(),
+    "send_gmail":           SendGmailHandler(),
 }
