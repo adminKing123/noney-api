@@ -36,7 +36,7 @@ steps:
       - "512Mi"
       - "--cpu"
       - "1"
-      - "--set-secrets"
+      - "--set-env-vars"
       - >-
         CDN_URL=https://noney-api-prod-446814703652.asia-south1.run.app,
         CRYPTO_NONCE_SIZE=12,
