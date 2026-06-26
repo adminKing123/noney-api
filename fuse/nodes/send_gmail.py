@@ -28,8 +28,11 @@ class SendGmailHandler(NodeHandler):
         outputs = context.node_outputs
         
         to_email = resolve_variables(config.get("to", ""), outputs)
+        cc_email = resolve_variables(config.get("cc", ""), outputs)
+        bcc_email = resolve_variables(config.get("bcc", ""), outputs)
         subject = resolve_variables(config.get("subject", ""), outputs)
         body = resolve_variables(config.get("body", ""), outputs)
+        sub_type = config.get("sub_type", "text/plain")
 
         if not to_email or not subject or not body:
             raise ValueError("Missing 'to', 'subject', or 'body' field.")
@@ -51,8 +54,13 @@ class SendGmailHandler(NodeHandler):
 
         # Create the email message
         message = EmailMessage()
-        message.set_content(body)
+        content_subtype = "html" if sub_type == "text/html" else "plain"
+        message.set_content(body, subtype=content_subtype)
         message["To"] = to_email
+        if cc_email:
+            message["Cc"] = cc_email
+        if bcc_email:
+            message["Bcc"] = bcc_email
         message["From"] = integration.get("email", "")  # Or let Gmail default it
         message["Subject"] = subject
 

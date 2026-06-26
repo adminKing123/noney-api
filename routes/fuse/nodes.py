@@ -171,7 +171,17 @@ ACTION_NODES = [
                     "title": "Email Details",
                     "fields": [
                         {"key": "to", "label": "To", "type": "variable_text", "placeholder": "recipient@example.com", "required": True, "hint": "Email address to send to. Use @ to insert a variable."},
+                        {"key": "cc", "label": "CC", "type": "variable_text", "placeholder": "cc@example.com", "hint": "Carbon copy. Use @ to insert a variable."},
+                        {"key": "bcc", "label": "BCC", "type": "variable_text", "placeholder": "bcc@example.com", "hint": "Blind carbon copy. Use @ to insert a variable."},
                         {"key": "subject", "label": "Subject", "type": "variable_text", "placeholder": "Email subject", "required": True, "hint": "Subject of the email. Use @ to insert a variable."},
+                        {
+                            "key": "sub_type", "label": "Content Type", "type": "select", "required": True,
+                            "options": [
+                                {"label": "Plain Text", "value": "text/plain"},
+                                {"label": "HTML", "value": "text/html"},
+                            ],
+                            "hint": "The format of the email body"
+                        },
                         {"key": "body", "label": "Body", "type": "variable_textarea", "placeholder": "Email body content", "required": True, "hint": "Main body of the email. Use @ to insert a variable."},
                     ],
                 },
