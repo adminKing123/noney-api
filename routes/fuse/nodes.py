@@ -295,7 +295,7 @@ ACTION_NODES = [
                         {
                             "key": "headers",
                             "label": "Headers",
-                            "type": "key_value_builder",
+                            "type": "json_value_builder",
                             "hint": "HTTP headers sent with the request (e.g. Authorization, Content-Type). Use @ to insert variables.",
                         },
                     ],

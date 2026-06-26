@@ -62,17 +62,28 @@ _DEFAULT_TIMEOUT = 30.0
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
+def _resolve_element_value(element: dict, node_outputs: dict) -> Any:
+    ftype = element.get("type", "string")
+    if ftype == "object":
+        return _build_json_from_value_fields(element.get("fields", []), node_outputs)
+    elif ftype == "array":
+        return [_resolve_element_value(e, node_outputs) for e in element.get("elements", [])]
+    else:
+        raw = element.get("value") or ""
+        resolved = resolve_variables(raw, node_outputs)
+        if ftype == "number":
+            try:
+                return float(resolved) if "." in resolved else int(resolved)
+            except (ValueError, TypeError):
+                return resolved
+        elif ftype == "boolean":
+            return resolved.lower() not in ("false", "0", "no", "")
+        return resolved
+
 def _build_json_from_value_fields(fields: list, node_outputs: dict) -> dict:
     """
     Recursively convert JsonValueBuilderField data into a real Python dict with
     all ``{{variable}}`` tokens resolved in every value.
-
-    FieldNode types are coerced as follows:
-      string  → str   (resolved as-is)
-      number  → int | float  (resolved then cast; stays str on failure)
-      boolean → bool  (truthy unless value is "false" / "0" / "no" / "")
-      array   → list  (JSON-parsed, or single-element list as fallback)
-      object  → nested dict (recurse into field.fields)
     """
     result: dict = {}
     for field in (fields or []):
@@ -85,6 +96,18 @@ def _build_json_from_value_fields(fields: list, node_outputs: dict) -> dict:
             result[key] = _build_json_from_value_fields(
                 field.get("fields", []), node_outputs
             )
+        elif ftype == "array":
+            # If visual elements exist, use them, otherwise fallback to parsing string
+            if "elements" in field:
+                result[key] = [_resolve_element_value(e, node_outputs) for e in field["elements"]]
+            else:
+                raw = field.get("value") or ""
+                resolved = resolve_variables(raw, node_outputs)
+                try:
+                    parsed = _json.loads(resolved)
+                    result[key] = parsed if isinstance(parsed, list) else [parsed]
+                except Exception:
+                    result[key] = [resolved] if resolved else []
         else:
             raw      = field.get("value") or ""
             resolved = resolve_variables(raw, node_outputs)
@@ -98,12 +121,6 @@ def _build_json_from_value_fields(fields: list, node_outputs: dict) -> dict:
                     result[key] = resolved
             elif ftype == "boolean":
                 result[key] = resolved.lower() not in ("false", "0", "no", "")
-            elif ftype == "array":
-                try:
-                    parsed = _json.loads(resolved)
-                    result[key] = parsed if isinstance(parsed, list) else [parsed]
-                except Exception:
-                    result[key] = [resolved] if resolved else []
             else:  # string (default)
                 result[key] = resolved
 
