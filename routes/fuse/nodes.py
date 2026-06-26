@@ -284,7 +284,7 @@ ACTION_NODES = [
                         {
                             "key": "query_params",
                             "label": "Parameters",
-                            "type": "json_value_builder",
+                            "type": "key_value_builder",
                             "hint": "Appended to the URL as ?key=value pairs. Use @ to insert variables into values.",
                         },
                     ],
@@ -295,7 +295,7 @@ ACTION_NODES = [
                         {
                             "key": "headers",
                             "label": "Headers",
-                            "type": "json_value_builder",
+                            "type": "key_value_builder",
                             "hint": "HTTP headers sent with the request (e.g. Authorization, Content-Type). Use @ to insert variables.",
                         },
                     ],
