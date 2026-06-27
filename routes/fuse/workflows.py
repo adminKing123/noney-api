@@ -3,6 +3,7 @@ from middleware.auth import require_auth
 from db import db
 from fuse.compiler import compile_workflow_graph
 from fuse.runtime import runtime
+from fuse.workflow_generator import generate_workflow_from_prompt
 from config import CONFIG
 from fuse.executor import run_workflow_async
 from fuse.nodes.webhook import verify_webhook_request
@@ -70,6 +71,45 @@ def create_workflow():
     name = (request.json or {}).get("name", "Untitled Workflow").strip() or "Untitled Workflow"
     workflow = db.workflow.create(owner_id=owner_id, name=name)
     return jsonify(workflow), 201
+
+
+@bp.route("/workflows/generate", methods=["POST"])
+@require_auth
+def generate_workflow():
+    """
+    POST /fuse/workflows/generate
+    ─────────────────────────────
+    Create a workflow from a natural-language prompt using AI.
+
+    Body: { "prompt": "Send me a notification every Monday at 8am" }
+
+    Response (201): full workflow document with generated nodes/edges.
+    Response (400): { "success": false, "errors": [...] }
+    """
+    owner_id = request.user["uid"]
+    prompt = ((request.json or {}).get("prompt") or "").strip()
+
+    if not prompt:
+        return jsonify({"error": "prompt is required"}), 400
+
+    user_integrations = db.integration.get_all_integrations(owner_id)
+    result = generate_workflow_from_prompt(
+        prompt,
+        user_integrations,
+        owner_id=owner_id,
+    )
+
+    if not result.get("success"):
+        return jsonify({"success": False, "errors": result.get("errors") or []}), 400
+
+    workflow = db.workflow.create(owner_id=owner_id, name=result["name"])
+    updated = db.workflow.update_graph(
+        workflow["id"],
+        owner_id,
+        result["nodes"],
+        result["edges"],
+    )
+    return jsonify(updated), 201
 
 
 @bp.route("/workflows/<workflow_id>", methods=["GET"])
