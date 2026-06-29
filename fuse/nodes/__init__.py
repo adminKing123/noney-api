@@ -14,6 +14,7 @@ from .schedule           import ScheduleHandler
 from .if_else            import IfElseHandler
 from .get_notified       import GetNotifiedHandler
 from .ai_structured_output import AIStructuredOutputHandler
+from .ai_web_search        import AIWebSearchHandler
 from .http_request       import HttpRequestHandler
 from .send_gmail         import SendGmailHandler
 
@@ -25,6 +26,7 @@ HANDLERS: dict = {
     "if_else":              IfElseHandler(),
     "get_notified":         GetNotifiedHandler(),
     "ai_structured_output": AIStructuredOutputHandler(),
+    "ai_web_search":        AIWebSearchHandler(),
     "http_request":         HttpRequestHandler(),
     "send_gmail":           SendGmailHandler(),
 }
