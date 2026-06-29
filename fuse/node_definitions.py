@@ -253,6 +253,43 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "ai_web_search",
+        "label": "AI Web Search",
+        "icon": "HiOutlineGlobeAlt",
+        "section": "AI",
+        "description": "Search the web with AI from a prompt and return structured fields you define. Use {{node_id.result.fieldName}} in downstream nodes.",
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Search Prompt",
+                    "fields": [
+                        {
+                            "key": "prompt",
+                            "label": "Prompt",
+                            "type": "variable_textarea",
+                            "placeholder": "What are the latest trends in renewable energy?",
+                            "required": True,
+                            "hint": "What the AI should search for. Use @ to insert variables.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Output Schema",
+                    "fields": [
+                        {
+                            "key": "output_schema",
+                            "label": "JSON Schema",
+                            "type": "body_builder",
+                            "showDescription": True,
+                            "showEnum": True,
+                            "hint": "Define the structure and properties you expect the AI to return from web search. Provide descriptions to help the AI understand each field.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "http_request",
         "label": "HTTP Request",
         "icon": "TbWorldWww",
