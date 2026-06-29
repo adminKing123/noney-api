@@ -70,6 +70,16 @@ class CONFIG:
     GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
     GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:5000/fuse/integration/gmail/callback")
 
+    WEBEX_OAUTH_CLIENT_ID = os.getenv("WEBEX_OAUTH_CLIENT_ID", "")
+    WEBEX_OAUTH_CLIENT_SECRET = os.getenv("WEBEX_OAUTH_CLIENT_SECRET", "")
+    WEBEX_OAUTH_REDIRECT_URI = os.getenv("WEBEX_OAUTH_REDIRECT_URI", "http://localhost:5000/fuse/integration/webex/callback")
+    # Space-separated scopes — must exactly match scopes enabled on your Webex integration.
+    WEBEX_OAUTH_SCOPES = os.getenv(
+        "WEBEX_OAUTH_SCOPES",
+        "spark:messages_write spark:messages_read spark:people_read",
+    )
+    WEBEX_API_BASE = os.getenv("WEBEX_API_BASE", "https://webexapis.com/v1")
+
     CRYPTOCOMPOSITEKEY = CryptoCompositeKey()
 
     MODELS = Models()

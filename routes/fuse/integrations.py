@@ -6,7 +6,8 @@ from middleware.auth import require_auth
 from db import db
 from config import CONFIG
 from utils.integrations.gmail_utils import refresh_gmail_access_token_if_expired
-import requests # Keep requests here for gmail_oauth_callback and people API
+from utils.integrations.webex_utils import refresh_webex_access_token_if_expired
+import requests # Keep requests here for OAuth callbacks and user info APIs
 
 bp = Blueprint("fuse_integrations", __name__)
 
@@ -165,6 +166,120 @@ def gmail_integration_info():
         print(f"Error fetching Gmail user info: {e}")
         # Optionally handle token expiration specifically if the error indicates it
         return jsonify({"error": f"Failed to retrieve Gmail user info: {str(e)}"}), 500
+
+    return jsonify(integration)
+
+
+# ─── Webex OAuth ──────────────────────────────────────────────────────────────
+
+@bp.route("/integration/webex/auth", methods=["GET"])
+@require_auth
+def webex_oauth_start():
+    """GET /fuse/integration/webex/auth — starts the Webex OAuth flow."""
+    user_id = request.user["uid"]
+
+    client_id = CONFIG.WEBEX_OAUTH_CLIENT_ID
+    redirect_uri = CONFIG.WEBEX_OAUTH_REDIRECT_URI
+
+    if not client_id or not redirect_uri:
+        return jsonify({"error": "Webex OAuth is not configured on the server."}), 503
+
+    scopes = [s for s in CONFIG.WEBEX_OAUTH_SCOPES.split() if s]
+    if not scopes:
+        return jsonify({"error": "Webex OAuth scopes are not configured on the server."}), 503
+
+    auth_url = "https://webexapis.com/v1/authorize"
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(scopes),
+        "state": user_id,
+    }
+
+    url = f"{auth_url}?{urllib.parse.urlencode(params)}"
+    return jsonify({"auth_url": url})
+
+
+@bp.route("/integration/webex/callback", methods=["GET"])
+def webex_oauth_callback():
+    """GET /fuse/integration/webex/callback — handles Webex OAuth redirect."""
+    error = request.args.get("error")
+    if error:
+        return f"OAuth Error: {error}", 400
+
+    code = request.args.get("code")
+    user_id = request.args.get("state")
+
+    if not code or not user_id:
+        return "Missing code or state parameter", 400
+
+    token_url = "https://webexapis.com/v1/access_token"
+    data = {
+        "code": code,
+        "client_id": CONFIG.WEBEX_OAUTH_CLIENT_ID,
+        "client_secret": CONFIG.WEBEX_OAUTH_CLIENT_SECRET,
+        "redirect_uri": CONFIG.WEBEX_OAUTH_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        return f"Failed to get tokens: {response.text}", 400
+
+    token_data = response.json()
+
+    expires_in = token_data.get("expires_in", 1209600)
+    expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat() + "Z"
+
+    tokens = {
+        "access_token": token_data.get("access_token"),
+        "refresh_token": token_data.get("refresh_token"),
+        "expires_at": expires_at,
+    }
+
+    refresh_token_expires_in = token_data.get("refresh_token_expires_in")
+    if refresh_token_expires_in:
+        tokens["refresh_token_expires_at"] = (
+            datetime.utcnow() + timedelta(seconds=refresh_token_expires_in)
+        ).isoformat() + "Z"
+
+    db.integration.save_integration_tokens(user_id, "webex", tokens)
+
+    return redirect(f"{CONFIG.FRONTEND_URL}/fuse/integrations")
+
+
+@bp.route("/integration/webex/info", methods=["GET"])
+@require_auth
+def webex_integration_info():
+    """GET /fuse/integration/webex/info — returns Webex integration details."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "webex")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Webex integration not found or not configured."}), 404
+
+    integration = refresh_webex_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Webex access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Webex access token not available."}), 500
+
+    user_info_url = f"{CONFIG.WEBEX_API_BASE}/people/me"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        user_info_response = requests.get(user_info_url, headers=headers)
+        user_info_response.raise_for_status()
+        user_info = user_info_response.json()
+        integration["name"] = user_info.get("displayName")
+        emails = user_info.get("emails") or []
+        if emails:
+            integration["email"] = emails[0] if len(emails) == 1 else ", ".join(emails)
+        integration["person_id"] = user_info.get("id")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching Webex user info: {e}")
+        return jsonify({"error": f"Failed to retrieve Webex user info: {str(e)}"}), 500
 
     return jsonify(integration)
 

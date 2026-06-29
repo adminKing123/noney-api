@@ -965,6 +965,9 @@ class Integration:
             "expires_at": tokens.get("expires_at"),
             "updated_at": now,
         }
+
+        if tokens.get("refresh_token_expires_at"):
+            data["refresh_token_expires_at"] = tokens.get("refresh_token_expires_at")
         
         # If updating and a new refresh token wasn't provided, preserve the old one
         if not data["refresh_token"]:
