@@ -23,5 +23,5 @@ VAPID_PUBLIC_KEY: BC9kDj5pARXhGH455olGU1eQEdvNLWnhpFUNDOl2E43n1oW1_2LbcXPmEBE7eP
 
 WEBEX_OAUTH_CLIENT_ID: Cda0cbc761f0bd5b55f1e82979c602f078c7b575d601d11fd0a3f91452a9f72b3
 WEBEX_OAUTH_CLIENT_SECRET: 2595e451ec06ebfb1749880edd5a8f0950fd42d9171584ff4f4c5441f7af8baf
-WEBEX_OAUTH_REDIRECT_URI: http://localhost:8000/fuse/integration/webex/callback
+WEBEX_OAUTH_REDIRECT_URI: https://noney-api-prod-446814703652.asia-south1.run.app/fuse/integration/webex/callback
 WEBEX_OAUTH_SCOPES: 'spark:messages_write spark:messages_read spark:people_read'
