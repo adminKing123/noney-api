@@ -38,7 +38,6 @@ _SCHEMA_KEYS_BY_NODE_TYPE = {
     "webhook":              "body_schema",
     "http_request":         "response_schema",
     "ai_structured_output": "output_schema",
-    "ai_web_search":        "output_schema",
 }
 
 
