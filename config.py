@@ -68,7 +68,11 @@ class CONFIG:
 
     GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
     GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
-    GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:5000/fuse/integration/gmail/callback")
+    GOOGLE_MAIL_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_MAIL_OAUTH_REDIRECT_URI", "http://localhost:5000/fuse/integration/gmail/callback")
+    GOOGLE_SHEETS_OAUTH_REDIRECT_URI = os.getenv(
+        "GOOGLE_SHEETS_OAUTH_REDIRECT_URI",
+        "http://localhost:5000/fuse/integration/google_sheets/callback",
+    )
 
     WEBEX_OAUTH_CLIENT_ID = os.getenv("WEBEX_OAUTH_CLIENT_ID", "")
     WEBEX_OAUTH_CLIENT_SECRET = os.getenv("WEBEX_OAUTH_CLIENT_SECRET", "")

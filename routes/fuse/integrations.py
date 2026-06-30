@@ -7,6 +7,7 @@ from db import db
 from config import CONFIG
 from utils.integrations.gmail_utils import refresh_gmail_access_token_if_expired
 from utils.integrations.webex_utils import refresh_webex_access_token_if_expired
+from utils.integrations.google_sheets_utils import refresh_google_sheets_access_token_if_expired
 import requests # Keep requests here for OAuth callbacks and user info APIs
 
 bp = Blueprint("fuse_integrations", __name__)
@@ -26,6 +27,13 @@ INTEGRATION_NODES = [
         "name": "Webex Connect",
         "description": "Connect your Webex account to send messages and notifications.",
         "icon": "SiWebex",
+        "configured": False
+    },
+    {
+        "id": "google_sheets",
+        "name": "Google Sheets Connect",
+        "description": "Connect your Google account to read and write spreadsheets.",
+        "icon": "SiGooglesheets",
         "configured": False
     }
 ]
@@ -65,7 +73,7 @@ def gmail_oauth_start():
     user_id = request.user["uid"]
     
     client_id = CONFIG.GOOGLE_OAUTH_CLIENT_ID
-    redirect_uri = CONFIG.GOOGLE_OAUTH_REDIRECT_URI
+    redirect_uri = CONFIG.GOOGLE_MAIL_OAUTH_REDIRECT_URI
     
     if not client_id or not redirect_uri:
         return jsonify({"error": "Google OAuth is not configured on the server."}), 503
@@ -110,7 +118,7 @@ def gmail_oauth_callback():
         "code": code,
         "client_id": CONFIG.GOOGLE_OAUTH_CLIENT_ID,
         "client_secret": CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
-        "redirect_uri": CONFIG.GOOGLE_OAUTH_REDIRECT_URI,
+        "redirect_uri": CONFIG.GOOGLE_MAIL_OAUTH_REDIRECT_URI,
         "grant_type": "authorization_code"
     }
     
@@ -280,6 +288,118 @@ def webex_integration_info():
     except requests.exceptions.RequestException as e:
         print(f"Error fetching Webex user info: {e}")
         return jsonify({"error": f"Failed to retrieve Webex user info: {str(e)}"}), 500
+
+    return jsonify(integration)
+
+
+# ─── Google Sheets OAuth ──────────────────────────────────────────────────────
+
+@bp.route("/integration/google_sheets/auth", methods=["GET"])
+@require_auth
+def google_sheets_oauth_start():
+    """GET /fuse/integration/google_sheets/auth — starts the Google Sheets OAuth flow."""
+    user_id = request.user["uid"]
+
+    client_id = CONFIG.GOOGLE_OAUTH_CLIENT_ID
+    redirect_uri = CONFIG.GOOGLE_SHEETS_OAUTH_REDIRECT_URI
+
+    print(f"Starting Google Sheets OAuth for user {user_id} with client_id {client_id} and redirect_uri {redirect_uri}")
+
+    if not client_id or not redirect_uri:
+        return jsonify({"error": "Google Sheets OAuth is not configured on the server."}), 503
+
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+    ]
+
+    auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(scopes),
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": user_id,
+    }
+
+    url = f"{auth_url}?{urllib.parse.urlencode(params)}"
+    return jsonify({"auth_url": url})
+
+
+@bp.route("/integration/google_sheets/callback", methods=["GET"])
+def google_sheets_oauth_callback():
+    """GET /fuse/integration/google_sheets/callback — handles Google OAuth redirect."""
+    error = request.args.get("error")
+    if error:
+        return f"OAuth Error: {error}", 400
+
+    code = request.args.get("code")
+    user_id = request.args.get("state")
+
+    if not code or not user_id:
+        return "Missing code or state parameter", 400
+
+    token_url = "https://oauth2.googleapis.com/token"
+
+    data = {
+        "code": code,
+        "client_id": CONFIG.GOOGLE_OAUTH_CLIENT_ID,
+        "client_secret": CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
+        "redirect_uri": CONFIG.GOOGLE_SHEETS_OAUTH_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        return f"Failed to get tokens: {response.text}", 400
+
+    token_data = response.json()
+
+    expires_in = token_data.get("expires_in", 3600)
+    expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat() + "Z"
+
+    tokens = {
+        "access_token": token_data.get("access_token"),
+        "refresh_token": token_data.get("refresh_token"),
+        "expires_at": expires_at,
+    }
+
+    db.integration.save_integration_tokens(user_id, "google_sheets", tokens)
+
+    return redirect(f"{CONFIG.FRONTEND_URL}/fuse/integrations")
+
+
+@bp.route("/integration/google_sheets/info", methods=["GET"])
+@require_auth
+def google_sheets_integration_info():
+    """GET /fuse/integration/google_sheets/info — returns Google Sheets integration details."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "google_sheets")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Google Sheets integration not found or not configured."}), 404
+
+    integration = refresh_google_sheets_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Google Sheets access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Google Sheets access token not available."}), 500
+
+    user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        user_info_response = requests.get(user_info_url, headers=headers)
+        user_info_response.raise_for_status()
+        user_info = user_info_response.json()
+        integration["email"] = user_info.get("email")
+        integration["name"] = user_info.get("name")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching Google Sheets user info: {e}")
+        return jsonify({"error": f"Failed to retrieve Google Sheets user info: {str(e)}"}), 500
 
     return jsonify(integration)
 
