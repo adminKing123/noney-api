@@ -15,7 +15,9 @@ GITHUB1_USERNAME: experimental-core
 GOOGLE_API_KEY: AIzaSyDyBrmnaq33cVFVbG6l8Y_XsoGL0EawoWk
 GOOGLE_OAUTH_CLIENT_ID: 446814703652-kprkhgu70qn6qu8u91ougloaf99ira8c.apps.googleusercontent.com
 GOOGLE_OAUTH_CLIENT_SECRET: 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
-GOOGLE_OAUTH_REDIRECT_URI: https://noney-api-prod-446814703652.asia-south1.run.app/fuse/integration/gmail/callback
+GOOGLE_MAIL_OAUTH_REDIRECT_URI: https://noney-api-prod-446814703652.asia-south1.run.app/fuse/integration/gmail/callback
+GOOGLE_SHEETS_OAUTH_REDIRECT_URI: https://noney-api-prod-446814703652.asia-south1.run.app/fuse/integration/google_sheets/callback
+
 HOST: https://noney-api-prod-446814703652.asia-south1.run.app
 VAPID_CLAIMS_EMAIL: mailto:harshverma790932611@gmail.com
 VAPID_PRIVATE_KEY: dYYmtIKigwe3MorX8ugUgCospiVpChv_9aX44yuQEEI
