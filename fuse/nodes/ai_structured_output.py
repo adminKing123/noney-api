@@ -1,29 +1,29 @@
 """
 fuse/nodes/ai_structured_output.py
 ==================================
-Node handler for generating structured AI output.
+Node handler for generating structured AI output with optional web search.
 """
 
 from typing import Any, Dict, List, Type, Literal
+
 from pydantic import create_model, Field, BaseModel
+
 from fuse.nodes.base import NodeHandler
+from fuse.nodes.ai_helpers import create_gemini_model, is_web_search_enabled
 from fuse.variable_resolver import resolve_variables
-from ai.google_text.google_text_ai import GeminiTextAI
-from config import CONFIG
+
 
 def _build_pydantic_model(model_name: str, fields: List[Dict[str, Any]]) -> Type[BaseModel]:
-    """
-    Recursively build a Pydantic model from the visual schema builder fields.
-    """
+    """Recursively build a Pydantic model from the visual schema builder fields."""
     annotations = {}
     for field in fields:
         field_key = field.get("key")
         if not field_key:
             continue
-            
+
         field_type = field.get("type", "string")
         description = field.get("description", "")
-        
+
         if field_type == "string":
             enum_str = field.get("enum", "")
             if enum_str:
@@ -58,7 +58,7 @@ def _build_pydantic_model(model_name: str, fields: List[Dict[str, Any]]) -> Type
                 annotations[field_key] = (List[Any], Field(..., description=description))
         else:
             annotations[field_key] = (Any, Field(..., description=description))
-            
+
     return create_model(model_name, **annotations)
 
 
@@ -66,26 +66,28 @@ class AIStructuredOutputHandler(NodeHandler):
     def execute(self, config: dict, ctx) -> dict:
         prompt_template = config.get("prompt", "")
         resolved_prompt = resolve_variables(prompt_template, ctx.node_outputs)
-        
+
         output_schema_config = config.get("output_schema", {})
         schema_fields = output_schema_config.get("fields", [])
-        
+
         if not schema_fields:
             return {"error": "No output schema defined", "success": False}
-            
+
         DynamicModel = _build_pydantic_model("DynamicStructuredOutput", schema_fields)
-        
-        ai = GeminiTextAI(model_name=CONFIG.MODELS.DEFAULT_MODEL)
-        
-        # We might need to ensure context is passed properly if needed, but a simple invoke is fine
+        use_web_search = is_web_search_enabled(config)
+
         try:
-            response = ai.with_structured_output(
+            model = create_gemini_model(enable_web_search=use_web_search)
+            structured = model.with_structured_output(
                 DynamicModel,
-                method="json_schema"
+                method="json_schema",
             ).invoke(resolved_prompt)
-            
-            # Convert pydantic model to dict
-            result_dict = response.model_dump() if hasattr(response, "model_dump") else response.dict()
+
+            result_dict = (
+                structured.model_dump()
+                if hasattr(structured, "model_dump")
+                else structured.dict()
+            )
             return {"result": result_dict, "success": True}
-        except Exception as e:
-            return {"error": str(e), "success": False}
+        except Exception as exc:
+            return {"error": str(exc), "success": False}

@@ -216,8 +216,43 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "ai_generate_text",
+        "label": "Generate Text",
+        "icon": "RiAiGenerate",
+        "section": "AI",
+        "description": "Generate AI text from a prompt. Optionally enable web search to ground the response in current information.",
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Prompt",
+                    "fields": [
+                        {
+                            "key": "prompt",
+                            "label": "Prompt",
+                            "type": "variable_textarea",
+                            "placeholder": "Write a summary of the following data...",
+                            "required": True,
+                            "hint": "Instructions for the AI. Use @ to insert variables.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Tools",
+                    "fields": [
+                        {
+                            "key": "web_search",
+                            "label": "Web Search",
+                            "type": "checkbox",
+                            "hint": "When enabled, the AI searches the web for up-to-date information before generating text.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "ai_structured_output",
-        "label": "AI Structured Output",
+        "label": "Structured Output",
         "icon": "TbSparkles",
         "section": "AI",
         "description": "Generate structured output from a prompt using AI. Define the expected JSON schema with descriptions for the AI to follow.",
@@ -237,6 +272,17 @@ ACTION_NODES = [
                     ],
                 },
                 {
+                    "title": "Tools",
+                    "fields": [
+                        {
+                            "key": "web_search",
+                            "label": "Web Search",
+                            "type": "checkbox",
+                            "hint": "When enabled, the AI searches the web for up-to-date information before generating structured output.",
+                        },
+                    ],
+                },
+                {
                     "title": "Output Schema",
                     "fields": [
                         {
@@ -246,43 +292,6 @@ ACTION_NODES = [
                             "showDescription": True,
                             "showEnum": True,
                             "hint": "Define the structure and properties you expect the AI to return. Provide descriptions to help the AI understand the purpose of each field."
-                        },
-                    ],
-                },
-            ],
-        },
-    },
-    {
-        "type": "ai_web_search",
-        "label": "AI Web Search",
-        "icon": "HiOutlineGlobeAlt",
-        "section": "AI",
-        "description": "Search the web with AI from a prompt and return structured fields you define. Use {{node_id.result.fieldName}} in downstream nodes.",
-        "config_form": {
-            "sections": [
-                {
-                    "title": "Search Prompt",
-                    "fields": [
-                        {
-                            "key": "prompt",
-                            "label": "Prompt",
-                            "type": "variable_textarea",
-                            "placeholder": "What are the latest trends in renewable energy?",
-                            "required": True,
-                            "hint": "What the AI should search for. Use @ to insert variables.",
-                        },
-                    ],
-                },
-                {
-                    "title": "Output Schema",
-                    "fields": [
-                        {
-                            "key": "output_schema",
-                            "label": "JSON Schema",
-                            "type": "body_builder",
-                            "showDescription": True,
-                            "showEnum": True,
-                            "hint": "Define the structure and properties you expect the AI to return from web search. Provide descriptions to help the AI understand each field.",
                         },
                     ],
                 },
