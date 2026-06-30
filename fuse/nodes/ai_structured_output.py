@@ -77,11 +77,32 @@ class AIStructuredOutputHandler(NodeHandler):
         use_web_search = is_web_search_enabled(config)
 
         try:
-            model = create_gemini_model(enable_web_search=use_web_search)
-            structured = model.with_structured_output(
-                DynamicModel,
-                method="json_schema",
-            ).invoke(resolved_prompt)
+            if use_web_search:
+                from langchain.messages import HumanMessage
+                from fuse.nodes.ai_helpers import extract_text
+                
+                search_model = create_gemini_model(enable_web_search=True)
+                search_response = search_model.invoke([HumanMessage(content=resolved_prompt)])
+                context_text = extract_text(search_response)
+                
+                format_prompt = (
+                    f"Given the following information gathered from web search, "
+                    f"extract the data according to the schema.\n\n"
+                    f"Information:\n{context_text}\n\n"
+                    f"Task: {resolved_prompt}"
+                )
+                
+                base_model = create_gemini_model(enable_web_search=False)
+                structured = base_model.with_structured_output(
+                    DynamicModel,
+                    method="json_schema",
+                ).invoke(format_prompt)
+            else:
+                base_model = create_gemini_model(enable_web_search=False)
+                structured = base_model.with_structured_output(
+                    DynamicModel,
+                    method="json_schema",
+                ).invoke(resolved_prompt)
 
             result_dict = (
                 structured.model_dump()
