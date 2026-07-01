@@ -96,22 +96,28 @@ class WebexMessageExecution:
         target_url = f"{base}/fuse/webex/webhook/{self.workflow_id}"
         filter_str = build_webex_message_filter(starter_config)
 
-        webhook = create_message_webhook(
-            access_token,
-            target_url=target_url,
-            name=f"Fuse workflow {self.workflow_id}",
-            filter_str=filter_str,
-        )
-
-        self.compiled_graph["webex_webhook"] = {
-            "id":     webhook["id"],
-            "secret": webhook["secret"],
-        }
+        webhook_id = None
+        try:
+            webhook = create_message_webhook(
+                access_token,
+                target_url=target_url,
+                name=f"Fuse workflow {self.workflow_id}",
+                filter_str=filter_str,
+            )
+            webhook_id = webhook["id"]
+            self.compiled_graph["webex_webhook"] = {
+                "id":     webhook_id,
+                "secret": webhook["secret"],
+            }
+        except Exception:
+            if webhook_id:
+                delete_webhook(access_token, webhook_id)
+            raise
 
         logger.info(
             "[FUSE] Webex message workflow '%s' is now active (webhook=%s).",
             self.workflow_id,
-            webhook["id"],
+            webhook_id,
         )
 
     def stop(self) -> None:

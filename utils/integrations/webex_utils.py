@@ -2,6 +2,7 @@ import hashlib
 import hmac as _hmac
 import logging
 import re
+import secrets
 
 import requests
 from datetime import datetime, timedelta
@@ -88,13 +89,21 @@ def create_message_webhook(
     target_url: str,
     name: str,
     filter_str: str | None = None,
+    secret: str | None = None,
 ) -> dict:
-    """Register a Webex webhook for new messages. Returns {id, secret, ...}."""
+    """Register a Webex webhook for new messages. Returns {id, secret, ...}.
+
+    Webex does not echo ``secret`` in the create response — it must be supplied
+    in the request body. We generate one when omitted and return it alongside
+    the webhook id from the API response.
+    """
+    webhook_secret = secret or secrets.token_urlsafe(32)
     payload = {
         "name": name,
         "targetUrl": target_url,
         "resource": "messages",
         "event": "created",
+        "secret": webhook_secret,
     }
     if filter_str:
         payload["filter"] = filter_str
@@ -109,9 +118,10 @@ def create_message_webhook(
         raise RuntimeError(f"Failed to create Webex webhook: {response.text}")
 
     data = response.json()
-    if not data.get("id") or not data.get("secret"):
-        raise RuntimeError("Webex webhook response missing id or secret.")
-    return data
+    webhook_id = data.get("id")
+    if not webhook_id:
+        raise RuntimeError("Webex webhook response missing id.")
+    return {**data, "id": webhook_id, "secret": webhook_secret}
 
 
 def delete_webhook(access_token: str, webhook_id: str) -> bool:
