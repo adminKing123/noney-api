@@ -80,7 +80,7 @@ class CONFIG:
     # Space-separated scopes — must exactly match scopes enabled on your Webex integration.
     WEBEX_OAUTH_SCOPES = os.getenv(
         "WEBEX_OAUTH_SCOPES",
-        "spark:messages_write spark:messages_read spark:people_read",
+        "spark:messages_write spark:messages_read spark:people_read spark:webhooks_write spark:rooms_read",
     )
     WEBEX_API_BASE = os.getenv("WEBEX_API_BASE", "https://webexapis.com/v1")
 

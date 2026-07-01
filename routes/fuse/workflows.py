@@ -11,6 +11,15 @@ from datetime import datetime
 
 bp = Blueprint("fuse_workflows", __name__)
 
+
+def _teardown_webex_webhook(workflow: dict) -> None:
+    """Delete the Webex webhook for a webex_message workflow, if registered."""
+    from utils.integrations.webex_utils import cleanup_webex_workflow_webhook
+
+    owner_id = workflow.get("owner_id", "")
+    compiled_graph = workflow.get("compiled_graph") or {}
+    cleanup_webex_workflow_webhook(owner_id, compiled_graph)
+
 # ─── Workflows ────────────────────────────────────────────────────────────────
 
 @bp.route("/workflows", methods=["GET"])
@@ -223,6 +232,9 @@ def activate_workflow(workflow_id):
     except Exception as exc:
         return jsonify({"success": False, "errors": [str(exc)]}), 500
 
+    # WebexMessageExecution.start() may attach webhook metadata to compiled_graph.
+    compiled_graph = runtime.get_execution(workflow_id).compiled_graph  # type: ignore[union-attr]
+
     # ── 4. Persist compilation state on the workflow doc ──────────────────────
     updated = db.workflow.save_compilation(
         workflow_id    = workflow_id,
@@ -265,7 +277,9 @@ def deactivate_workflow(workflow_id):
     if workflow is None:
         return jsonify({"error": "Workflow not found"}), 404
 
+    _teardown_webex_webhook(workflow)
     runtime.deactivate(workflow_id)
+    db.workflow.clear_compiled_webex_webhook(workflow_id, owner_id)
     updated = db.workflow.update_status(workflow_id, owner_id, "inactive")
     return jsonify({"success": True, "workflow": updated})
 
@@ -275,6 +289,16 @@ def deactivate_workflow(workflow_id):
 def delete_workflow(workflow_id):
     """DELETE /fuse/workflows/:id — permanently remove a workflow."""
     owner_id = request.user["uid"]
+    workflow = db.workflow.get(workflow_id, owner_id)
+    if workflow is None:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    # Always delete the Webex webhook from the API using persisted metadata —
+    # runtime.deactivate alone is not enough when the workflow is inactive or
+    # the server was restarted since activation.
+    _teardown_webex_webhook(workflow)
+    runtime.deactivate(workflow_id)
+
     success = db.workflow.delete(workflow_id, owner_id)
     if not success:
         return jsonify({"error": "Workflow not found"}), 404
@@ -367,3 +391,78 @@ def trigger_webhook(workflow_id):
 
     response_code = int(starter_config.get("response_code") or 202)
     return jsonify({"status": "accepted", "workflow_id": workflow_id}), response_code
+
+
+# ─── Webex message webhook trigger ────────────────────────────────────────────
+
+@bp.route("/webex/webhook/<workflow_id>", methods=["POST"])
+def trigger_webex_message(workflow_id):
+    """
+    /fuse/webex/webhook/<workflow_id>
+    ─────────────────────────────────
+    Public endpoint registered with Webex when a webex_message workflow is active.
+
+    Webex sends a lightweight event payload; we fetch the full message, apply
+    starter filters, then run the workflow asynchronously.
+    """
+    execution = runtime.get_execution(workflow_id)
+    if execution is None:
+        return jsonify({"error": "Workflow not found or not active."}), 404
+
+    compiled_graph = execution.compiled_graph
+    starter = compiled_graph.get("starter", {})
+
+    if starter.get("node_type") != "webex_message":
+        return jsonify({"error": "This workflow is not Webex message-triggered."}), 400
+
+    body_bytes = request.get_data()
+    signature = request.headers.get("X-Spark-Signature", "")
+    webhook_meta = compiled_graph.get("webex_webhook") or {}
+    secret = webhook_meta.get("secret", "")
+
+    from utils.integrations.webex_utils import (
+        get_webex_access_token,
+        normalise_webex_message_event,
+        verify_webex_webhook_signature,
+    )
+
+    if secret and not verify_webex_webhook_signature(body_bytes, signature, secret):
+        return jsonify({"error": "Invalid Webex webhook signature."}), 401
+
+    try:
+        event_payload = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        event_payload = {}
+
+    owner_id = compiled_graph.get("owner_id", "")
+    access_token = get_webex_access_token(owner_id)
+    if not access_token:
+        return jsonify({"error": "Webex integration unavailable."}), 503
+
+    own_person_id = None
+    try:
+        import requests as _requests
+        from config import CONFIG as _CONFIG
+        me_resp = _requests.get(
+            f"{_CONFIG.WEBEX_API_BASE}/people/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=15,
+        )
+        if me_resp.status_code == 200:
+            own_person_id = me_resp.json().get("id")
+    except Exception:
+        pass
+
+    starter_config = starter.get("config", {})
+    trigger_data = normalise_webex_message_event(
+        access_token,
+        event_payload,
+        starter_config,
+        own_person_id=own_person_id,
+    )
+
+    if trigger_data is None:
+        return jsonify({"status": "ignored"}), 200
+
+    run_workflow_async(compiled_graph, trigger_data, trigger_type="webex_message")
+    return jsonify({"status": "accepted", "workflow_id": workflow_id}), 202

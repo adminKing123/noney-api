@@ -19,6 +19,8 @@ import json
 from datetime import datetime
 from typing import Any
 
+from fuse.node_definitions import ACTION_NODES, STARTER_NODES
+
 
 # ─── Required config fields per node type ─────────────────────────────────────
 
@@ -32,7 +34,10 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "ai_generate_text":     ["prompt"],
     # url is the only hard-required field; method defaults to GET
     "http_request": ["url"],
-    "send_gmail":   ["to", "subject", "body"],
+    "send_gmail":         ["to", "subject", "body"],
+    "send_webex_message": [],
+    # filter_type defaults to "all" via node definition defaults
+    "webex_message":    [],
 }
 
 
@@ -60,13 +65,21 @@ def compute_graph_hash(nodes: list, edges: list) -> str:
 
 # ─── Per-node validation ───────────────────────────────────────────────────────
 
+def _get_node_defaults(node_type: str) -> dict:
+    """Return default config values declared on a node type definition."""
+    for node in STARTER_NODES + ACTION_NODES:
+        if node.get("type") == node_type:
+            return dict(node.get("defaults") or {})
+    return {}
+
+
 def _validate_node_config(node_type: str, config: dict) -> list[str]:
     """
     Return a list of human-readable validation error strings for `config`.
     An empty list means the config is valid.
     """
     errors: list[str] = []
-    config = config or {}
+    config = {**_get_node_defaults(node_type), **(config or {})}
 
     # Check required fields
     for field in _REQUIRED_FIELDS.get(node_type, []):
@@ -94,6 +107,23 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
                 errors.append("Condition must have a variable selected.")
             if not cond.get("operator"):
                 errors.append("Condition must have an operator selected.")
+
+    # Webex message starter: room_id required when filtering to a specific space
+    if node_type == "webex_message":
+        filter_type = (config.get("filter_type") or "all").lower()
+        if filter_type == "room" and not (config.get("room_id") or "").strip():
+            errors.append("Space / Room is required when listening to a specific space.")
+
+    # Send Webex message: destination from picker or manual entry
+    if node_type == "send_webex_message":
+        if not (config.get("message") or "").strip():
+            errors.append("Message is required.")
+        source = (config.get("destination_source") or "pick").lower()
+        if source == "pick":
+            if not (config.get("destination_pick") or "").strip():
+                errors.append("Please select a destination from Webex.")
+        elif not (config.get("destination") or "").strip():
+            errors.append("Destination is required.")
 
     # Schedule: time must be parseable
     if node_type == "schedule":
@@ -178,7 +208,7 @@ def compile_workflow_graph(
 
     if not starter_nodes:
         errors.append(
-            "No trigger node found. Add a Webhook or Schedule node to start the workflow."
+            "No trigger node found. Add a starter node (Webhook, Schedule, Webex Message, etc.) to start the workflow."
         )
         return None, errors
 

@@ -292,6 +292,122 @@ def webex_integration_info():
     return jsonify(integration)
 
 
+@bp.route("/integration/webex/rooms", methods=["GET"])
+@require_auth
+def webex_list_rooms():
+    """GET /fuse/integration/webex/rooms — list Webex spaces/rooms for the linked account."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "webex")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Webex integration not found or not configured."}), 404
+
+    integration = refresh_webex_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Webex access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Webex access token not available."}), 500
+
+    from utils.integrations.webex_utils import list_all_rooms, serialize_room_for_ui
+
+    try:
+        raw_items = list_all_rooms(access_token)
+        rooms = [serialize_room_for_ui(item) for item in raw_items if item.get("id")]
+        rooms.sort(key=lambda r: (r.get("type") != "group", (r.get("title") or "").lower()))
+        return jsonify({"rooms": rooms, "total": len(rooms)})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.route("/integration/webex/people", methods=["GET"])
+@require_auth
+def webex_list_people():
+    """GET /fuse/integration/webex/people — list Webex people for destination picker."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "webex")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Webex integration not found or not configured."}), 404
+
+    integration = refresh_webex_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Webex access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Webex access token not available."}), 500
+
+    from utils.integrations.webex_utils import list_all_people, serialize_person_for_ui
+
+    try:
+        raw_items = list_all_people(access_token)
+        people = []
+        for item in raw_items:
+            entry = serialize_person_for_ui(item)
+            if entry:
+                people.append(entry)
+        people.sort(key=lambda p: (p.get("display_name") or "").lower())
+        return jsonify({"people": people, "total": len(people)})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.route("/integration/webex/webhooks", methods=["GET"])
+@require_auth
+def webex_list_webhooks():
+    """GET /fuse/integration/webex/webhooks — list Webex webhooks for the linked account."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "webex")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Webex integration not found or not configured."}), 404
+
+    integration = refresh_webex_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Webex access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Webex access token not available."}), 500
+
+    from utils.integrations.webex_utils import list_all_webhooks, serialize_webhook_for_ui
+
+    try:
+        raw_items = list_all_webhooks(access_token)
+        webhooks = [serialize_webhook_for_ui(item) for item in raw_items]
+        return jsonify({"webhooks": webhooks, "total": len(webhooks)})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.route("/integration/webex/webhooks/<webhook_id>", methods=["DELETE"])
+@require_auth
+def webex_delete_webhook(webhook_id):
+    """DELETE /fuse/integration/webex/webhooks/:id — remove a Webex webhook."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "webex")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Webex integration not found or not configured."}), 404
+
+    integration = refresh_webex_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Webex access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Webex access token not available."}), 500
+
+    from utils.integrations.webex_utils import (
+        delete_webhook,
+        sync_fuse_workflows_after_webhook_removal,
+    )
+
+    if not delete_webhook(access_token, webhook_id):
+        return jsonify({"error": "Failed to delete Webex webhook."}), 502
+
+    sync_fuse_workflows_after_webhook_removal(user_id, webhook_id)
+    return jsonify({"success": True, "id": webhook_id})
+
+
 # ─── Google Sheets OAuth ──────────────────────────────────────────────────────
 
 @bp.route("/integration/google_sheets/auth", methods=["GET"])

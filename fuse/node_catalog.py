@@ -36,7 +36,16 @@ BUILDER_FORMAT_HINTS: dict[str, str] = {
 
 def get_available_nodes(user_integrations: dict | None) -> dict[str, list[dict]]:
     user_integrations = user_integrations or {}
+    starters: list[dict] = []
     actions: list[dict] = []
+
+    for node in STARTER_NODES:
+        required = node.get("required_integration")
+        if required:
+            integration = user_integrations.get(required) or {}
+            if not integration.get("configured"):
+                continue
+        starters.append(node)
 
     for node in ACTION_NODES:
         required = node.get("required_integration")
@@ -46,7 +55,7 @@ def get_available_nodes(user_integrations: dict | None) -> dict[str, list[dict]]
                 continue
         actions.append(node)
 
-    return {"starters": list(STARTER_NODES), "actions": actions}
+    return {"starters": starters, "actions": actions}
 
 
 def iter_all_nodes(catalog: dict[str, list[dict]]) -> Iterator[tuple[dict, str]]:
