@@ -217,7 +217,7 @@ ACTION_NODES = [
     },
     {
         "type": "ai_generate_text",
-        "label": "Generate Text",
+        "label": "Ask Aura",
         "icon": "RiAiGenerate",
         "section": "AI",
         "description": "Generate AI text from a prompt. Optionally enable web search to ground the response in current information.",
