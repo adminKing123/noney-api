@@ -540,6 +540,25 @@ class Workflow:
         self._col().document(workflow_id).update({"status": status, "updated_at": now})
         return {**existing, "status": status, "updated_at": now}
 
+    def clear_compiled_webex_webhook(self, workflow_id: str, owner_id: str) -> dict | None:
+        """Remove webex_webhook metadata from the stored compiled_graph."""
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return None
+
+        compiled_graph = existing.get("compiled_graph") or {}
+        if "webex_webhook" not in compiled_graph:
+            return existing
+
+        updated_graph = dict(compiled_graph)
+        updated_graph.pop("webex_webhook", None)
+        now = datetime.utcnow().isoformat() + "Z"
+        self._col().document(workflow_id).update({
+            "compiled_graph": updated_graph,
+            "updated_at":     now,
+        })
+        return {**existing, "compiled_graph": updated_graph, "updated_at": now}
+
     def save_compilation(
         self,
         workflow_id: str,

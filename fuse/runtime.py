@@ -56,6 +56,79 @@ class WebhookExecution:
         logger.info("[FUSE] Webhook workflow '%s' deactivated.", self.workflow_id)
 
 
+class WebexMessageExecution:
+    """
+    Represents an active Webex message-triggered workflow.
+
+    On activation, registers a Webex webhook pointing at our public endpoint.
+    On deactivation, deletes that webhook from Webex.
+    """
+
+    def __init__(self, workflow_id: str, compiled_graph: dict) -> None:
+        self.workflow_id    = workflow_id
+        self.compiled_graph = compiled_graph
+
+    def start(self) -> None:
+        from utils.integrations.webex_utils import (
+            build_webex_message_filter,
+            create_message_webhook,
+            delete_webhook,
+            get_webex_access_token,
+        )
+
+        existing = self.compiled_graph.get("webex_webhook") or {}
+        if existing.get("id") and existing.get("secret"):
+            logger.info(
+                "[FUSE] Webex message workflow '%s' restored (existing webhook=%s).",
+                self.workflow_id,
+                existing["id"],
+            )
+            return
+
+        owner_id = self.compiled_graph.get("owner_id", "")
+        starter_config = self.compiled_graph["starter"].get("config", {})
+
+        access_token = get_webex_access_token(owner_id)
+        if not access_token:
+            raise RuntimeError("Webex integration is not configured or token refresh failed.")
+
+        base = self._webhook_base_url()
+        target_url = f"{base}/fuse/webex/webhook/{self.workflow_id}"
+        filter_str = build_webex_message_filter(starter_config)
+
+        webhook = create_message_webhook(
+            access_token,
+            target_url=target_url,
+            name=f"Fuse workflow {self.workflow_id}",
+            filter_str=filter_str,
+        )
+
+        self.compiled_graph["webex_webhook"] = {
+            "id":     webhook["id"],
+            "secret": webhook["secret"],
+        }
+
+        logger.info(
+            "[FUSE] Webex message workflow '%s' is now active (webhook=%s).",
+            self.workflow_id,
+            webhook["id"],
+        )
+
+    def stop(self) -> None:
+        from utils.integrations.webex_utils import cleanup_webex_workflow_webhook
+
+        owner_id = self.compiled_graph.get("owner_id", "")
+        cleanup_webex_workflow_webhook(owner_id, self.compiled_graph)
+        self.compiled_graph.pop("webex_webhook", None)
+
+        logger.info("[FUSE] Webex message workflow '%s' deactivated.", self.workflow_id)
+
+    @staticmethod
+    def _webhook_base_url() -> str:
+        from config import CONFIG
+        return CONFIG.HOST.rstrip("/")
+
+
 class ScheduleExecution:
     """
     Represents an active scheduled workflow.
@@ -172,7 +245,7 @@ class RuntimeManager:
         with cls._class_lock:
             if cls._instance is None:
                 inst = super().__new__(cls)
-                inst._active: dict[str, WebhookExecution | ScheduleExecution] = {}
+                inst._active: dict[str, WebhookExecution | ScheduleExecution | WebexMessageExecution] = {}
                 inst._active_lock = threading.Lock()
 
                 from apscheduler.schedulers.background import BackgroundScheduler
@@ -196,9 +269,11 @@ class RuntimeManager:
         starter_type = compiled_graph["starter"]["node_type"]
 
         if starter_type == "webhook":
-            execution: WebhookExecution | ScheduleExecution = WebhookExecution(
+            execution: WebhookExecution | ScheduleExecution | WebexMessageExecution = WebhookExecution(
                 workflow_id, compiled_graph
             )
+        elif starter_type == "webex_message":
+            execution = WebexMessageExecution(workflow_id, compiled_graph)
         elif starter_type == "schedule":
             execution = ScheduleExecution(workflow_id, compiled_graph, self._scheduler)
         else:
@@ -217,7 +292,7 @@ class RuntimeManager:
         if execution is not None:
             execution.stop()
 
-    def get_execution(self, workflow_id: str) -> WebhookExecution | ScheduleExecution | None:
+    def get_execution(self, workflow_id: str) -> WebhookExecution | ScheduleExecution | WebexMessageExecution | None:
         """Return the active execution for a workflow, or None if inactive."""
         with self._active_lock:
             return self._active.get(workflow_id)

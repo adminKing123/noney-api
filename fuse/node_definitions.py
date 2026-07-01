@@ -16,6 +16,7 @@ STARTER_NODES = [
         "type": "schedule",
         "label": "On a Schedule",
         "icon": "TbCalendarTime",
+        "section": "General",
         "description": "Start at a set date and time. Have it run once or repeat on a schedule.",
         "config_form": {
             "presets": [
@@ -64,9 +65,73 @@ STARTER_NODES = [
         },
     },
     {
+        "type": "webex_message",
+        "label": "On Message",
+        "icon": "SiWebex",
+        "section": "Webex",
+        "required_integration": "webex",
+        "description": "Start the workflow when a new Webex message is received in a space or direct chat.",
+        "defaults": {
+            "filter_type": "all",
+        },
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Message source",
+                    "fields": [
+                        {
+                            "key": "filter_type",
+                            "label": "Listen to",
+                            "type": "select",
+                            "required": True,
+                            "options": [
+                                {"label": "All spaces & direct messages", "value": "all"},
+                                {"label": "A specific space (room)",       "value": "room"},
+                                {"label": "Direct messages only",           "value": "direct"},
+                            ],
+                            "hint": "Choose which Webex conversations should trigger this workflow",
+                        },
+                        {
+                            "key": "room_id",
+                            "label": "Space / Room",
+                            "type": "webex_room_select",
+                            "required": True,
+                            "visibleWhen": {"key": "filter_type", "value": "room"},
+                            "hint": "Select the Webex space to listen to. Spaces are loaded from your connected account.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Filters",
+                    "fields": [
+                        {
+                            "key": "mentions_only",
+                            "label": "Mentions only",
+                            "type": "checkbox",
+                            "hint": "Only trigger when your Webex account or bot is @mentioned in the message",
+                        },
+                        {
+                            "key": "ignore_own_messages",
+                            "label": "Ignore own messages",
+                            "type": "checkbox",
+                            "hint": "Skip messages sent by the connected Webex account (recommended)",
+                        },
+                        {
+                            "key": "include_message_body",
+                            "label": "Include message body",
+                            "type": "checkbox",
+                            "hint": "When enabled, the full message text is included in trigger data. When off, only sender and room details are provided (Webex webhooks do not include the message text itself).",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "webhook",
         "label": "On Webhook",
         "icon": "TbWebhook",
+        "section": "General",
         "description": "Start the workflow whenever an HTTP request hits the generated webhook URL.",
         "config_form": {
             "sections": [
@@ -165,10 +230,144 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "send_webex_message",
+        "label": "Send Message",
+        "icon": "SiWebex",
+        "section": "Webex",
+        "required_integration": "webex",
+        "description": "Send a message to a Webex space or person using your connected Webex account.",
+        "defaults": {
+            "send_to": "room",
+            "destination_source": "pick",
+        },
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Destination",
+                    "fields": [
+                        {
+                            "key": "send_to",
+                            "label": "Send to",
+                            "type": "select",
+                            "required": True,
+                            "options": [
+                                {"label": "Space / Room",   "value": "room"},
+                                {"label": "Person email",   "value": "person_email"},
+                                {"label": "Person ID",      "value": "person_id"},
+                            ],
+                            "hint": "How to identify the recipient",
+                        },
+                        {
+                            "key": "destination_source",
+                            "label": "Destination source",
+                            "type": "select",
+                            "required": True,
+                            "options": [
+                                {"label": "Pick from Webex",  "value": "pick"},
+                                {"label": "Enter manually",   "value": "manual"},
+                            ],
+                            "hint": "Choose from your Webex account or type a value (supports @ variables when manual)",
+                        },
+                        {
+                            "key": "destination_pick",
+                            "label": "Space",
+                            "type": "webex_room_select",
+                            "required": True,
+                            "visibleWhen": [
+                                {"key": "send_to", "value": "room"},
+                                {"key": "destination_source", "value": "pick"},
+                            ],
+                            "hint": "Select a Webex space or direct chat",
+                        },
+                        {
+                            "key": "destination_pick",
+                            "label": "Person",
+                            "type": "webex_person_select",
+                            "personValue": "email",
+                            "required": True,
+                            "visibleWhen": [
+                                {"key": "send_to", "value": "person_email"},
+                                {"key": "destination_source", "value": "pick"},
+                            ],
+                            "hint": "Select a person by email",
+                        },
+                        {
+                            "key": "destination_pick",
+                            "label": "Person",
+                            "type": "webex_person_select",
+                            "personValue": "id",
+                            "required": True,
+                            "visibleWhen": [
+                                {"key": "send_to", "value": "person_id"},
+                                {"key": "destination_source", "value": "pick"},
+                            ],
+                            "hint": "Select a person by ID",
+                        },
+                        {
+                            "key": "destination",
+                            "label": "Space / Room ID",
+                            "type": "variable_text",
+                            "placeholder": "Room ID or {{starter.room_id}}",
+                            "required": True,
+                            "visibleWhen": [
+                                {"key": "send_to", "value": "room"},
+                                {"key": "destination_source", "value": "manual"},
+                            ],
+                            "hint": "Webex room ID. Use @ to insert a variable.",
+                        },
+                        {
+                            "key": "destination",
+                            "label": "Person email",
+                            "type": "variable_text",
+                            "placeholder": "name@company.com",
+                            "required": True,
+                            "visibleWhen": [
+                                {"key": "send_to", "value": "person_email"},
+                                {"key": "destination_source", "value": "manual"},
+                            ],
+                            "hint": "Email address to message. Use @ to insert a variable.",
+                        },
+                        {
+                            "key": "destination",
+                            "label": "Person ID",
+                            "type": "variable_text",
+                            "placeholder": "Y2lzY29zcGFyazovL3VzL1BFUlNPTi9...",
+                            "required": True,
+                            "visibleWhen": [
+                                {"key": "send_to", "value": "person_id"},
+                                {"key": "destination_source", "value": "manual"},
+                            ],
+                            "hint": "Webex person ID. Use @ to insert a variable.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Message",
+                    "fields": [
+                        {
+                            "key": "message",
+                            "label": "Message",
+                            "type": "variable_textarea",
+                            "placeholder": "Hello from Fuse!",
+                            "required": True,
+                            "hint": "Message text to send. Use @ to insert a variable.",
+                        },
+                        {
+                            "key": "use_markdown",
+                            "label": "Use Markdown",
+                            "type": "checkbox",
+                            "hint": "Format the message using Webex Markdown (bold, links, etc.)",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "send_gmail",
         "label": "Send Gmail",
         "icon": "SiGmail",
-        "section": "Notifications",
+        "section": "Google",
         "required_integration": "gmail",
         "description": "Send an email using your configured Gmail integration.",
         "config_form": {
