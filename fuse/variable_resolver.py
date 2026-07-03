@@ -91,7 +91,19 @@ def resolve_single_token(token_str: str, node_outputs: dict) -> Any:
     node_id  = inner[:dot_pos]
     path_str = inner[dot_pos + 1:]
     node_data = node_outputs.get(node_id, {})
-    return _resolve_path(node_data, path_str)
+    value = _resolve_path(node_data, path_str)
+
+    # Legacy http_request tokens used flat {{node_id.field}} paths before
+    # response data was kept only under "body". Fall back to body.* when needed.
+    if value is None:
+        body = node_data.get("body")
+        if isinstance(body, dict) and path_str:
+            reserved = frozenset({"status_code", "success", "body", "error"})
+            first_seg = path_str.split(".", 1)[0]
+            if first_seg not in reserved:
+                value = _resolve_path(body, path_str)
+
+    return value
 
 
 def resolve_variables(template: str, node_outputs: dict) -> str:
@@ -112,7 +124,16 @@ def resolve_variables(template: str, node_outputs: dict) -> str:
         else:
             node_id  = token_inner[:dot_pos]
             path_str = token_inner[dot_pos + 1:]
-            value = _resolve_path(node_outputs.get(node_id, {}), path_str)
+            node_data = node_outputs.get(node_id, {})
+            value = _resolve_path(node_data, path_str)
+
+            if value is None:
+                body = node_data.get("body")
+                if isinstance(body, dict) and path_str:
+                    reserved = frozenset({"status_code", "success", "body", "error"})
+                    first_seg = path_str.split(".", 1)[0]
+                    if first_seg not in reserved:
+                        value = _resolve_path(body, path_str)
 
         if value is None:
             logger.debug(

@@ -28,10 +28,6 @@ Output (stored in context.node_outputs[node_id])
     "success":     bool,  — True when status is 2xx
     "body":        Any,   — parsed JSON body (dict/list) or raw text string
     "error":       str,   — only present when the request fails entirely
-
-    # Every top-level field declared in response_schema is flattened here so
-    # downstream nodes can reference  {{node_id.fieldName}}  directly.
-    "<declared_field>": Any,
 }
 
 Variable resolution
@@ -39,7 +35,7 @@ Variable resolution
     {{node_id.status_code}}
     {{node_id.success}}
     {{node_id.body}}
-    {{node_id.<response_schema_field>}}
+    {{node_id.body.<response_schema_field>}}
 """
 
 import json as _json
@@ -200,26 +196,6 @@ def _resolve_field_config(
     return {}
 
 
-def _extract_schema_fields(body: Any, schema_fields: list) -> dict[str, Any]:
-    """
-    Walk the top-level fields declared in response_schema and extract the
-    matching values from the parsed JSON response body.
-
-    Flattening to the top level lets downstream nodes reference values via
-    ``{{node_id.fieldKey}}`` without requiring the ``body.`` prefix.
-    """
-    if not isinstance(body, dict) or not schema_fields:
-        return {}
-
-    extracted: dict[str, Any] = {}
-    for field in schema_fields:
-        key = (field.get("key") or "").strip()
-        if not key:
-            continue
-        extracted[key] = body.get(key)
-    return extracted
-
-
 # ─── Handler ──────────────────────────────────────────────────────────────────
 
 class HttpRequestHandler(NodeHandler):
@@ -330,18 +306,8 @@ class HttpRequestHandler(NodeHandler):
         )
 
         # ── Build output ───────────────────────────────────────────────────────
-        output: dict[str, Any] = {
+        return {
             "status_code": status_code,
             "success":     success,
             "body":        body,
         }
-
-        # Flatten top-level response_schema fields into the output so that
-        # downstream nodes can reference  {{node_id.fieldName}}  directly
-        # without needing the  .body.  prefix.
-        response_schema = config.get("response_schema") or {}
-        schema_fields   = response_schema.get("fields", [])
-        if isinstance(body, dict) and schema_fields:
-            output.update(_extract_schema_fields(body, schema_fields))
-
-        return output

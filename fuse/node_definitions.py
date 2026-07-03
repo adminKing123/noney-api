@@ -570,7 +570,7 @@ ACTION_NODES = [
                             "key": "response_schema",
                             "label": "Expected Response Fields",
                             "type": "body_builder",
-                            "hint": "Declare the fields you expect in the JSON response. Each top-level field becomes a variable: {{node_id.fieldName}}.",
+                            "hint": "Declare the fields you expect in the JSON response. Each field becomes a variable: {{node_id.body.fieldName}}.",
                         },
                         {
                             "key": "timeout",
