@@ -24,6 +24,8 @@ from fuse.node_definitions import ACTION_NODES, STARTER_NODES
 
 # ─── Required config fields per node type ─────────────────────────────────────
 
+MAX_NODE_LABEL_LENGTH = 40
+
 _REQUIRED_FIELDS: dict[str, list[str]] = {
     "schedule":     ["date", "time"],
     # method is intentionally excluded — the route handler defaults to "POST"
@@ -152,6 +154,16 @@ def _is_valid_time(time_str: str) -> bool:
         return False
 
 
+def _validate_node_label(label: str) -> list[str]:
+    """Return validation errors for a node display label."""
+    if len(label) > MAX_NODE_LABEL_LENGTH:
+        return [
+            f"Node label must be at most {MAX_NODE_LABEL_LENGTH} characters "
+            f"(currently {len(label)})."
+        ]
+    return []
+
+
 # ─── Main compiler ─────────────────────────────────────────────────────────────
 
 def compile_workflow_graph(
@@ -220,11 +232,13 @@ def compile_workflow_graph(
     starter_id   = starter["id"]
     starter_type = starter["data"].get("nodeType", "")
     starter_cfg  = starter["data"].get("config") or {}
+    starter_label = (starter["data"].get("label") or "Trigger").strip() or "Trigger"
 
     # ── 2. Validate starter config ────────────────────────────────────────────
+    for err in _validate_node_label(starter_label):
+        errors.append(f"[{starter_label}] {err}")
     for err in _validate_node_config(starter_type, starter_cfg):
-        label = starter["data"].get("label", "Trigger")
-        errors.append(f"[{label}] {err}")
+        errors.append(f"[{starter_label}] {err}")
 
     # ── 3. Build adjacency map from edges ─────────────────────────────────────
     adjacency: dict[str, dict[str, list]] = {}
@@ -256,13 +270,15 @@ def compile_workflow_graph(
         node_id   = node["id"]
         node_type = node["data"].get("nodeType", "")
         config    = node["data"].get("config") or {}
-        label     = node["data"].get("label") or node_id
+        label     = (node["data"].get("label") or node_id).strip() or node_id
 
         if node_id not in reachable:
             errors.append(
                 f"Node '{label}' is disconnected. Connect it to the workflow or remove it."
             )
 
+        for err in _validate_node_label(label):
+            errors.append(f"[{label}] {err}")
         for err in _validate_node_config(node_type, config):
             errors.append(f"[{label}] {err}")
 
