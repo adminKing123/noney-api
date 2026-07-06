@@ -149,12 +149,21 @@ def update_workflow_name(workflow_id):
 @bp.route("/workflows/<workflow_id>/graph", methods=["PATCH"])
 @require_auth
 def update_workflow_graph(workflow_id):
-    """PATCH /fuse/workflows/:id/graph — save the React Flow node/edge graph."""
+    """
+    PATCH /fuse/workflows/:id/graph — save the React Flow node/edge graph.
+
+    Body:
+        nodes  – workflow logic nodes only  (fuse_node type)
+        edges  – workflow edges
+        blocks – optional; purely-visual block overlays (fuse_block type).
+                 Stored separately and never passed to the compiler.
+    """
     owner_id = request.user["uid"]
-    body = request.json or {}
-    nodes = body.get("nodes", [])
-    edges = body.get("edges", [])
-    updated = db.workflow.update_graph(workflow_id, owner_id, nodes, edges)
+    body   = request.json or {}
+    nodes  = body.get("nodes",  [])
+    edges  = body.get("edges",  [])
+    blocks = body.get("blocks") # None if key absent → db layer skips update
+    updated = db.workflow.update_graph(workflow_id, owner_id, nodes, edges, blocks)
     if updated is None:
         return jsonify({"error": "Workflow not found"}), 404
     return jsonify(updated)

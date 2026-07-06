@@ -456,6 +456,7 @@ class Workflow:
             "status":         "inactive",
             "nodes":          [],
             "edges":          [],
+            "blocks":         [],   # purely-visual block overlays (never compiled)
             # Compilation state — populated on first activation.
             "compiled_at":    None,
             "graph_hash":     None,
@@ -518,18 +519,36 @@ class Workflow:
         self._col().document(workflow_id).update({"name": name, "updated_at": now})
         return {**existing, "name": name, "updated_at": now}
 
-    def update_graph(self, workflow_id: str, owner_id: str, nodes: list, edges: list):
-        """Persist the React Flow node/edge graph. Returns updated doc or None."""
+    def update_graph(
+        self,
+        workflow_id: str,
+        owner_id: str,
+        nodes: list,
+        edges: list,
+        blocks: list | None = None,
+    ):
+        """
+        Persist the React Flow node/edge graph.
+
+        ``nodes`` and ``edges`` contain only workflow logic nodes.
+        ``blocks`` are purely-visual overlay containers that are stored
+        separately so they never pollute the compiled workflow graph.
+
+        Returns the updated doc, or None if not found / unauthorised.
+        """
         existing = self.get(workflow_id, owner_id)
         if existing is None:
             return None
         now = datetime.utcnow().isoformat() + "Z"
-        self._col().document(workflow_id).update({
+        update_data: dict = {
             "nodes":      nodes,
             "edges":      edges,
             "updated_at": now,
-        })
-        return {**existing, "nodes": nodes, "edges": edges, "updated_at": now}
+        }
+        if blocks is not None:
+            update_data["blocks"] = blocks
+        self._col().document(workflow_id).update(update_data)
+        return {**existing, **update_data}
 
     def update_status(self, workflow_id: str, owner_id: str, status: str):
         """Toggle workflow active / inactive. Returns updated doc or None."""
