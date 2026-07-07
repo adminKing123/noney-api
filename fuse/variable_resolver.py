@@ -90,6 +90,55 @@ def resolve_single_token(token_str: str, node_outputs: dict) -> Any:
 
     node_id  = inner[:dot_pos]
     path_str = inner[dot_pos + 1:]
+
+    # Intercept system.datetime.*
+    if node_id == "system" and path_str.startswith("datetime"):
+        parts = path_str.split(".", 2)
+        tz_name = "UTC"
+        fmt = "iso"
+        
+        if len(parts) > 1:
+            tz_name = parts[1]
+        if len(parts) > 2:
+            fmt = parts[2]
+            
+        from datetime import datetime, timezone
+        import pytz
+        now = datetime.now(timezone.utc)
+        try:
+            tz = pytz.timezone(tz_name)
+        except Exception:
+            tz = pytz.utc
+        
+        local_time = now.astimezone(tz)
+        
+        if fmt == "unix":
+            return str(int(local_time.timestamp()))
+        elif fmt == "date":
+            return local_time.strftime("%Y-%m-%d")
+        elif fmt == "time":
+            return local_time.strftime("%H:%M:%S")
+        elif fmt == "iso":
+            return local_time.isoformat()
+        else:
+            # Custom JS-style format string (e.g. DD/MM/YYYY)
+            mapping = {
+                "YYYY": "%Y",
+                "YY": "%y",
+                "MM": "%m",
+                "DD": "%d",
+                "HH": "%H",
+                "hh": "%I",
+                "mm": "%M",
+                "ss": "%S",
+                "A": "%p",
+                "a": "%p",
+            }
+            py_fmt = fmt
+            for js_token, py_token in mapping.items():
+                py_fmt = py_fmt.replace(js_token, py_token)
+            return local_time.strftime(py_fmt)
+
     node_data = node_outputs.get(node_id, {})
     value = _resolve_path(node_data, path_str)
 
@@ -124,8 +173,57 @@ def resolve_variables(template: str, node_outputs: dict) -> str:
         else:
             node_id  = token_inner[:dot_pos]
             path_str = token_inner[dot_pos + 1:]
-            node_data = node_outputs.get(node_id, {})
-            value = _resolve_path(node_data, path_str)
+            
+            # Intercept system.datetime.*
+            if node_id == "system" and path_str.startswith("datetime"):
+                parts = path_str.split(".", 2)
+                tz_name = "UTC"
+                fmt = "iso"
+                
+                if len(parts) > 1:
+                    tz_name = parts[1]
+                if len(parts) > 2:
+                    fmt = parts[2]
+                
+                from datetime import datetime, timezone
+                import pytz
+                now = datetime.now(timezone.utc)
+                try:
+                    tz = pytz.timezone(tz_name)
+                except Exception:
+                    tz = pytz.utc
+                
+                local_time = now.astimezone(tz)
+                
+                if fmt == "unix":
+                    value = str(int(local_time.timestamp()))
+                elif fmt == "date":
+                    value = local_time.strftime("%Y-%m-%d")
+                elif fmt == "time":
+                    value = local_time.strftime("%H:%M:%S")
+                elif fmt == "iso":
+                    value = local_time.isoformat()
+                else:
+                    # Custom JS-style format string (e.g. DD/MM/YYYY)
+                    mapping = {
+                        "YYYY": "%Y",
+                        "YY": "%y",
+                        "MM": "%m",
+                        "DD": "%d",
+                        "HH": "%H",
+                        "hh": "%I",
+                        "mm": "%M",
+                        "ss": "%S",
+                        "A": "%p",
+                        "a": "%p",
+                    }
+                    py_fmt = fmt
+                    for js_token, py_token in mapping.items():
+                        py_fmt = py_fmt.replace(js_token, py_token)
+                    value = local_time.strftime(py_fmt)
+            else:
+                node_data = node_outputs.get(node_id, {})
+                value = _resolve_path(node_data, path_str)
 
             if value is None:
                 body = node_data.get("body")

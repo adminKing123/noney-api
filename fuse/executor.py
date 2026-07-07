@@ -88,7 +88,14 @@ class ExecutionContext:
         self.triggered_at = _now_iso()
         self.trigger_type = trigger_type
         self.trigger_data = trigger_data
-        self.node_outputs: dict[str, dict] = {}
+        self.node_outputs: dict[str, dict] = {
+            "system": {
+                "workflow_id": self.workflow_id,
+                "run_id": self.run_id,
+                "triggered_at": self.triggered_at,
+                "trigger_type": self.trigger_type,
+            }
+        }
 
     def set_output(self, node_id: str, output: dict) -> None:
         """Store a node's output for downstream variable resolution."""
