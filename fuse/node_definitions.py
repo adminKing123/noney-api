@@ -584,6 +584,28 @@ ACTION_NODES = [
             ],
         },
     },
+    {
+        "type": "set_variables",
+        "label": "Set Variables",
+        "icon": "VscVariableGroup",
+        "section": "Logic",
+        "description": "Define custom variables (strings, numbers, booleans, objects, arrays) to use in downstream steps. You can combine existing variables here to simplify logic later.",
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Variables",
+                    "fields": [
+                        {
+                            "key": "variables",
+                            "label": "Variables",
+                            "type": "json_value_builder",
+                            "hint": "Set key, type, and value for each variable. Use @ to insert data from previous steps. Remove unwanted variables by clicking the × button.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 ]
 
 

@@ -40,6 +40,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "send_webex_message": [],
     # filter_type defaults to "all" via node definition defaults
     "webex_message":    [],
+    "set_variables":    [],
 }
 
 
@@ -132,6 +133,13 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
         time_str = config.get("time", "")
         if time_str and not _is_valid_time(time_str):
             errors.append(f"Schedule time '{time_str}' is not a valid HH:MM value.")
+
+    # Set Variables: must have at least one variable
+    if node_type == "set_variables":
+        variables = config.get("variables", {})
+        fields = variables.get("fields", [])
+        if not fields:
+            errors.append("You must define at least one variable.")
 
     return errors
 

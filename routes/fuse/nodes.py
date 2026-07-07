@@ -42,3 +42,20 @@ def get_action_nodes():
         filtered_nodes.append(node)
 
     return jsonify(filtered_nodes)
+
+@bp.route("/nodes/system-variables", methods=["GET"])
+@require_auth
+def get_system_variables():
+    """GET /fuse/nodes/system-variables — returns available runtime system variables."""
+    import pytz
+    timezones = list(pytz.common_timezones)
+    
+    return jsonify({
+        "variables": [
+            {"token": "system.workflow_id", "label": "Workflow ID", "group": "Metadata"},
+            {"token": "system.run_id", "label": "Execution Run ID", "group": "Metadata"},
+            {"token": "system.triggered_at", "label": "Triggered At", "group": "Metadata"},
+            {"token": "system.trigger_type", "label": "Trigger Type", "group": "Metadata"},
+        ],
+        "timezones": timezones
+    })
