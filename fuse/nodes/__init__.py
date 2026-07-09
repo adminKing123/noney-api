@@ -20,6 +20,8 @@ from .send_gmail           import SendGmailHandler
 from .webex_message        import WebexMessageHandler
 from .send_webex_message   import SendWebexMessageHandler
 from .set_variables        import SetVariablesHandler
+from .fork                 import ForkHandler
+from .join                 import JoinHandler
 
 # Maps the node_type string (from compiled_graph["nodes"][id]["node_type"])
 # to the singleton handler that executes it.
@@ -35,4 +37,6 @@ HANDLERS: dict = {
     "webex_message":        WebexMessageHandler(),
     "send_webex_message":   SendWebexMessageHandler(),
     "set_variables":        SetVariablesHandler(),
+    "fork":                 ForkHandler(),
+    "join":                 JoinHandler(),
 }

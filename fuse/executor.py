@@ -182,14 +182,29 @@ def run_workflow(
     nodes_failed    = 0
     run_error: str | None = None
 
+    # Calculate in-degree for join nodes based on compiled graph adjacency
+    in_degrees: dict[str, int] = {}
+    for src, handles in adjacency.items():
+        for handle, targets in handles.items():
+            for t in targets:
+                in_degrees[t] = in_degrees.get(t, 0) + 1
+
+    join_visits: dict[str, int] = {}
+
     while queue:
         node_id = queue.pop(0)
+
+        node = nodes.get(node_id)
+        if node and node.get("node_type") == "join":
+            join_visits[node_id] = join_visits.get(node_id, 0) + 1
+            if join_visits[node_id] < in_degrees.get(node_id, 1):
+                # Wait for other branches
+                continue
 
         if node_id in executed:
             continue
         executed.add(node_id)
 
-        node = nodes.get(node_id)
         if node is None:
             logger.warning(
                 "[FUSE] Node '%s' missing from compiled graph — skipping. "

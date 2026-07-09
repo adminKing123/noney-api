@@ -585,6 +585,38 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "fork",
+        "label": "Fork (Parallel)",
+        "icon": "TbGitFork",
+        "section": "Logic",
+        "description": "Run multiple branches in parallel. Connect multiple action nodes to this node's output.",
+        "config_form": {
+            "sections": [
+                {
+                    "fields": [
+                        {"key": "info", "label": "Info", "type": "text", "hint": "Connect multiple nodes to the output of this node. They will be executed in parallel.", "disabled": True}
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "type": "join",
+        "label": "Wait (Join)",
+        "icon": "TbGitMerge",
+        "section": "Logic",
+        "description": "Wait until all incoming parallel branches have completed before proceeding.",
+        "config_form": {
+            "sections": [
+                {
+                    "fields": [
+                        {"key": "info", "label": "Info", "type": "text", "hint": "Connect multiple parallel branches to this node. It will wait for all of them to finish.", "disabled": True}
+                    ]
+                }
+            ]
+        }
+    },
+    {
         "type": "set_variables",
         "label": "Set Variables",
         "icon": "VscVariableGroup",
