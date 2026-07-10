@@ -651,6 +651,125 @@ def github_integration_info():
     return jsonify(integration)
 
 
+@bp.route("/integration/github/repos", methods=["GET"])
+@require_auth
+def github_list_repos():
+    """GET /fuse/integration/github/repos — list GitHub repos for the linked account."""
+    user_id = request.user["uid"]
+    
+    integration = db.integration.get_integration(user_id, "github")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "GitHub integration not found or not configured."}), 404
+
+    integration = refresh_github_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh GitHub access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "GitHub access token not available."}), 500
+
+    from utils.integrations.github_utils import list_github_repos
+    try:
+        raw_items = list_github_repos(access_token)
+        repos = [{"id": item.get("full_name"), "label": item.get("full_name")} for item in raw_items]
+        return jsonify({"repos": repos, "total": len(repos)})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.route("/integration/github/branches", methods=["GET"])
+@require_auth
+def github_list_branches():
+    """GET /fuse/integration/github/branches — list branches for a GitHub repo."""
+    user_id = request.user["uid"]
+    repo_name = request.args.get("repo_name")
+    if not repo_name:
+        return jsonify({"error": "repo_name is required"}), 400
+        
+    integration = db.integration.get_integration(user_id, "github")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "GitHub integration not found or not configured."}), 404
+
+    integration = refresh_github_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh GitHub access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "GitHub access token not available."}), 500
+
+    from utils.integrations.github_utils import list_github_branches
+    try:
+        raw_items = list_github_branches(access_token, repo_name)
+        branches = [{"id": item.get("name"), "label": item.get("name")} for item in raw_items]
+        return jsonify({"branches": branches, "total": len(branches)})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+@bp.route("/integration/github/webhooks", methods=["GET"])
+@require_auth
+def github_list_webhooks():
+    """GET /fuse/integration/github/webhooks — list GitHub webhooks for a repo."""
+    user_id = request.user["uid"]
+    repo_name = request.args.get("repo_name")
+    if not repo_name:
+        return jsonify({"error": "repo_name is required"}), 400
+        
+    integration = db.integration.get_integration(user_id, "github")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "GitHub integration not found or not configured."}), 404
+
+    integration = refresh_github_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh GitHub access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "GitHub access token not available."}), 500
+
+    from utils.integrations.github_utils import list_all_github_webhooks, serialize_github_webhook_for_ui, list_github_repos, list_github_branches
+
+    try:
+        raw_items = list_all_github_webhooks(access_token, repo_name)
+        webhooks = [serialize_github_webhook_for_ui(item) for item in raw_items]
+        return jsonify({"webhooks": webhooks, "total": len(webhooks)})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+@bp.route("/integration/github/webhooks/<webhook_id>", methods=["DELETE"])
+@require_auth
+def github_delete_webhook(webhook_id):
+    """DELETE /fuse/integration/github/webhooks/:id — remove a GitHub webhook."""
+    user_id = request.user["uid"]
+    repo_name = request.args.get("repo_name")
+    if not repo_name:
+        return jsonify({"error": "repo_name is required"}), 400
+        
+    integration = db.integration.get_integration(user_id, "github")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "GitHub integration not found or not configured."}), 404
+
+    integration = refresh_github_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh GitHub access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "GitHub access token not available."}), 500
+
+    from utils.integrations.github_utils import (
+        delete_github_webhook,
+        sync_github_workflows_after_webhook_removal,
+    )
+
+    if not delete_github_webhook(access_token, repo_name, webhook_id):
+        return jsonify({"error": "Failed to delete GitHub webhook."}), 502
+
+    sync_github_workflows_after_webhook_removal(user_id, webhook_id)
+    return jsonify({"success": True, "id": webhook_id})
+
+
 @bp.route("/integration/<integration_id>", methods=["DELETE"])
 @require_auth
 def revoke_integration(integration_id):

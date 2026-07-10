@@ -19,6 +19,7 @@ from .http_request         import HttpRequestHandler
 from .send_gmail           import SendGmailHandler
 from .webex_message        import WebexMessageHandler
 from .send_webex_message   import SendWebexMessageHandler
+from .github_pull_request  import GithubPullRequestHandler
 from .set_variables        import SetVariablesHandler
 from .fork                 import ForkHandler
 from .join                 import JoinHandler
@@ -36,6 +37,7 @@ HANDLERS: dict = {
     "send_gmail":           SendGmailHandler(),
     "webex_message":        WebexMessageHandler(),
     "send_webex_message":   SendWebexMessageHandler(),
+    "github_pull_request":  GithubPullRequestHandler(),
     "set_variables":        SetVariablesHandler(),
     "fork":                 ForkHandler(),
     "join":                 JoinHandler(),

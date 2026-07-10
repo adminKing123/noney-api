@@ -12,13 +12,20 @@ from datetime import datetime
 bp = Blueprint("fuse_workflows", __name__)
 
 
-def _teardown_webex_webhook(workflow: dict) -> None:
-    """Delete the Webex webhook for a webex_message workflow, if registered."""
+def _teardown_webhooks(workflow: dict) -> None:
+    """Delete the Webhooks for workflow, if registered."""
     from utils.integrations.webex_utils import cleanup_webex_workflow_webhook
+    from utils.integrations.github_utils import cleanup_github_workflow_webhook
 
     owner_id = workflow.get("owner_id", "")
     compiled_graph = workflow.get("compiled_graph") or {}
-    cleanup_webex_workflow_webhook(owner_id, compiled_graph)
+    
+    starter_type = compiled_graph.get("starter", {}).get("node_type")
+    
+    if starter_type == "webex_message":
+        cleanup_webex_workflow_webhook(owner_id, compiled_graph)
+    elif starter_type == "github_pull_request":
+        cleanup_github_workflow_webhook(owner_id, compiled_graph)
 
 # ─── Workflows ────────────────────────────────────────────────────────────────
 
@@ -286,9 +293,18 @@ def deactivate_workflow(workflow_id):
     if workflow is None:
         return jsonify({"error": "Workflow not found"}), 404
 
-    _teardown_webex_webhook(workflow)
+    _teardown_webhooks(workflow)
     runtime.deactivate(workflow_id)
-    db.workflow.clear_compiled_webex_webhook(workflow_id, owner_id)
+    
+    starter_type = (workflow.get("compiled_graph") or {}).get("starter", {}).get("node_type")
+    if starter_type == "webex_message":
+        db.workflow.clear_compiled_webex_webhook(workflow_id, owner_id)
+    # For Github we pop it in runtime.deactivate already but we can also do it in DB
+    if starter_type == "github_pull_request":
+        compiled = workflow.get("compiled_graph") or {}
+        if "github_webhook" in compiled:
+            compiled.pop("github_webhook")
+            db.workflow.save_compilation(workflow_id, owner_id, compiled, compiled.get("graph_hash"), compiled.get("compiled_at"))
     updated = db.workflow.update_status(workflow_id, owner_id, "inactive")
     return jsonify({"success": True, "workflow": updated})
 
@@ -302,10 +318,10 @@ def delete_workflow(workflow_id):
     if workflow is None:
         return jsonify({"error": "Workflow not found"}), 404
 
-    # Always delete the Webex webhook from the API using persisted metadata —
+    # Always delete the webhooks from the API using persisted metadata —
     # runtime.deactivate alone is not enough when the workflow is inactive or
     # the server was restarted since activation.
-    _teardown_webex_webhook(workflow)
+    _teardown_webhooks(workflow)
     runtime.deactivate(workflow_id)
 
     success = db.workflow.delete(workflow_id, owner_id)
@@ -403,6 +419,53 @@ def trigger_webhook(workflow_id):
 
 
 # ─── Webex message webhook trigger ────────────────────────────────────────────
+
+# ─── GitHub webhook trigger ───────────────────────────────────────────────────
+
+@bp.route("/github/webhook/<workflow_id>", methods=["POST"])
+def trigger_github_webhook(workflow_id):
+    execution = runtime.get_execution(workflow_id)
+    if execution is None:
+        return jsonify({"error": "Workflow not found or not active."}), 404
+
+    compiled_graph = execution.compiled_graph
+    starter = compiled_graph.get("starter", {})
+
+    if starter.get("node_type") != "github_pull_request":
+        return jsonify({"error": "This workflow is not GitHub-triggered."}), 400
+
+    body_bytes = request.get_data()
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    webhook_meta = compiled_graph.get("github_webhook") or {}
+    secret = webhook_meta.get("secret", "")
+
+    from utils.integrations.github_utils import (
+        normalise_github_pr_event,
+        verify_github_webhook_signature,
+    )
+
+    if secret and not verify_github_webhook_signature(body_bytes, signature, secret):
+        return jsonify({"error": "Invalid GitHub webhook signature."}), 401
+
+    try:
+        event_payload = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        event_payload = {}
+
+    event_type = request.headers.get("X-GitHub-Event", "")
+    
+    starter_config = starter.get("config", {})
+    trigger_data = normalise_github_pr_event(
+        event_payload,
+        event_type,
+        starter_config,
+    )
+
+    if trigger_data is None:
+        return jsonify({"status": "ignored"}), 200
+
+    run_workflow_async(compiled_graph, trigger_data, trigger_type="github_pull_request")
+    return jsonify({"status": "accepted", "workflow_id": workflow_id}), 202
 
 @bp.route("/webex/webhook/<workflow_id>", methods=["POST"])
 def trigger_webex_message(workflow_id):

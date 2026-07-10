@@ -184,6 +184,72 @@ STARTER_NODES = [
             ],
         },
     },
+    {
+        "type": "github_pull_request",
+        "label": "On GitHub PR",
+        "icon": "FaCodePullRequest",
+        "section": "GitHub",
+        "required_integration": "github",
+        "description": "Start the workflow when a Pull Request event occurs in your GitHub repository.",
+        "defaults": {
+            "watch_target": "repo",
+            "action_type": "all",
+        },
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Watch Target",
+                    "fields": [
+                        {
+                            "key": "watch_target",
+                            "label": "Watch",
+                            "type": "select",
+                            "required": True,
+                            "options": [
+                                {"label": "A specific repository", "value": "repo"},
+                            ],
+                            "hint": "Choose which repository to listen to",
+                        },
+                        {
+                            "key": "repo_name",
+                            "label": "Repository Name",
+                            "type": "github_repo_select",
+                            "required": True,
+                            "visibleWhen": {"key": "watch_target", "value": "repo"},
+                            "hint": "Select the GitHub repository.",
+                        },
+                        {
+                            "key": "branch_name",
+                            "label": "Branch Name (Optional)",
+                            "type": "github_branch_select",
+                            "visibleWhen": {"key": "watch_target", "value": "repo"},
+                            "hint": "Select a target branch. If omitted, triggers for all branches.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Actions",
+                    "fields": [
+                        {
+                            "key": "action_type",
+                            "label": "Action",
+                            "type": "select",
+                            "required": True,
+                            "options": [
+                                {"label": "All PR activities", "value": "all"},
+                                {"label": "Opened", "value": "opened"},
+                                {"label": "Synchronized (code updated)", "value": "synchronize"},
+                                {"label": "Closed (Merged)", "value": "merged"},
+                                {"label": "Closed (Unmerged)", "value": "closed_unmerged"},
+                                {"label": "Review Submitted", "value": "review_submitted"},
+                            ],
+                            "hint": "Trigger only on specific Pull Request actions",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 ]
 
 ACTION_NODES = [

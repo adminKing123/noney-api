@@ -56,6 +56,80 @@ class WebhookExecution:
         logger.info("[FUSE] Webhook workflow '%s' deactivated.", self.workflow_id)
 
 
+class GithubPullRequestExecution:
+    def __init__(self, workflow_id: str, compiled_graph: dict) -> None:
+        self.workflow_id    = workflow_id
+        self.compiled_graph = compiled_graph
+
+    def start(self) -> None:
+        from utils.integrations.github_utils import (
+            create_github_webhook,
+            delete_github_webhook,
+            get_github_access_token,
+        )
+
+        existing = self.compiled_graph.get("github_webhook") or {}
+        if existing.get("id") and existing.get("secret"):
+            logger.info(
+                "[FUSE] Github PR workflow '%s' restored (existing webhook=%s).",
+                self.workflow_id,
+                existing["id"],
+            )
+            return
+
+        owner_id = self.compiled_graph.get("owner_id", "")
+        starter_config = self.compiled_graph["starter"].get("config", {})
+
+        access_token = get_github_access_token(owner_id)
+        if not access_token:
+            raise RuntimeError("Github integration is not configured or token refresh failed.")
+
+        base = self._webhook_base_url()
+        target_url = f"{base}/fuse/github/webhook/{self.workflow_id}"
+        
+        repo_name = starter_config.get("repo_name", "").strip()
+        if not repo_name:
+            raise RuntimeError("Repository name is required for GitHub PR Trigger.")
+
+        webhook_id = None
+        try:
+            webhook = create_github_webhook(
+                access_token,
+                repo_name=repo_name,
+                target_url=target_url,
+            )
+            webhook_id = webhook["id"]
+            self.compiled_graph["github_webhook"] = {
+                "id":     webhook_id,
+                "secret": webhook["secret"],
+                "repo_name": repo_name,
+            }
+        except Exception:
+            if webhook_id:
+                delete_github_webhook(access_token, repo_name, webhook_id)
+            raise
+
+        logger.info(
+            "[FUSE] Github PR workflow '%s' is now active (webhook=%s).",
+            self.workflow_id,
+            webhook_id,
+        )
+
+    def stop(self) -> None:
+        from utils.integrations.github_utils import cleanup_github_workflow_webhook
+
+        owner_id = self.compiled_graph.get("owner_id", "")
+        cleanup_github_workflow_webhook(owner_id, self.compiled_graph)
+        self.compiled_graph.pop("github_webhook", None)
+
+        logger.info("[FUSE] Github PR workflow '%s' deactivated.", self.workflow_id)
+
+    @staticmethod
+    def _webhook_base_url() -> str:
+        from config import CONFIG
+        return CONFIG.HOST.rstrip("/")
+
+
 class WebexMessageExecution:
     """
     Represents an active Webex message-triggered workflow.
@@ -251,7 +325,7 @@ class RuntimeManager:
         with cls._class_lock:
             if cls._instance is None:
                 inst = super().__new__(cls)
-                inst._active: dict[str, WebhookExecution | ScheduleExecution | WebexMessageExecution] = {}
+                inst._active: dict[str, WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution] = {}
                 inst._active_lock = threading.Lock()
 
                 from apscheduler.schedulers.background import BackgroundScheduler
@@ -275,11 +349,13 @@ class RuntimeManager:
         starter_type = compiled_graph["starter"]["node_type"]
 
         if starter_type == "webhook":
-            execution: WebhookExecution | ScheduleExecution | WebexMessageExecution = WebhookExecution(
+            execution: WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution = WebhookExecution(
                 workflow_id, compiled_graph
             )
         elif starter_type == "webex_message":
             execution = WebexMessageExecution(workflow_id, compiled_graph)
+        elif starter_type == "github_pull_request":
+            execution = GithubPullRequestExecution(workflow_id, compiled_graph)
         elif starter_type == "schedule":
             execution = ScheduleExecution(workflow_id, compiled_graph, self._scheduler)
         else:
@@ -298,7 +374,7 @@ class RuntimeManager:
         if execution is not None:
             execution.stop()
 
-    def get_execution(self, workflow_id: str) -> WebhookExecution | ScheduleExecution | WebexMessageExecution | None:
+    def get_execution(self, workflow_id: str) -> WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution | None:
         """Return the active execution for a workflow, or None if inactive."""
         with self._active_lock:
             return self._active.get(workflow_id)

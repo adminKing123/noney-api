@@ -40,6 +40,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "send_webex_message": [],
     # filter_type defaults to "all" via node definition defaults
     "webex_message":    [],
+    "github_pull_request": ["watch_target"],
     "set_variables":    [],
 }
 
@@ -116,6 +117,11 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
         filter_type = (config.get("filter_type") or "all").lower()
         if filter_type == "room" and not (config.get("room_id") or "").strip():
             errors.append("Space / Room is required when listening to a specific space.")
+
+    # Github Pull Request starter
+    if node_type == "github_pull_request":
+        if config.get("watch_target") == "repo" and not (config.get("repo_name") or "").strip():
+            errors.append("Repository Name is required when listening to a specific repository.")
 
     # Send Webex message: destination from picker or manual entry
     if node_type == "send_webex_message":
