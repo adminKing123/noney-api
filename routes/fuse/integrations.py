@@ -434,6 +434,7 @@ def google_sheets_oauth_start():
 
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
     ]
@@ -494,6 +495,97 @@ def google_sheets_oauth_callback():
     db.integration.save_integration_tokens(user_id, "google_sheets", tokens)
 
     return redirect(f"{CONFIG.FRONTEND_URL}/fuse/integrations")
+
+
+@bp.route("/integration/google_sheets/spreadsheets", methods=["GET"])
+@require_auth
+def google_sheets_list_spreadsheets():
+    """GET /fuse/integration/google_sheets/spreadsheets — list user's Google Sheets files."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "google_sheets")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Google Sheets integration not found or not configured."}), 404
+
+    integration = refresh_google_sheets_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Google Sheets access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Google Sheets access token not available."}), 500
+
+    limit  = int(request.args.get("limit", 25))
+    search = request.args.get("search", "").strip() or None
+
+    from utils.integrations.google_sheets_utils import list_google_spreadsheets
+    try:
+        files = list_google_spreadsheets(access_token, limit=limit, search=search)
+        spreadsheets = [{"id": f["id"], "label": f["name"]} for f in files if f.get("id")]
+        return jsonify({"spreadsheets": spreadsheets, "total": len(spreadsheets)})
+    except RuntimeError as exc:
+        print(f"[Google Sheets] list_spreadsheets error for user {user_id}: {exc}")
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.route("/integration/google_sheets/sheets", methods=["GET"])
+@require_auth
+def google_sheets_list_sheets():
+    """GET /fuse/integration/google_sheets/sheets?spreadsheet_id=... — list tabs in a spreadsheet."""
+    user_id = request.user["uid"]
+    spreadsheet_id = request.args.get("spreadsheet_id")
+    if not spreadsheet_id:
+        return jsonify({"error": "spreadsheet_id is required"}), 400
+
+    integration = db.integration.get_integration(user_id, "google_sheets")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Google Sheets integration not found or not configured."}), 404
+
+    integration = refresh_google_sheets_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Google Sheets access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Google Sheets access token not available."}), 500
+
+    from utils.integrations.google_sheets_utils import list_spreadsheet_sheets
+    try:
+        sheets = list_spreadsheet_sheets(access_token, spreadsheet_id)
+        return jsonify({"sheets": sheets, "total": len(sheets)})
+    except RuntimeError as exc:
+        print(f"[Google Sheets] list_sheets error for user {user_id} spreadsheet {spreadsheet_id}: {exc}")
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.route("/integration/google_sheets/columns", methods=["GET"])
+@require_auth
+def google_sheets_get_columns():
+    """GET /fuse/integration/google_sheets/columns?spreadsheet_id=...&sheet_name=... — return header row."""
+    user_id = request.user["uid"]
+    spreadsheet_id = request.args.get("spreadsheet_id")
+    sheet_name = request.args.get("sheet_name")
+    if not spreadsheet_id or not sheet_name:
+        return jsonify({"error": "spreadsheet_id and sheet_name are required"}), 400
+
+    integration = db.integration.get_integration(user_id, "google_sheets")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "Google Sheets integration not found or not configured."}), 404
+
+    integration = refresh_google_sheets_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh Google Sheets access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "Google Sheets access token not available."}), 500
+
+    from utils.integrations.google_sheets_utils import get_sheet_column_headers
+    try:
+        columns = get_sheet_column_headers(access_token, spreadsheet_id, sheet_name)
+        return jsonify({"columns": columns})
+    except RuntimeError as exc:
+        print(f"[Google Sheets] get_columns error for user {user_id} spreadsheet {spreadsheet_id} sheet '{sheet_name}': {exc}")
+        return jsonify({"error": str(exc)}), 502
 
 
 @bp.route("/integration/google_sheets/info", methods=["GET"])

@@ -704,5 +704,66 @@ ACTION_NODES = [
             ],
         },
     },
+    {
+        "type": "google_sheets_add_row",
+        "label": "Add Row",
+        "icon": "SiGooglesheets",
+        "section": "Google",
+        "required_integration": "google_sheets",
+        "description": "Add a new row to a Google Sheets spreadsheet. Pick the sheet, choose where to insert the row, then map each column to a value or variable.",
+        "defaults": {
+            "add_row": "after_last",
+        },
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Spreadsheet",
+                    "fields": [
+                        {
+                            "key": "spreadsheet_id",
+                            "label": "Spreadsheet",
+                            "type": "google_sheets_spreadsheet_select",
+                            "required": True,
+                            "hint": "Select a Google Sheets file from your connected Google account.",
+                        },
+                        {
+                            "key": "sheet_name",
+                            "label": "Sheet (Tab)",
+                            "type": "google_sheets_sheet_select",
+                            "required": True,
+                            "hint": "Select the sheet tab to add the row to.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Row Position",
+                    "fields": [
+                        {
+                            "key": "add_row",
+                            "label": "Add row",
+                            "type": "select",
+                            "required": True,
+                            "options": [
+                                {"label": "After last data row", "value": "after_last"},
+                                {"label": "After the first row", "value": "after_first"},
+                            ],
+                            "hint": "After last data row appends to the bottom. After first row inserts below the header row.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Add data by column",
+                    "fields": [
+                        {
+                            "key": "column_data",
+                            "label": "Column values",
+                            "type": "google_sheets_column_builder",
+                            "hint": "Column names come from the first (header) row. Use @ to insert variables from previous steps.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 ]
 
