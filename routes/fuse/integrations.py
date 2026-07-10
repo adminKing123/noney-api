@@ -8,6 +8,7 @@ from config import CONFIG
 from utils.integrations.gmail_utils import refresh_gmail_access_token_if_expired
 from utils.integrations.webex_utils import refresh_webex_access_token_if_expired
 from utils.integrations.google_sheets_utils import refresh_google_sheets_access_token_if_expired
+from utils.integrations.github_utils import refresh_github_access_token_if_expired
 import requests # Keep requests here for OAuth callbacks and user info APIs
 
 bp = Blueprint("fuse_integrations", __name__)
@@ -34,6 +35,13 @@ INTEGRATION_NODES = [
         "name": "Google Sheets Connect",
         "description": "Connect your Google account to read and write spreadsheets.",
         "icon": "SiGooglesheets",
+        "configured": False
+    },
+    {
+        "id": "github",
+        "name": "GitHub Connect",
+        "description": "Connect your GitHub account to manage repositories and issues.",
+        "icon": "SiGithub",
         "configured": False
     }
 ]
@@ -516,6 +524,129 @@ def google_sheets_integration_info():
     except requests.exceptions.RequestException as e:
         print(f"Error fetching Google Sheets user info: {e}")
         return jsonify({"error": f"Failed to retrieve Google Sheets user info: {str(e)}"}), 500
+
+    return jsonify(integration)
+
+
+# ─── GitHub OAuth ─────────────────────────────────────────────────────────────
+
+@bp.route("/integration/github/auth", methods=["GET"])
+@require_auth
+def github_oauth_start():
+    """GET /fuse/integration/github/auth — starts the GitHub OAuth flow."""
+    user_id = request.user["uid"]
+
+    client_id = CONFIG.GITHUB_OAUTH_CLIENT_ID
+    redirect_uri = CONFIG.GITHUB_OAUTH_REDIRECT_URI
+
+    print(f"Starting GitHub OAuth for user {user_id} with client_id {client_id} and redirect_uri {redirect_uri}")
+
+    if not client_id or not redirect_uri:
+        return jsonify({"error": "GitHub OAuth is not configured on the server."}), 503
+
+    scopes = [
+        "repo",
+        "user:email",
+    ]
+
+    auth_url = "https://github.com/login/oauth/authorize"
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "scope": " ".join(scopes),
+        "state": user_id,
+    }
+
+    url = f"{auth_url}?{urllib.parse.urlencode(params)}"
+    return jsonify({"auth_url": url})
+
+
+@bp.route("/integration/github/callback", methods=["GET"])
+def github_oauth_callback():
+    """GET /fuse/integration/github/callback — handles GitHub OAuth redirect."""
+    error = request.args.get("error")
+    if error:
+        return f"OAuth Error: {error}", 400
+
+    code = request.args.get("code")
+    user_id = request.args.get("state")
+
+    if not code or not user_id:
+        return "Missing code or state parameter", 400
+
+    token_url = "https://github.com/login/oauth/access_token"
+
+    data = {
+        "code": code,
+        "client_id": CONFIG.GITHUB_OAUTH_CLIENT_ID,
+        "client_secret": CONFIG.GITHUB_OAUTH_CLIENT_SECRET,
+        "redirect_uri": CONFIG.GITHUB_OAUTH_REDIRECT_URI,
+    }
+
+    headers = {"Accept": "application/json"}
+
+    response = requests.post(token_url, data=data, headers=headers)
+    if response.status_code != 200:
+        return f"Failed to get tokens: {response.text}", 400
+
+    token_data = response.json()
+
+    if "error" in token_data:
+        return f"OAuth Error: {token_data}", 400
+
+    expires_in = token_data.get("expires_in", 28800)  # GitHub tokens usually expire in 8 hours if fine-grained
+    expires_at = (datetime.utcnow() + timedelta(seconds=int(expires_in))).isoformat() + "Z"
+
+    tokens = {
+        "access_token": token_data.get("access_token"),
+        "refresh_token": token_data.get("refresh_token"),
+        "expires_at": expires_at,
+    }
+
+    db.integration.save_integration_tokens(user_id, "github", tokens)
+
+    return redirect(f"{CONFIG.FRONTEND_URL}/fuse/integrations")
+
+
+@bp.route("/integration/github/info", methods=["GET"])
+@require_auth
+def github_integration_info():
+    """GET /fuse/integration/github/info — returns GitHub integration details."""
+    user_id = request.user["uid"]
+    integration = db.integration.get_integration(user_id, "github")
+    if not integration or not integration.get("configured"):
+        return jsonify({"error": "GitHub integration not found or not configured."}), 404
+
+    integration = refresh_github_access_token_if_expired(user_id, integration)
+    if not integration:
+        return jsonify({"error": "Failed to refresh GitHub access token. Please re-configure."}), 500
+
+    access_token = integration.get("access_token")
+    if not access_token:
+        return jsonify({"error": "GitHub access token not available."}), 500
+
+    user_info_url = "https://api.github.com/user"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        user_info_response = requests.get(user_info_url, headers=headers)
+        user_info_response.raise_for_status()
+        user_info = user_info_response.json()
+        
+        email = user_info.get("email")
+        if not email:
+             email_response = requests.get("https://api.github.com/user/emails", headers=headers)
+             if email_response.status_code == 200:
+                 emails = email_response.json()
+                 primary_email = next((e for e in emails if e.get("primary")), None)
+                 if primary_email:
+                     email = primary_email.get("email")
+
+        integration["email"] = email
+        integration["name"] = user_info.get("name") or user_info.get("login")
+        integration["login"] = user_info.get("login")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching GitHub user info: {e}")
+        return jsonify({"error": f"Failed to retrieve GitHub user info: {str(e)}"}), 500
 
     return jsonify(integration)
 

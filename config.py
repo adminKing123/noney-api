@@ -83,6 +83,10 @@ class CONFIG:
         "spark:messages_write spark:messages_read spark:people_read spark:webhooks_write spark:rooms_read",
     )
     WEBEX_API_BASE = os.getenv("WEBEX_API_BASE", "https://webexapis.com/v1")
+    
+    GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID", "")
+    GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET", "")
+    GITHUB_OAUTH_REDIRECT_URI = os.getenv("GITHUB_OAUTH_REDIRECT_URI", "http://localhost:5000/fuse/integration/github/callback")
 
     CRYPTOCOMPOSITEKEY = CryptoCompositeKey()
 
