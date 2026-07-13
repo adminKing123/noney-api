@@ -42,6 +42,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "webex_message":    [],
     "github_pull_request": ["watch_target"],
     "set_variables":    [],
+    "for_each":         ["array_variable"],
 }
 
 

@@ -21,6 +21,7 @@ from .webex_message            import WebexMessageHandler
 from .send_webex_message       import SendWebexMessageHandler
 from .github_pull_request      import GithubPullRequestHandler
 from .set_variables            import SetVariablesHandler
+from .for_each                 import ForEachHandler
 from .fork                     import ForkHandler
 from .join                     import JoinHandler
 from .google_sheets_add_row    import GoogleSheetsAddRowHandler
@@ -40,6 +41,7 @@ HANDLERS: dict = {
     "send_webex_message":       SendWebexMessageHandler(),
     "github_pull_request":      GithubPullRequestHandler(),
     "set_variables":            SetVariablesHandler(),
+    "for_each":                 ForEachHandler(),
     "fork":                     ForkHandler(),
     "join":                     JoinHandler(),
     "google_sheets_add_row":    GoogleSheetsAddRowHandler(),

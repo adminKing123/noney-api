@@ -651,6 +651,32 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "for_each",
+        "label": "For Each Item",
+        "icon": "TbRepeat",
+        "section": "Logic",
+        "branch_handles": ["item", "done"],
+        "description": "Repeat a set of steps for every element in an array. Connect the 'For each item' handle to the body steps, and the 'Done' handle to continue after the loop.",
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Array",
+                    "fields": [
+                        {
+                            "key": "array_variable",
+                            "label": "Array variable",
+                            "type": "variable_text",
+                            "filterArrays": True,
+                            "placeholder": "e.g. {{http_request.body.items}}",
+                            "required": True,
+                            "hint": "Pick an array variable using @. Only array-typed fields are shown. Inside the loop body, reference {{this_node.current_item}} for the current element and {{this_node.current_index}} for its position.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "fork",
         "label": "Fork (Parallel)",
         "icon": "TbGitFork",

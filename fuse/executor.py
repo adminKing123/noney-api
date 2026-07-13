@@ -296,6 +296,39 @@ def run_workflow(
             for target in adj.get(branch, []):
                 if target not in executed:
                     queue.append(target)
+        elif node_type == "for_each":
+            items        = output.get("items", [])
+            item_targets = list(adj.get("item", []))
+            done_targets = list(adj.get("done", []))
+            # Guard set: body BFS must not cross into the done branch or loop back
+            done_set     = set(done_targets) | {node_id}
+
+            for loop_idx, loop_item in enumerate(items):
+                # Expose the current element to downstream body nodes
+                ctx.node_outputs[node_id]["current_item"]  = loop_item
+                ctx.node_outputs[node_id]["current_index"] = loop_idx
+
+                logger.info(
+                    "[FUSE] for_each — iteration %d/%d — workflow=%s run=%s",
+                    loop_idx + 1, len(items), workflow_id, ctx.run_id,
+                )
+
+                ns, nf = _run_for_each_body(
+                    item_targets   = item_targets,
+                    adjacency      = adjacency,
+                    nodes          = nodes,
+                    ctx            = ctx,
+                    done_set       = done_set,
+                    HANDLERS       = HANDLERS,
+                    db             = db,
+                    workflow_id    = workflow_id,
+                )
+                nodes_succeeded += ns
+                nodes_failed    += nf
+
+            for target in done_targets:
+                if target not in executed:
+                    queue.append(target)
         else:
             for targets in adj.values():
                 for target in targets:
@@ -333,6 +366,155 @@ def run_workflow(
 
 
 # ─── Internal helpers ──────────────────────────────────────────────────────────
+
+def _run_for_each_body(
+    item_targets: list[str],
+    adjacency: dict,
+    nodes: dict,
+    ctx,
+    done_set: set[str],
+    HANDLERS: dict,
+    db,
+    workflow_id: str,
+) -> tuple[int, int]:
+    """
+    Execute the body sub-graph of a ``for_each`` node once (one iteration).
+
+    The body is a BFS starting from ``item_targets``.  Traversal stops before
+    any node in ``done_set`` (the for_each node itself + its done-handle targets)
+    so the loop body cannot spill into downstream (post-loop) nodes.
+
+    Each call gets its own ``body_executed`` set, so the same body nodes run
+    again on the next iteration.  The caller must update
+    ``ctx.node_outputs[for_each_node_id]["current_item"]`` and
+    ``ctx.node_outputs[for_each_node_id]["current_index"]`` before calling.
+
+    Returns ``(nodes_succeeded, nodes_failed)`` for the iteration.
+    """
+    body_queue: list[str] = list(item_targets)
+    body_executed: set[str] = set()
+    body_join_visits: dict[str, int] = {}
+    nodes_succeeded = 0
+    nodes_failed    = 0
+
+    while body_queue:
+        body_nid = body_queue.pop(0)
+
+        # Boundary: do not enter the done branch or loop back to for_each
+        if body_nid in done_set:
+            continue
+
+        body_node = nodes.get(body_nid)
+
+        # Join synchronisation within the body
+        if body_node and body_node.get("node_type") == "join":
+            body_join_visits[body_nid] = body_join_visits.get(body_nid, 0) + 1
+            in_deg = sum(
+                1
+                for src, handles in adjacency.items()
+                for tgts in handles.values()
+                if body_nid in tgts and src not in done_set
+            )
+            if body_join_visits[body_nid] < max(in_deg, 1):
+                continue
+
+        if body_nid in body_executed:
+            continue
+        body_executed.add(body_nid)
+
+        if body_node is None:
+            logger.warning(
+                "[FUSE] for_each body — node '%s' missing from compiled graph "
+                "(workflow=%s run=%s)",
+                body_nid, workflow_id, ctx.run_id,
+            )
+            continue
+
+        body_node_type  = body_node.get("node_type", "")
+        body_node_label = body_node.get("label", body_nid)
+        body_handler    = HANDLERS.get(body_node_type)
+        body_started    = _now_iso()
+
+        if body_handler is None:
+            logger.warning(
+                "[FUSE] for_each body — no handler for node type '%s' "
+                "(workflow=%s run=%s)",
+                body_node_type, workflow_id, ctx.run_id,
+            )
+            _write_node_log(
+                db          = db,
+                ctx         = ctx,
+                node_id     = body_nid,
+                node_type   = body_node_type,
+                node_label  = body_node_label,
+                status      = "skipped",
+                started_at  = body_started,
+                finished_at = _now_iso(),
+                duration_ms = 0,
+                output      = None,
+                error       = f"No handler registered for node type '{body_node_type}'",
+                error_type  = "MissingHandlerError",
+            )
+            continue
+
+        body_output: dict
+        body_status: str
+        body_error: str | None      = None
+        body_error_type: str | None = None
+
+        try:
+            logger.info(
+                "[FUSE] for_each body ▶ '%s' (type=%s) — workflow=%s run=%s",
+                body_node_label, body_node_type, workflow_id, ctx.run_id,
+            )
+            body_output = body_handler.execute(body_node.get("config", {}), ctx)
+            body_status = "success"
+            nodes_succeeded += 1
+        except Exception as exc:
+            logger.exception(
+                "[FUSE] for_each body — node '%s' (%s) raised an error "
+                "(workflow=%s run=%s)",
+                body_node_label, body_node_type, workflow_id, ctx.run_id,
+            )
+            body_output      = {"error": str(exc), "success": False}
+            body_status      = "error"
+            body_error       = str(exc)
+            body_error_type  = type(exc).__name__
+            nodes_failed    += 1
+
+        body_finished = _now_iso()
+        ctx.set_output(body_nid, body_output)
+
+        _write_node_log(
+            db          = db,
+            ctx         = ctx,
+            node_id     = body_nid,
+            node_type   = body_node_type,
+            node_label  = body_node_label,
+            status      = body_status,
+            started_at  = body_started,
+            finished_at = body_finished,
+            duration_ms = _duration_ms(body_started),
+            output      = body_output,
+            error       = body_error,
+            error_type  = body_error_type,
+        )
+
+        # Enqueue next body nodes (respecting if_else branching within the body)
+        body_adj = adjacency.get(body_nid, {})
+        if body_node_type == "if_else":
+            branch = "true" if body_output.get("result") else "false"
+            for t in body_adj.get(branch, []):
+                if t not in body_executed and t not in done_set:
+                    body_queue.append(t)
+        else:
+            for tgts in body_adj.values():
+                for t in tgts:
+                    if t not in body_executed and t not in done_set:
+                        body_queue.append(t)
+
+    return nodes_succeeded, nodes_failed
+
 
 def _write_node_log(
     db,
