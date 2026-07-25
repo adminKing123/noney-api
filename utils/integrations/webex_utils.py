@@ -346,8 +346,23 @@ def fetch_webex_message(access_token: str, message_id: str) -> dict:
     return response.json()
 
 
+def get_webex_own_person_id(access_token: str) -> str | None:
+    """Return the authenticated user's Webex person ID (for skipping own messages / mentions)."""
+    try:
+        response = requests.get(
+            f"{CONFIG.WEBEX_API_BASE}/people/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=15,
+        )
+        if response.status_code == 200:
+            return response.json().get("id")
+    except Exception:
+        logger.debug("Failed to fetch Webex /people/me", exc_info=True)
+    return None
+
+
 def fetch_webex_person(access_token: str, person_id: str) -> dict:
-    """Fetch person details (used to resolve own person ID for ignore_own_messages)."""
+    """Fetch person details from the Webex API."""
     response = requests.get(
         f"{CONFIG.WEBEX_API_BASE}/people/{person_id}",
         headers={"Authorization": f"Bearer {access_token}"},
@@ -414,20 +429,18 @@ def normalise_webex_message_event(
 
     include_body = bool(starter_config.get("include_message_body"))
     mentions_only = bool(starter_config.get("mentions_only"))
-    ignore_own = starter_config.get("ignore_own_messages", True)
+
+    person_id = data.get("personId") or event_payload.get("actorId")
 
     # Webex webhook payloads only carry IDs — fetch the full message when the
-    # body is needed or when mention filtering requires message content.
+    # body is needed, when mention filtering requires content, or when we need
+    # the sender ID to skip the connected account's own messages.
     message: dict | None = None
-    if include_body or mentions_only:
+    if include_body or mentions_only or not person_id:
         message = fetch_webex_message(access_token, message_id)
+        person_id = person_id or (message or {}).get("personId")
 
-    person_id = (
-        (message or {}).get("personId")
-        or data.get("personId")
-        or event_payload.get("actorId")
-    )
-    if ignore_own and own_person_id and person_id == own_person_id:
+    if own_person_id and person_id == own_person_id:
         return None
 
     if mentions_only and message:

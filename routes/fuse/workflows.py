@@ -494,6 +494,7 @@ def trigger_webex_message(workflow_id):
 
     from utils.integrations.webex_utils import (
         get_webex_access_token,
+        get_webex_own_person_id,
         normalise_webex_message_event,
         verify_webex_webhook_signature,
     )
@@ -511,21 +512,9 @@ def trigger_webex_message(workflow_id):
     if not access_token:
         return jsonify({"error": "Webex integration unavailable."}), 503
 
-    own_person_id = None
-    try:
-        import requests as _requests
-        from config import CONFIG as _CONFIG
-        me_resp = _requests.get(
-            f"{_CONFIG.WEBEX_API_BASE}/people/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-            timeout=15,
-        )
-        if me_resp.status_code == 200:
-            own_person_id = me_resp.json().get("id")
-    except Exception:
-        pass
-
     starter_config = starter.get("config", {})
+    own_person_id = get_webex_own_person_id(access_token)
+
     trigger_data = normalise_webex_message_event(
         access_token,
         event_payload,

@@ -70,7 +70,7 @@ STARTER_NODES = [
         "icon": "SiWebex",
         "section": "Webex",
         "required_integration": "webex",
-        "description": "Start the workflow when a new Webex message is received in a space or direct chat.",
+        "description": "Start the workflow when a new Webex message is received in a space or direct chat. This will not be triggered by messages you send yourself.",
         "defaults": {
             "filter_type": "all",
         },
@@ -109,12 +109,6 @@ STARTER_NODES = [
                             "label": "Mentions only",
                             "type": "checkbox",
                             "hint": "Only trigger when your Webex account or bot is @mentioned in the message",
-                        },
-                        {
-                            "key": "ignore_own_messages",
-                            "label": "Ignore own messages",
-                            "type": "checkbox",
-                            "hint": "Skip messages sent by the connected Webex account (recommended)",
                         },
                         {
                             "key": "include_message_body",
@@ -792,4 +786,3 @@ ACTION_NODES = [
         },
     },
 ]
-
