@@ -17,31 +17,40 @@ CORS(app)
 register_blueprints(app)
 
 
-def _restore_active_workflows() -> None:
+def _restore_scheduled_workflows() -> None:
     """
-    Re-register active Fuse workflow executions from Firestore after startup.
+    Re-register scheduled Fuse workflows from Firestore after startup.
 
-    Called once at module load time so that scheduled jobs resume and webhook
-    look-ups work immediately after a server restart.
+    Webhook, Webex message, and GitHub PR workflows resolve lazily on the first
+    incoming trigger via ``runtime.resolve_execution()`` — they do not need a
+    startup restore because their compiled graph and external webhook metadata
+    are already persisted in Firestore.
+
+    Schedule workflows still need this because APScheduler jobs are process-local.
     """
     try:
         from db import db
         from fuse.runtime import runtime
 
         active = db.workflow.list_active()
-        if active:
+        scheduled = [
+            wf for wf in active
+            if (wf.get("compiled_graph") or {}).get("starter", {}).get("node_type") == "schedule"
+        ]
+        if scheduled:
             logging.getLogger(__name__).info(
-                "[FUSE] Restoring %d active workflow(s) from Firestore.", len(active)
+                "[FUSE] Restoring %d scheduled workflow(s) from Firestore.", len(scheduled)
             )
-            runtime.restore_from_db(active)
+            runtime.restore_from_db(scheduled)
     except Exception:
         logging.getLogger(__name__).warning(
-            "[FUSE] Could not restore active workflows on startup (non-fatal).",
+            "[FUSE] Could not restore scheduled workflows on startup (non-fatal).",
             exc_info=True,
         )
 
 
-# _restore_active_workflows()
+# Uncomment when schedule nodes are in use:
+# _restore_scheduled_workflows()
 
 
 if __name__ == "__main__":

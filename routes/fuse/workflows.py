@@ -361,7 +361,7 @@ def trigger_webhook(workflow_id):
         401 — auth verification failed
         405 — HTTP method does not match node config
     """
-    execution = runtime.get_execution(workflow_id)
+    execution = runtime.resolve_execution(workflow_id)
     if execution is None:
         return jsonify({"error": "Workflow not found or not active."}), 404
 
@@ -424,7 +424,7 @@ def trigger_webhook(workflow_id):
 
 @bp.route("/github/webhook/<workflow_id>", methods=["POST"])
 def trigger_github_webhook(workflow_id):
-    execution = runtime.get_execution(workflow_id)
+    execution = runtime.resolve_execution(workflow_id)
     if execution is None:
         return jsonify({"error": "Workflow not found or not active."}), 404
 
@@ -477,7 +477,7 @@ def trigger_webex_message(workflow_id):
     Webex sends a lightweight event payload; we fetch the full message, apply
     starter filters, then run the workflow asynchronously.
     """
-    execution = runtime.get_execution(workflow_id)
+    execution = runtime.resolve_execution(workflow_id)
     if execution is None:
         return jsonify({"error": "Workflow not found or not active."}), 404
 

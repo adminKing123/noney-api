@@ -316,6 +316,7 @@ def compile_workflow_graph(
         "starter": {
             "node_id":   starter_id,
             "node_type": starter_type,
+            "label":     starter_label,
             "config":    starter_cfg,
         },
         "adjacency": adjacency,

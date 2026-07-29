@@ -16,9 +16,12 @@ Design
 
 Server-restart recovery
 -----------------------
-``restore_from_db(active_workflows)`` is called from ``app.py`` after the Flask
-app is initialised.  It re-registers every workflow that was active at shutdown
-so that schedules resume and webhook look-ups succeed.
+Webhook, Webex message, and GitHub PR workflows are resolved lazily from
+Firestore on the first incoming trigger (``resolve_execution()``).  Their
+compiled graph and external webhook metadata are persisted at activation time.
+
+``restore_from_db(active_workflows)`` is only needed for **schedule** workflows
+because APScheduler jobs are process-local and must be re-registered at startup.
 
 One-shot schedules
 ------------------
@@ -378,6 +381,57 @@ class RuntimeManager:
         """Return the active execution for a workflow, or None if inactive."""
         with self._active_lock:
             return self._active.get(workflow_id)
+
+    def resolve_execution(
+        self, workflow_id: str
+    ) -> WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution | None:
+        """
+        Return the active execution, loading from Firestore on demand when needed.
+
+        Webhook, Webex message, and GitHub PR workflows persist their compiled
+        graph (and external webhook metadata) in Firestore on activation, so they
+        do not require a startup restore — the first incoming webhook call
+        registers them in memory without recreating external webhooks.
+
+        Schedule workflows still require ``restore_from_db()`` at startup because
+        APScheduler jobs are process-local.
+        """
+        execution = self.get_execution(workflow_id)
+        if execution is not None:
+            return execution
+
+        from db import db  # noqa: PLC0415 — lazy to avoid circular import
+
+        workflow = db.workflow.get_active_by_id(workflow_id)
+        if workflow is None:
+            return None
+
+        compiled_graph = workflow.get("compiled_graph")
+        if not compiled_graph:
+            logger.warning(
+                "[FUSE] Active workflow '%s' has no compiled_graph — cannot resolve.",
+                workflow_id,
+            )
+            return None
+
+        starter_type = compiled_graph.get("starter", {}).get("node_type", "")
+        if starter_type == "schedule":
+            return None
+
+        try:
+            self.activate(workflow_id, compiled_graph)
+            logger.info(
+                "[FUSE] Lazy-loaded active workflow '%s' from Firestore (starter=%s).",
+                workflow_id,
+                starter_type,
+            )
+        except Exception:
+            logger.exception(
+                "[FUSE] Failed to lazy-load workflow '%s' from Firestore.", workflow_id
+            )
+            return None
+
+        return self.get_execution(workflow_id)
 
     def is_active(self, workflow_id: str) -> bool:
         """Return True if the workflow currently has a registered execution."""

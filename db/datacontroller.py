@@ -615,6 +615,21 @@ class Workflow:
         docs = self._col().where("status", "==", "active").stream()
         return [d.to_dict() for d in docs]
 
+    def get_active_by_id(self, workflow_id: str) -> dict | None:
+        """
+        Fetch an active workflow by ID (any owner).
+
+        Used by public webhook routes to resolve compiled graphs from Firestore
+        when the in-memory runtime has not been warmed yet (e.g. after restart).
+        """
+        doc = self._col().document(workflow_id).get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict()
+        if data.get("status") != "active":
+            return None
+        return data
+
     def delete(self, workflow_id: str, owner_id: str) -> bool:
         """Delete a workflow. Returns True on success, False if not authorised."""
         existing = self.get(workflow_id, owner_id)

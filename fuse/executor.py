@@ -160,9 +160,12 @@ def run_workflow(
             workflow_id, ctx.run_id,
         )
 
-    starter_id = compiled_graph["starter"]["node_id"]
-    adjacency  = compiled_graph.get("adjacency", {})
-    nodes      = compiled_graph.get("nodes", {})
+    starter      = compiled_graph["starter"]
+    starter_id   = starter["node_id"]
+    starter_type = starter.get("node_type", "")
+    starter_label = starter.get("label") or starter_type or "Trigger"
+    adjacency    = compiled_graph.get("adjacency", {})
+    nodes        = compiled_graph.get("nodes", {})
 
     # The starter's own output equals the trigger payload
     ctx.set_output(starter_id, trigger_data)
@@ -172,13 +175,24 @@ def run_workflow(
         workflow_id, ctx.run_id, trigger_type, ctx.triggered_at,
     )
 
+    # Starter nodes are not part of the BFS queue — log them explicitly so runs
+    # show the webhook / message / GitHub PR trigger as the first step.
+    _write_starter_log(
+        db           = db,
+        ctx          = ctx,
+        starter_id   = starter_id,
+        starter_type = starter_type,
+        starter_label = starter_label,
+        trigger_data = trigger_data,
+    )
+    nodes_succeeded = 1
+
     # BFS queue — seed with the immediate successors of the starter node
     queue: list[str] = []
     for targets in adjacency.get(starter_id, {}).values():
         queue.extend(targets)
 
     executed: set[str] = set()
-    nodes_succeeded = 0
     nodes_failed    = 0
     run_error: str | None = None
 
@@ -337,7 +351,7 @@ def run_workflow(
 
     # ── Finalise the run record ───────────────────────────────────────────────
     run_status = "failed" if nodes_failed > 0 else "success"
-    node_count = len(executed)
+    node_count = len(executed) + 1  # include the starter trigger node
 
     logger.info(
         "[FUSE] Execution finished — workflow=%s run=%s status=%s "
@@ -514,6 +528,61 @@ def _run_for_each_body(
                         body_queue.append(t)
 
     return nodes_succeeded, nodes_failed
+
+
+def _write_starter_log(
+    db,
+    ctx: ExecutionContext,
+    starter_id: str,
+    starter_type: str,
+    starter_label: str,
+    trigger_data: dict,
+) -> None:
+    """Persist a fuse_run_logs entry for the trigger/starter node."""
+    started_at = ctx.triggered_at
+    finished_at = _now_iso()
+
+    logger.info(
+        "[FUSE] ▶ Starter '%s' (type=%s) — workflow=%s run=%s",
+        starter_label, starter_type, ctx.workflow_id, ctx.run_id,
+    )
+
+    if starter_type == "webhook":
+        logger.info(
+            "[FUSE]   method=%s body=%s query_params=%s",
+            trigger_data.get("method", "?"),
+            trigger_data.get("body"),
+            trigger_data.get("query_params"),
+        )
+    elif starter_type == "webex_message":
+        logger.info(
+            "[FUSE]   message_id=%s room_id=%s person_email=%s",
+            trigger_data.get("message_id"),
+            trigger_data.get("room_id"),
+            trigger_data.get("person_email"),
+        )
+    elif starter_type == "github_pull_request":
+        logger.info(
+            "[FUSE]   pr_id=%s action=%s repo=%s",
+            trigger_data.get("pr_id"),
+            trigger_data.get("action"),
+            trigger_data.get("repo_name"),
+        )
+
+    _write_node_log(
+        db          = db,
+        ctx         = ctx,
+        node_id     = starter_id,
+        node_type   = starter_type,
+        node_label  = starter_label,
+        status      = "success",
+        started_at  = started_at,
+        finished_at = finished_at,
+        duration_ms = _duration_ms(started_at),
+        output      = trigger_data,
+        error       = None,
+        error_type  = None,
+    )
 
 
 def _write_node_log(
