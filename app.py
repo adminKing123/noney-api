@@ -41,7 +41,7 @@ def _restore_active_workflows() -> None:
         )
 
 
-_restore_active_workflows()
+# _restore_active_workflows()
 
 
 if __name__ == "__main__":
