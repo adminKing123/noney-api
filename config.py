@@ -60,6 +60,12 @@ class CONFIG:
     # ElevenLabs TTS
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 
+    # Deepgram STT
+    DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
+    DEEPGRAM_MODEL = os.getenv("DEEPGRAM_MODEL", "nova-2")
+    DEEPGRAM_LANGUAGE = os.getenv("DEEPGRAM_LANGUAGE", "en")
+    DEEPGRAM_SAMPLE_RATE = int(os.getenv("DEEPGRAM_SAMPLE_RATE", "16000"))
+
     # Web Push (VAPID) — generate with: python -c "from py_vapid import Vapid; v=Vapid(); v.generate_keys(); print(v.public_key_str, v.private_key_str)"
     VAPID_PRIVATE_KEY  = os.getenv("VAPID_PRIVATE_KEY", "")
     VAPID_PUBLIC_KEY   = os.getenv("VAPID_PUBLIC_KEY", "")
