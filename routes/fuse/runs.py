@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from config import CONFIG
 from middleware.auth import require_auth
 from db import db
 
@@ -93,3 +94,20 @@ def get_run_logs(run_id):
         after_log_id=after_log_id,
     )
     return jsonify(result)
+
+
+@bp.route("/runs/<run_id>/live-config", methods=["GET"])
+@require_auth
+def run_live_config(run_id):
+    """
+    GET /fuse/runs/:run_id/live-config
+    ───────────────────────────────────
+    WebSocket URL for streaming run + node execution updates.
+    """
+    owner_id = request.user["uid"]
+    run = db.workflow_run.get_run(run_id, owner_id)
+    if run is None:
+        return jsonify({"error": "Run not found"}), 404
+
+    base = CONFIG.FUSE_RUN_WS_PUBLIC_URL.rstrip("/")
+    return jsonify({"ws_url": f"{base}/fuse/runs/live"})

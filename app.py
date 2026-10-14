@@ -16,6 +16,16 @@ CORS(app)
 
 register_blueprints(app)
 
+try:
+    from fuse.run_ws_server import start_run_ws_server
+
+    start_run_ws_server()
+except Exception:
+    logging.getLogger(__name__).warning(
+        "[FUSE-WS] Could not start run WebSocket server (non-fatal).",
+        exc_info=True,
+    )
+
 
 def _restore_scheduled_workflows() -> None:
     """

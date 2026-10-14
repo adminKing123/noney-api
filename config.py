@@ -44,6 +44,12 @@ class CryptoCompositeKey:
 class CONFIG:
     PORT = int(os.getenv("PORT", "5000"))
     HOST = os.getenv("HOST", "https://noney-api.onrender.com")
+    FUSE_RUN_WS_HOST = os.getenv("FUSE_RUN_WS_HOST", "0.0.0.0")
+    FUSE_RUN_WS_PORT = int(os.getenv("FUSE_RUN_WS_PORT", "8001"))
+    FUSE_RUN_WS_PUBLIC_URL = os.getenv(
+        "FUSE_RUN_WS_PUBLIC_URL",
+        f"ws://localhost:{os.getenv('FUSE_RUN_WS_PORT', '8001')}",
+    )
     FRONTEND_URL = os.getenv("FRONTEND_URL", "")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "")

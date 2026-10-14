@@ -146,7 +146,7 @@ def run_workflow(
 
     # ── Create the run record (status=running) ────────────────────────────────
     try:
-        db.workflow_run.create_run(
+        run_doc = db.workflow_run.create_run(
             run_id       = ctx.run_id,
             workflow_id  = workflow_id,
             owner_id     = owner_id,
@@ -154,6 +154,9 @@ def run_workflow(
             trigger_type = trigger_type,
             trigger_data = trigger_data,
         )
+        from fuse.run_events import emit_run_started  # noqa: PLC0415
+
+        emit_run_started(ctx.run_id, run_doc)
     except Exception:
         logger.exception(
             "[FUSE] Failed to create run record — workflow=%s run=%s",
@@ -258,6 +261,16 @@ def run_workflow(
         node_status: str
         node_error: str | None     = None
         node_error_type: str | None = None
+
+        from fuse.run_events import emit_node_started  # noqa: PLC0415
+
+        emit_node_started(
+            ctx.run_id,
+            node_id=node_id,
+            node_type=node_type,
+            node_label=node_label,
+            started_at=node_started,
+        )
 
         try:
             logger.info(
@@ -370,6 +383,11 @@ def run_workflow(
             started_at      = ctx.triggered_at,
             error           = run_error,
         )
+        from fuse.run_events import emit_run_finished  # noqa: PLC0415
+
+        finished_run = db.workflow_run.get_run(ctx.run_id, ctx.owner_id)
+        if finished_run:
+            emit_run_finished(ctx.run_id, finished_run)
     except Exception:
         logger.exception(
             "[FUSE] Failed to finalise run record — workflow=%s run=%s",
@@ -475,6 +493,16 @@ def _run_for_each_body(
         body_status: str
         body_error: str | None      = None
         body_error_type: str | None = None
+
+        from fuse.run_events import emit_node_started  # noqa: PLC0415
+
+        emit_node_started(
+            ctx.run_id,
+            node_id=body_nid,
+            node_type=body_node_type,
+            node_label=body_node_label,
+            started_at=body_started,
+        )
 
         try:
             logger.info(
@@ -601,7 +629,7 @@ def _write_node_log(
 ) -> None:
     """Write a fuse_run_logs document.  Silently swallows exceptions."""
     try:
-        db.workflow_run.write_node_log(
+        log_id = db.workflow_run.write_node_log(
             run_id      = ctx.run_id,
             workflow_id = ctx.workflow_id,
             owner_id    = ctx.owner_id,
@@ -615,6 +643,27 @@ def _write_node_log(
             output      = output,
             error       = error,
             error_type  = error_type,
+        )
+        from fuse.run_events import emit_node_log  # noqa: PLC0415
+
+        emit_node_log(
+            ctx.run_id,
+            {
+                "log_id":      log_id,
+                "run_id":      ctx.run_id,
+                "workflow_id": ctx.workflow_id,
+                "owner_id":    ctx.owner_id,
+                "node_id":     node_id,
+                "node_type":   node_type,
+                "node_label":  node_label,
+                "status":      status,
+                "started_at":  started_at,
+                "finished_at": finished_at,
+                "duration_ms": duration_ms,
+                "output":      output,
+                "error":       error,
+                "error_type":  error_type,
+            },
         )
     except Exception:
         logger.exception(
