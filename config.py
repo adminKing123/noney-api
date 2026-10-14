@@ -207,3 +207,8 @@ def get_fuse_run_ws_public_base() -> str:
 
     port = int(os.getenv("PORT", "8000"))
     return f"ws://localhost:{port}"
+
+
+def build_fuse_run_live_ws_url(run_id: str) -> str:
+    """Per-run WebSocket room URL (same port as the REST API)."""
+    return f"{get_fuse_run_ws_public_base()}/fuse/runs/{run_id}/live"

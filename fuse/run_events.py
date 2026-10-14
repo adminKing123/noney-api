@@ -3,8 +3,8 @@ fuse/run_events.py
 ==================
 Thread-safe pub/sub for live Fuse run updates over WebSocket.
 
-The executor (sync worker threads) calls ``emit_*`` helpers here; connected
-Flask-Sock clients receive JSON payloads on the same port as the REST API.
+Each ``run_id`` is a room; clients connected to ``/fuse/runs/<run_id>/live``
+only receive events for that run. The executor calls ``emit_*`` from worker threads.
 """
 
 from __future__ import annotations
@@ -24,10 +24,12 @@ class RunEventHub:
         self._active_node: dict[str, str | None] = {}
 
     def subscribe(self, run_id: str, websocket: Any) -> None:
+        """Add a socket to the room for this run_id."""
         with self._lock:
             self._subscribers.setdefault(run_id, set()).add(websocket)
 
     def unsubscribe(self, run_id: str, websocket: Any) -> None:
+        """Remove a socket from the run_id room."""
         with self._lock:
             subs = self._subscribers.get(run_id)
             if not subs:

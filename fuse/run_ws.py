@@ -1,7 +1,10 @@
 """
 fuse/run_ws.py
 ==============
-Fuse run live WebSocket on the same Flask port as the REST API (Render-safe).
+Per-run WebSocket rooms on the same Flask port as the REST API.
+
+Each run_id has its own room: ``/fuse/runs/<run_id>/live``.
+Clients authenticate once, then receive snapshot + streaming events for that run only.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from fuse.run_events import hub
 
 logger = logging.getLogger(__name__)
 
-LIVE_PATH = "/fuse/runs/live"
+RUN_LIVE_ROUTE = "/fuse/runs/<run_id>/live"
 
 
 def _fetch_all_logs(db, run_id: str, owner_id: str) -> list[dict]:
@@ -45,12 +48,11 @@ def _node_states_from_logs(logs: list[dict]) -> dict[str, dict]:
 
 
 def register_fuse_run_websocket(app) -> Sock:
-    """Attach ``GET ws://<same-host>/fuse/runs/live`` to the Flask app."""
+    """Register per-run WebSocket rooms at ``/fuse/runs/<run_id>/live``."""
     sock = Sock(app)
 
-    @sock.route(LIVE_PATH)
-    def fuse_runs_live(ws):
-        run_id: str | None = None
+    @sock.route(RUN_LIVE_ROUTE)
+    def fuse_run_room(ws, run_id: str):
         try:
             raw = ws.receive()
             if not raw:
@@ -62,9 +64,8 @@ def register_fuse_run_websocket(app) -> Sock:
                 return
 
             token = msg.get("token")
-            run_id = msg.get("run_id")
-            if not token or not run_id:
-                ws.close(reason=4002, message="missing token or run_id")
+            if not token:
+                ws.close(reason=4002, message="missing token")
                 return
 
             from db import db  # noqa: PLC0415
@@ -84,6 +85,7 @@ def register_fuse_run_websocket(app) -> Sock:
             logs = _fetch_all_logs(db, run_id, owner_id)
             snapshot = {
                 "type": "snapshot",
+                "run_id": run_id,
                 "run": run,
                 "node_states": _node_states_from_logs(logs),
                 "active_node_id": hub.get_active_node_id(run_id),
@@ -96,10 +98,9 @@ def register_fuse_run_websocket(app) -> Sock:
                 if ws.receive() is None:
                     break
         except Exception:
-            logger.exception("[FUSE-WS] Client handler error")
+            logger.exception("[FUSE-WS] Client handler error (run_id=%s)", run_id)
         finally:
-            if run_id:
-                hub.unsubscribe(run_id, ws)
+            hub.unsubscribe(run_id, ws)
 
-    logger.info("[FUSE-WS] Registered WebSocket route %s (same port as Flask)", LIVE_PATH)
+    logger.info("[FUSE-WS] Registered per-run rooms %s", RUN_LIVE_ROUTE)
     return sock
