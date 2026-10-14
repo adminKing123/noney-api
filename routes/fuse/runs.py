@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from config import CONFIG
+from config import get_fuse_run_ws_public_base
 from middleware.auth import require_auth
 from db import db
 
@@ -109,5 +109,5 @@ def run_live_config(run_id):
     if run is None:
         return jsonify({"error": "Run not found"}), 404
 
-    base = CONFIG.FUSE_RUN_WS_PUBLIC_URL.rstrip("/")
+    base = get_fuse_run_ws_public_base()
     return jsonify({"ws_url": f"{base}/fuse/runs/live"})

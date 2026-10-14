@@ -3,13 +3,12 @@ fuse/run_events.py
 ==================
 Thread-safe pub/sub for live Fuse run updates over WebSocket.
 
-The executor (sync worker threads) calls ``emit_*`` helpers here; the asyncio
-WebSocket server delivers JSON payloads to subscribed clients.
+The executor (sync worker threads) calls ``emit_*`` helpers here; connected
+Flask-Sock clients receive JSON payloads on the same port as the REST API.
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import threading
@@ -21,12 +20,8 @@ logger = logging.getLogger(__name__)
 class RunEventHub:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._loop: asyncio.AbstractEventLoop | None = None
         self._subscribers: dict[str, set[Any]] = {}
         self._active_node: dict[str, str | None] = {}
-
-    def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
-        self._loop = loop
 
     def subscribe(self, run_id: str, websocket: Any) -> None:
         with self._lock:
@@ -46,19 +41,20 @@ class RunEventHub:
             return self._active_node.get(run_id)
 
     def _broadcast(self, run_id: str, payload: dict) -> None:
-        loop = self._loop
-        if loop is None:
-            return
         with self._lock:
             sockets = list(self._subscribers.get(run_id, ()))
         if not sockets:
             return
         message = json.dumps(payload, default=str)
+        dead: list[Any] = []
         for ws in sockets:
             try:
-                asyncio.run_coroutine_threadsafe(ws.send(message), loop)
+                ws.send(message)
             except Exception:
-                logger.debug("[FUSE-WS] Failed to enqueue send for run=%s", run_id)
+                dead.append(ws)
+                logger.debug("[FUSE-WS] Dropping closed socket for run=%s", run_id)
+        for ws in dead:
+            self.unsubscribe(run_id, ws)
 
     def emit(self, run_id: str, event_type: str, **fields) -> None:
         self._broadcast(run_id, {"type": event_type, **fields})

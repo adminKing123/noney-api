@@ -44,12 +44,6 @@ class CryptoCompositeKey:
 class CONFIG:
     PORT = int(os.getenv("PORT", "5000"))
     HOST = os.getenv("HOST", "https://noney-api.onrender.com")
-    FUSE_RUN_WS_HOST = os.getenv("FUSE_RUN_WS_HOST", "0.0.0.0")
-    FUSE_RUN_WS_PORT = int(os.getenv("FUSE_RUN_WS_PORT", "8001"))
-    FUSE_RUN_WS_PUBLIC_URL = os.getenv(
-        "FUSE_RUN_WS_PUBLIC_URL",
-        f"ws://localhost:{os.getenv('FUSE_RUN_WS_PORT', '8001')}",
-    )
     FRONTEND_URL = os.getenv("FRONTEND_URL", "")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "")
@@ -192,3 +186,24 @@ You are an expert HRMS assistant AI specialized in handling Human Resource Manag
         "top_k": 40,
         "model_id": "imagen-4.0-generate-001",
     }
+
+
+def get_fuse_run_ws_public_base() -> str:
+    """
+    WebSocket scheme + host clients should use for Fuse run live updates.
+
+    Defaults to the same host as ``CONFIG.HOST`` (http→ws, https→wss).
+    Override with ``FUSE_RUN_WS_PUBLIC_URL`` when using a dedicated edge URL.
+    """
+    explicit = os.getenv("FUSE_RUN_WS_PUBLIC_URL", "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+
+    host = (CONFIG.HOST or "").strip().rstrip("/")
+    if host.startswith("https://"):
+        return "wss://" + host[len("https://") :]
+    if host.startswith("http://"):
+        return "ws://" + host[len("http://") :]
+
+    port = int(os.getenv("PORT", "8000"))
+    return f"ws://localhost:{port}"
