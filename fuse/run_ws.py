@@ -92,7 +92,7 @@ def register_fuse_run_websocket(app) -> Sock:
             }
             ws.send(json.dumps(snapshot, default=str))
 
-            hub.subscribe(run_id, ws)
+            hub.subscribe_run(run_id, ws)
 
             while True:
                 if ws.receive() is None:
@@ -100,7 +100,56 @@ def register_fuse_run_websocket(app) -> Sock:
         except Exception:
             logger.exception("[FUSE-WS] Client handler error (run_id=%s)", run_id)
         finally:
-            hub.unsubscribe(run_id, ws)
+            hub.unsubscribe_run(run_id, ws)
 
-    logger.info("[FUSE-WS] Registered per-run rooms %s", RUN_LIVE_ROUTE)
+    WORKFLOW_RUNS_LIVE_ROUTE = "/fuse/workflows/<workflow_id>/runs/live"
+
+    @sock.route(WORKFLOW_RUNS_LIVE_ROUTE)
+    def fuse_workflow_runs_room(ws, workflow_id: str):
+        try:
+            raw = ws.receive()
+            if not raw:
+                return
+
+            msg = json.loads(raw)
+            if msg.get("type") != "auth":
+                ws.close(reason=4001, message="auth required")
+                return
+
+            token = msg.get("token")
+            if not token:
+                ws.close(reason=4002, message="missing token")
+                return
+
+            from db import db  # noqa: PLC0415
+
+            try:
+                user = db.user.authenticate(token)
+            except Exception:
+                ws.close(reason=4003, message="invalid token")
+                return
+
+            owner_id = user["uid"]
+            workflow = db.workflow.get(workflow_id, owner_id)
+            if workflow is None:
+                ws.close(reason=4004, message="workflow not found")
+                return
+
+            hub.subscribe_workflow(workflow_id, ws)
+
+            while True:
+                if ws.receive() is None:
+                    break
+        except Exception:
+            logger.exception(
+                "[FUSE-WS] Client handler error (workflow_id=%s)", workflow_id
+            )
+        finally:
+            hub.unsubscribe_workflow(workflow_id, ws)
+
+    logger.info(
+        "[FUSE-WS] Registered %s and %s",
+        RUN_LIVE_ROUTE,
+        WORKFLOW_RUNS_LIVE_ROUTE,
+    )
     return sock

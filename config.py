@@ -212,3 +212,8 @@ def get_fuse_run_ws_public_base() -> str:
 def build_fuse_run_live_ws_url(run_id: str) -> str:
     """Per-run WebSocket room URL (same port as the REST API)."""
     return f"{get_fuse_run_ws_public_base()}/fuse/runs/{run_id}/live"
+
+
+def build_fuse_workflow_runs_live_ws_url(workflow_id: str) -> str:
+    """Workflow run-list WebSocket room URL."""
+    return f"{get_fuse_run_ws_public_base()}/fuse/workflows/{workflow_id}/runs/live"
