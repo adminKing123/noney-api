@@ -13,6 +13,7 @@ import json
 import logging
 
 from flask_sock import Sock
+from simple_websocket.errors import ConnectionClosed
 
 from fuse.run_events import hub
 
@@ -96,8 +97,13 @@ def register_fuse_run_websocket(app) -> Sock:
             hub.subscribe_run(run_id, ws)
 
             while True:
-                if ws.receive() is None:
+                try:
+                    if ws.receive() is None:
+                        break
+                except ConnectionClosed:
                     break
+        except ConnectionClosed:
+            pass
         except Exception:
             logger.exception("[FUSE-WS] Client handler error (run_id=%s)", run_id)
         finally:
@@ -139,8 +145,13 @@ def register_fuse_run_websocket(app) -> Sock:
             hub.subscribe_workflow(workflow_id, ws)
 
             while True:
-                if ws.receive() is None:
+                try:
+                    if ws.receive() is None:
+                        break
+                except ConnectionClosed:
                     break
+        except ConnectionClosed:
+            pass
         except Exception:
             logger.exception(
                 "[FUSE-WS] Client handler error (workflow_id=%s)", workflow_id

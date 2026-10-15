@@ -124,6 +124,41 @@ def create_message_webhook(
     return {**data, "id": webhook_id, "secret": webhook_secret}
 
 
+def delete_webhooks_for_target_url(
+    access_token: str,
+    target_url: str,
+    *,
+    keep_id: str | None = None,
+) -> int:
+    """
+    Remove duplicate Webex webhooks pointing at the same Fuse URL.
+
+    Orphan webhooks (e.g. after a failed deactivate) can still deliver events
+    signed with an old secret while the workflow expects a newer one — those
+    deliveries fail with 401 intermittently.
+    """
+    normalized = (target_url or "").rstrip("/")
+    if not normalized:
+        return 0
+
+    removed = 0
+    for wh in list_all_webhooks(access_token):
+        url = (wh.get("targetUrl") or "").rstrip("/")
+        if url != normalized:
+            continue
+        webhook_id = wh.get("id")
+        if not webhook_id or webhook_id == keep_id:
+            continue
+        if delete_webhook(access_token, webhook_id):
+            removed += 1
+            logger.info(
+                "[Webex] Removed duplicate webhook %s for target %s",
+                webhook_id,
+                normalized,
+            )
+    return removed
+
+
 def delete_webhook(access_token: str, webhook_id: str) -> bool:
     """Delete a Webex webhook by ID. Returns True if deleted or already gone."""
     if not webhook_id:

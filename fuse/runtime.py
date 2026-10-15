@@ -150,17 +150,9 @@ class WebexMessageExecution:
             build_webex_message_filter,
             create_message_webhook,
             delete_webhook,
+            delete_webhooks_for_target_url,
             get_webex_access_token,
         )
-
-        existing = self.compiled_graph.get("webex_webhook") or {}
-        if existing.get("id") and existing.get("secret"):
-            logger.info(
-                "[FUSE] Webex message workflow '%s' restored (existing webhook=%s).",
-                self.workflow_id,
-                existing["id"],
-            )
-            return
 
         owner_id = self.compiled_graph.get("owner_id", "")
         starter_config = self.compiled_graph["starter"].get("config", {})
@@ -172,6 +164,22 @@ class WebexMessageExecution:
         base = self._webhook_base_url()
         target_url = f"{base}/fuse/webex/webhook/{self.workflow_id}"
         filter_str = build_webex_message_filter(starter_config)
+
+        existing = self.compiled_graph.get("webex_webhook") or {}
+        if existing.get("id") and existing.get("secret"):
+            delete_webhooks_for_target_url(
+                access_token,
+                target_url,
+                keep_id=existing["id"],
+            )
+            logger.info(
+                "[FUSE] Webex message workflow '%s' restored (existing webhook=%s).",
+                self.workflow_id,
+                existing["id"],
+            )
+            return
+
+        delete_webhooks_for_target_url(access_token, target_url)
 
         webhook_id = None
         try:

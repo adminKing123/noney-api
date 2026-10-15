@@ -499,8 +499,27 @@ def trigger_webex_message(workflow_id):
         verify_webex_webhook_signature,
     )
 
-    if secret and not verify_webex_webhook_signature(body_bytes, signature, secret):
-        return jsonify({"error": "Invalid Webex webhook signature."}), 401
+    if secret:
+        if not signature:
+            logger.warning(
+                "[FUSE] Webex webhook 401 — missing X-Spark-Signature "
+                "(workflow=%s, body_bytes=%d)",
+                workflow_id,
+                len(body_bytes),
+            )
+            return jsonify({"error": "Missing Webex webhook signature."}), 401
+        if not verify_webex_webhook_signature(body_bytes, signature, secret):
+            logger.warning(
+                "[FUSE] Webex webhook 401 — signature mismatch "
+                "(workflow=%s, stored_webhook=%s, body_bytes=%d). "
+                "Often caused by an old duplicate Webex webhook still pointing "
+                "at this URL — deactivate/reactivate the workflow or remove "
+                "extra webhooks in Webex.",
+                workflow_id,
+                webhook_meta.get("id"),
+                len(body_bytes),
+            )
+            return jsonify({"error": "Invalid Webex webhook signature."}), 401
 
     try:
         event_payload = request.get_json(force=True, silent=True) or {}
