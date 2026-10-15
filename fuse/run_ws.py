@@ -89,6 +89,7 @@ def register_fuse_run_websocket(app) -> Sock:
                 "run": run,
                 "node_states": _node_states_from_logs(logs),
                 "active_node_id": hub.get_active_node_id(run_id),
+                "active_node_ids": hub.get_active_node_ids(run_id),
             }
             ws.send(json.dumps(snapshot, default=str))
 

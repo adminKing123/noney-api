@@ -30,7 +30,7 @@ class RunEventHub:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._subscribers: dict[str, set[Any]] = {}
-        self._active_node: dict[str, str | None] = {}
+        self._active_nodes: dict[str, set[str]] = {}
 
     def subscribe(self, room: str, websocket: Any) -> None:
         with self._lock:
@@ -57,9 +57,14 @@ class RunEventHub:
     def unsubscribe_workflow(self, workflow_id: str, websocket: Any) -> None:
         self.unsubscribe(_workflow_room(workflow_id), websocket)
 
-    def get_active_node_id(self, run_id: str) -> str | None:
+    def get_active_node_ids(self, run_id: str) -> list[str]:
         with self._lock:
-            return self._active_node.get(run_id)
+            return list(self._active_nodes.get(run_id, ()))
+
+    def get_active_node_id(self, run_id: str) -> str | None:
+        """Last-started active node (legacy); prefer ``get_active_node_ids``."""
+        ids = self.get_active_node_ids(run_id)
+        return ids[-1] if ids else None
 
     def _broadcast(self, room: str, payload: dict) -> None:
         with self._lock:
@@ -101,7 +106,7 @@ class RunEventHub:
         variables: dict | None = None,
     ) -> None:
         with self._lock:
-            self._active_node[run_id] = node_id
+            self._active_nodes.setdefault(run_id, set()).add(node_id)
         payload: dict = {
             "node_id": node_id,
             "node_type": node_type,
@@ -118,13 +123,18 @@ class RunEventHub:
 
     def emit_node_log(self, run_id: str, log: dict) -> None:
         with self._lock:
-            if self._active_node.get(run_id) == log.get("node_id"):
-                self._active_node[run_id] = None
+            if log.get("status") != "running":
+                active = self._active_nodes.get(run_id)
+                node_id = log.get("node_id")
+                if active and node_id in active:
+                    active.discard(node_id)
+                    if not active:
+                        self._active_nodes.pop(run_id, None)
         self.emit_to_run(run_id, "node_log", log=log)
 
     def emit_run_finished(self, run_id: str, run: dict) -> None:
         with self._lock:
-            self._active_node.pop(run_id, None)
+            self._active_nodes.pop(run_id, None)
         self.emit_to_run(run_id, "run_finished", run=run)
 
 

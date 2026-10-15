@@ -14,8 +14,11 @@ Execution model
 3. Each visited node is executed exactly once (``executed`` set guards this).
 4. For ``if_else`` nodes, only the branch matching ``output["result"]``
    (``"true"`` or ``"false"``) is enqueued.
-5. For all other nodes, every outgoing edge's targets are enqueued.
-6. Errors in individual nodes are caught, logged, and stored in the node's
+5. For ``fork`` nodes with multiple outgoing edges, each branch runs in a
+   thread pool (true parallel I/O).  A single outgoing edge stays on the
+   main queue (no thread overhead).
+6. For all other nodes, every outgoing edge's targets are enqueued.
+7. Errors in individual nodes are caught, logged, and stored in the node's
    output — they do NOT abort the remaining workflow.
 
 Persistence
@@ -29,6 +32,7 @@ import copy
 import logging
 import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -71,7 +75,7 @@ class ExecutionContext:
     __slots__ = (
         "workflow_id", "owner_id", "version_id",
         "run_id", "triggered_at", "trigger_type",
-        "trigger_data", "node_outputs",
+        "trigger_data", "node_outputs", "_output_lock",
     )
 
     def __init__(
@@ -97,10 +101,12 @@ class ExecutionContext:
                 "trigger_type": self.trigger_type,
             }
         }
+        self._output_lock = threading.Lock()
 
     def set_output(self, node_id: str, output: dict) -> None:
         """Store a node's output for downstream variable resolution."""
-        self.node_outputs[node_id] = output
+        with self._output_lock:
+            self.node_outputs[node_id] = output
 
 
 # ─── Synchronous executor ──────────────────────────────────────────────────────
@@ -374,6 +380,26 @@ def run_workflow(
             for target in done_targets:
                 if target not in executed:
                     queue.append(target)
+        elif node_type == "fork":
+            fork_targets = [t for tgts in adj.values() for t in tgts]
+            if len(fork_targets) > 1:
+                parallel_state = _ParallelRunState(executed, join_visits, in_degrees)
+                ns, nf = _run_parallel_fork_branches(
+                    branch_starts=fork_targets,
+                    adjacency=adjacency,
+                    nodes=nodes,
+                    ctx=ctx,
+                    state=parallel_state,
+                    handlers=HANDLERS,
+                    db=db,
+                    workflow_id=workflow_id,
+                )
+                nodes_succeeded += ns
+                nodes_failed += nf
+            else:
+                for target in fork_targets:
+                    if target not in executed:
+                        queue.append(target)
         else:
             for targets in adj.values():
                 for target in targets:
@@ -416,6 +442,276 @@ def run_workflow(
 
 
 # ─── Internal helpers ──────────────────────────────────────────────────────────
+
+_MAX_FORK_PARALLEL_WORKERS = 32
+
+
+class _ParallelRunState:
+    """Thread-safe view of ``executed`` + ``join_visits`` during fork branches."""
+
+    __slots__ = ("lock", "executed", "join_visits", "in_degrees")
+
+    def __init__(
+        self,
+        executed: set[str],
+        join_visits: dict[str, int],
+        in_degrees: dict[str, int],
+    ) -> None:
+        self.lock = threading.Lock()
+        self.executed = executed
+        self.join_visits = join_visits
+        self.in_degrees = in_degrees
+
+    def claim(self, node_id: str, nodes: dict) -> tuple[bool, dict | None]:
+        """
+        Decide whether ``node_id`` should run in this worker.
+
+        Returns ``(False, None)`` when the node is already done or a join is
+        still waiting for sibling branches.
+        """
+        with self.lock:
+            node = nodes.get(node_id)
+            if node and node.get("node_type") == "join":
+                self.join_visits[node_id] = self.join_visits.get(node_id, 0) + 1
+                if self.join_visits[node_id] < self.in_degrees.get(node_id, 1):
+                    return False, None
+            if node_id in self.executed:
+                return False, None
+            self.executed.add(node_id)
+            return True, node
+
+
+def _fork_outgoing_targets(adjacency: dict, node_id: str) -> list[str]:
+    adj = adjacency.get(node_id, {})
+    return [t for tgts in adj.values() for t in tgts]
+
+
+def _run_parallel_fork_branches(
+    branch_starts: list[str],
+    adjacency: dict,
+    nodes: dict,
+    ctx: ExecutionContext,
+    state: _ParallelRunState,
+    handlers: dict,
+    db,
+    workflow_id: str,
+) -> tuple[int, int]:
+    """Run each fork branch in a worker thread; return (succeeded, failed) counts."""
+    if not branch_starts:
+        return 0, 0
+
+    logger.info(
+        "[FUSE] fork — running %d branches in parallel — workflow=%s run=%s",
+        len(branch_starts),
+        workflow_id,
+        ctx.run_id,
+    )
+
+    workers = min(len(branch_starts), _MAX_FORK_PARALLEL_WORKERS)
+    nodes_succeeded = 0
+    nodes_failed = 0
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(
+                _run_fork_branch_worker,
+                start_id,
+                adjacency,
+                nodes,
+                ctx,
+                state,
+                handlers,
+                db,
+                workflow_id,
+            )
+            for start_id in branch_starts
+        ]
+        for future in as_completed(futures):
+            ns, nf = future.result()
+            nodes_succeeded += ns
+            nodes_failed += nf
+
+    return nodes_succeeded, nodes_failed
+
+
+def _run_fork_branch_worker(
+    start_id: str,
+    adjacency: dict,
+    nodes: dict,
+    ctx: ExecutionContext,
+    state: _ParallelRunState,
+    handlers: dict,
+    db,
+    workflow_id: str,
+) -> tuple[int, int]:
+    """BFS from one fork outlet until the branch queue is drained."""
+    branch_queue: list[str] = [start_id]
+    nodes_succeeded = 0
+    nodes_failed = 0
+
+    while branch_queue:
+        node_id = branch_queue.pop(0)
+        should_run, node = state.claim(node_id, nodes)
+        if not should_run:
+            continue
+
+        if node is None:
+            logger.warning(
+                "[FUSE] fork branch — node '%s' missing from compiled graph "
+                "(workflow=%s run=%s)",
+                node_id,
+                workflow_id,
+                ctx.run_id,
+            )
+            continue
+
+        node_type = node.get("node_type", "")
+        node_label = node.get("label", node_id)
+        handler = handlers.get(node_type)
+        node_config = node.get("config", {})
+        node_started = _now_iso()
+
+        if handler is None:
+            logger.warning(
+                "[FUSE] fork branch — no handler for node type '%s' "
+                "(workflow=%s run=%s)",
+                node_type,
+                workflow_id,
+                ctx.run_id,
+            )
+            _write_node_log(
+                db=db,
+                ctx=ctx,
+                node_id=node_id,
+                node_type=node_type,
+                node_label=node_label,
+                status="skipped",
+                started_at=node_started,
+                finished_at=_now_iso(),
+                duration_ms=0,
+                output=None,
+                error=f"No handler registered for node type '{node_type}'",
+                error_type="MissingHandlerError",
+                config=node_config,
+            )
+            continue
+
+        from fuse.run_events import emit_node_started  # noqa: PLC0415
+
+        log_input, log_config, log_variables = _node_execution_snapshot(ctx, node_config)
+        emit_node_started(
+            ctx.run_id,
+            node_id=node_id,
+            node_type=node_type,
+            node_label=node_label,
+            started_at=node_started,
+            config=log_config,
+            input=log_input,
+            variables=log_variables,
+        )
+
+        node_error: str | None = None
+        node_error_type: str | None = None
+        try:
+            logger.info(
+                "[FUSE] fork branch ▶ '%s' (type=%s) — workflow=%s run=%s",
+                node_label,
+                node_type,
+                workflow_id,
+                ctx.run_id,
+            )
+            output = handler.execute(node_config, ctx)
+            node_status = "success"
+            nodes_succeeded += 1
+        except Exception as exc:
+            logger.exception(
+                "[FUSE] fork branch — node '%s' (%s) raised an error "
+                "(workflow=%s run=%s)",
+                node_label,
+                node_type,
+                workflow_id,
+                ctx.run_id,
+            )
+            output = {"error": str(exc), "success": False}
+            node_status = "error"
+            node_error = str(exc)
+            node_error_type = type(exc).__name__
+            nodes_failed += 1
+
+        node_finished = _now_iso()
+        ctx.set_output(node_id, output)
+        _write_node_log(
+            db=db,
+            ctx=ctx,
+            node_id=node_id,
+            node_type=node_type,
+            node_label=node_label,
+            status=node_status,
+            started_at=node_started,
+            finished_at=node_finished,
+            duration_ms=_duration_ms(node_started),
+            output=output,
+            error=node_error,
+            error_type=node_error_type,
+            config=node_config,
+            input_snapshot=log_input,
+            variables=log_variables,
+        )
+
+        adj = adjacency.get(node_id, {})
+        if node_type == "if_else":
+            branch = "true" if output.get("result") else "false"
+            for target in adj.get(branch, []):
+                branch_queue.append(target)
+        elif node_type == "switch":
+            branch = output.get("matched_handle") or "default"
+            for target in adj.get(branch, []):
+                branch_queue.append(target)
+        elif node_type == "for_each":
+            items = output.get("items", [])
+            item_targets = list(adj.get("item", []))
+            done_targets = list(adj.get("done", []))
+            done_set = set(done_targets) | {node_id}
+            for loop_idx, loop_item in enumerate(items):
+                ctx.node_outputs[node_id]["current_item"] = loop_item
+                ctx.node_outputs[node_id]["current_index"] = loop_idx
+                ns, nf = _run_for_each_body(
+                    item_targets=item_targets,
+                    adjacency=adjacency,
+                    nodes=nodes,
+                    ctx=ctx,
+                    done_set=done_set,
+                    HANDLERS=handlers,
+                    db=db,
+                    workflow_id=workflow_id,
+                )
+                nodes_succeeded += ns
+                nodes_failed += nf
+            for target in done_targets:
+                branch_queue.append(target)
+        elif node_type == "fork":
+            nested = _fork_outgoing_targets(adjacency, node_id)
+            if len(nested) > 1:
+                ns, nf = _run_parallel_fork_branches(
+                    branch_starts=nested,
+                    adjacency=adjacency,
+                    nodes=nodes,
+                    ctx=ctx,
+                    state=state,
+                    handlers=handlers,
+                    db=db,
+                    workflow_id=workflow_id,
+                )
+                nodes_succeeded += ns
+                nodes_failed += nf
+            else:
+                branch_queue.extend(nested)
+        else:
+            for targets in adj.values():
+                branch_queue.extend(targets)
+
+    return nodes_succeeded, nodes_failed
+
 
 def _run_for_each_body(
     item_targets: list[str],
