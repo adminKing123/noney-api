@@ -12,6 +12,7 @@ To add a new node type:
 from .webhook                  import WebhookHandler
 from .schedule                 import ScheduleHandler
 from .if_else                  import IfElseHandler
+from .switch                   import SwitchHandler
 from .get_notified             import GetNotifiedHandler
 from .ai_structured_output     import AIStructuredOutputHandler
 from .ai_generate_text         import AIGenerateTextHandler
@@ -32,6 +33,7 @@ HANDLERS: dict = {
     "webhook":                  WebhookHandler(),
     "schedule":                 ScheduleHandler(),
     "if_else":                  IfElseHandler(),
+    "switch":                   SwitchHandler(),
     "get_notified":             GetNotifiedHandler(),
     "ai_structured_output":     AIStructuredOutputHandler(),
     "ai_generate_text":         AIGenerateTextHandler(),

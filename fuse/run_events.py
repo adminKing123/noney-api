@@ -96,17 +96,25 @@ class RunEventHub:
         node_type: str,
         node_label: str,
         started_at: str,
+        config: dict | None = None,
+        input: dict | None = None,
+        variables: dict | None = None,
     ) -> None:
         with self._lock:
             self._active_node[run_id] = node_id
-        self.emit_to_run(
-            run_id,
-            "node_started",
-            node_id=node_id,
-            node_type=node_type,
-            node_label=node_label,
-            started_at=started_at,
-        )
+        payload: dict = {
+            "node_id": node_id,
+            "node_type": node_type,
+            "node_label": node_label,
+            "started_at": started_at,
+        }
+        if config is not None:
+            payload["config"] = config
+        if input is not None:
+            payload["input"] = input
+        if variables is not None:
+            payload["variables"] = variables
+        self.emit_to_run(run_id, "node_started", **payload)
 
     def emit_node_log(self, run_id: str, log: dict) -> None:
         with self._lock:
@@ -139,6 +147,9 @@ def emit_node_started(
     node_type: str,
     node_label: str,
     started_at: str,
+    config: dict | None = None,
+    input: dict | None = None,
+    variables: dict | None = None,
 ) -> None:
     hub.emit_node_started(
         run_id,
@@ -146,6 +157,9 @@ def emit_node_started(
         node_type=node_type,
         node_label=node_label,
         started_at=started_at,
+        config=config,
+        input=input,
+        variables=variables,
     )
 
 

@@ -78,6 +78,24 @@ def _get_node_defaults(node_type: str) -> dict:
     return {}
 
 
+def _append_condition_errors(errors: list[str], cond: dict, prefix: str) -> None:
+    if "conditions" in cond:
+        sub_conditions = cond.get("conditions") or []
+        if not sub_conditions:
+            errors.append(f"{prefix}: must have at least one condition row.")
+            return
+        for idx, sub in enumerate(sub_conditions, start=1):
+            if not (sub.get("variable") or "").strip():
+                errors.append(f"{prefix} row {idx}: must have a variable selected.")
+            if not (sub.get("operator") or "").strip():
+                errors.append(f"{prefix} row {idx}: must have an operator selected.")
+    else:
+        if not cond.get("variable"):
+            errors.append(f"{prefix}: must have a variable selected.")
+        if not cond.get("operator"):
+            errors.append(f"{prefix}: must have an operator selected.")
+
+
 def _validate_node_config(node_type: str, config: dict) -> list[str]:
     """
     Return a list of human-readable validation error strings for `config`.
@@ -92,26 +110,22 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
             errors.append(f"Required field '{field}' is missing or empty.")
 
     # Condition builder sanity check
-    if node_type == "if_else":
-        cond = config.get("condition") or {}
-
-        if "conditions" in cond:
-            # ── Compound format: { combinator, conditions: [...] } ────────────
-            sub_conditions = cond.get("conditions") or []
-            if not sub_conditions:
-                errors.append("Condition must have at least one condition row.")
-            else:
-                for idx, sub in enumerate(sub_conditions, start=1):
-                    if not (sub.get("variable") or "").strip():
-                        errors.append(f"Condition {idx}: must have a variable selected.")
-                    if not (sub.get("operator") or "").strip():
-                        errors.append(f"Condition {idx}: must have an operator selected.")
+    if node_type in ("if_else", "switch"):
+        if node_type == "if_else":
+            _append_condition_errors(errors, config.get("condition") or {}, "Condition")
         else:
-            # ── Legacy single-condition format ────────────────────────────────
-            if not cond.get("variable"):
-                errors.append("Condition must have a variable selected.")
-            if not cond.get("operator"):
-                errors.append("Condition must have an operator selected.")
+            cases = config.get("cases") or []
+            if len(cases) < 1:
+                errors.append("Switch must have at least one case.")
+            for case_idx, case in enumerate(cases, start=1):
+                label = (case.get("label") or f"Case {case_idx}").strip()
+                if not (case.get("id") or "").strip():
+                    errors.append(f"Switch case '{label}': missing handle id.")
+                _append_condition_errors(
+                    errors,
+                    case.get("condition") or {},
+                    f"Switch case '{label}'",
+                )
 
     # Webex message starter: room_id required when filtering to a specific space
     if node_type == "webex_message":

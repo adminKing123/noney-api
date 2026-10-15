@@ -475,6 +475,60 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "switch",
+        "label": "Switch",
+        "icon": "TbArrowsSplit2",
+        "section": "Logic",
+        "branch_handles": ["case_0", "case_1", "default"],
+        "description": (
+            "Route the workflow through multiple branches. Cases are checked top to bottom; "
+            "the first match wins. Connect each case handle on the node to a downstream step. "
+            "Use the Default handle when no case matches."
+        ),
+        "defaults": {
+            "cases": [
+                {
+                    "id": "case_0",
+                    "label": "Case 1",
+                    "condition": {
+                        "combinator": "and",
+                        "conditions": [
+                            {"variable": "", "operator": "is", "value": ""},
+                        ],
+                    },
+                },
+                {
+                    "id": "case_1",
+                    "label": "Case 2",
+                    "condition": {
+                        "combinator": "and",
+                        "conditions": [
+                            {"variable": "", "operator": "is", "value": ""},
+                        ],
+                    },
+                },
+            ],
+        },
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Cases",
+                    "fields": [
+                        {
+                            "key": "cases",
+                            "label": "Switch cases",
+                            "type": "switch_cases_builder",
+                            "hint": (
+                                "Add one or more cases (evaluated in order). Each case has its own "
+                                "output handle on the canvas. Connect Default for when nothing matches."
+                            ),
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "ai_generate_text",
         "label": "Ask Aura",
         "icon": "RiAiGenerate",

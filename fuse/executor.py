@@ -25,6 +25,7 @@ finalised at the end) and a ``fuse_run_logs`` document per node executed.
 These records are NEVER deleted and will be used for pricing calculations.
 """
 
+import copy
 import logging
 import threading
 import uuid
@@ -187,6 +188,7 @@ def run_workflow(
         starter_type = starter_type,
         starter_label = starter_label,
         trigger_data = trigger_data,
+        starter_config = starter.get("config", {}),
     )
     nodes_succeeded = 1
 
@@ -252,10 +254,12 @@ def run_workflow(
                 output      = None,
                 error       = f"No handler registered for node type '{node_type}'",
                 error_type  = "MissingHandlerError",
+                config      = node.get("config", {}),
             )
             continue
 
         # ── Execute the node ──────────────────────────────────────────────────
+        node_config  = node.get("config", {})
         node_started = _now_iso()
         output: dict
         node_status: str
@@ -264,12 +268,18 @@ def run_workflow(
 
         from fuse.run_events import emit_node_started  # noqa: PLC0415
 
+        log_input, log_config, log_variables = _node_execution_snapshot(
+            ctx, node_config
+        )
         emit_node_started(
             ctx.run_id,
             node_id=node_id,
             node_type=node_type,
             node_label=node_label,
             started_at=node_started,
+            config=log_config,
+            input=log_input,
+            variables=log_variables,
         )
 
         try:
@@ -277,7 +287,7 @@ def run_workflow(
                 "[FUSE] ▶ Running node '%s' (type=%s) — workflow=%s run=%s",
                 node_label, node_type, workflow_id, ctx.run_id,
             )
-            output = handler.execute(node.get("config", {}), ctx)
+            output = handler.execute(node_config, ctx)
             logger.info(
                 "[FUSE] ✔ Node '%s' finished — output = %s",
                 node_label, output,
@@ -314,12 +324,20 @@ def run_workflow(
             output      = output,
             error       = node_error,
             error_type  = node_error_type,
+            config      = node_config,
+            input_snapshot = log_input,
+            variables   = log_variables,
         )
 
         # ── Determine outgoing edges ──────────────────────────────────────────
         adj = adjacency.get(node_id, {})
         if node_type == "if_else":
             branch = "true" if output.get("result") else "false"
+            for target in adj.get(branch, []):
+                if target not in executed:
+                    queue.append(target)
+        elif node_type == "switch":
+            branch = output.get("matched_handle") or "default"
             for target in adj.get(branch, []):
                 if target not in executed:
                     queue.append(target)
@@ -486,9 +504,11 @@ def _run_for_each_body(
                 output      = None,
                 error       = f"No handler registered for node type '{body_node_type}'",
                 error_type  = "MissingHandlerError",
+                config      = body_node.get("config", {}),
             )
             continue
 
+        body_config = body_node.get("config", {})
         body_output: dict
         body_status: str
         body_error: str | None      = None
@@ -496,12 +516,18 @@ def _run_for_each_body(
 
         from fuse.run_events import emit_node_started  # noqa: PLC0415
 
+        body_log_input, body_log_config, body_log_variables = _node_execution_snapshot(
+            ctx, body_config
+        )
         emit_node_started(
             ctx.run_id,
             node_id=body_nid,
             node_type=body_node_type,
             node_label=body_node_label,
             started_at=body_started,
+            config=body_log_config,
+            input=body_log_input,
+            variables=body_log_variables,
         )
 
         try:
@@ -509,7 +535,7 @@ def _run_for_each_body(
                 "[FUSE] for_each body ▶ '%s' (type=%s) — workflow=%s run=%s",
                 body_node_label, body_node_type, workflow_id, ctx.run_id,
             )
-            body_output = body_handler.execute(body_node.get("config", {}), ctx)
+            body_output = body_handler.execute(body_config, ctx)
             body_status = "success"
             nodes_succeeded += 1
         except Exception as exc:
@@ -540,12 +566,20 @@ def _run_for_each_body(
             output      = body_output,
             error       = body_error,
             error_type  = body_error_type,
+            config      = body_config,
+            input_snapshot = body_log_input,
+            variables   = body_log_variables,
         )
 
         # Enqueue next body nodes (respecting if_else branching within the body)
         body_adj = adjacency.get(body_nid, {})
         if body_node_type == "if_else":
             branch = "true" if body_output.get("result") else "false"
+            for t in body_adj.get(branch, []):
+                if t not in body_executed and t not in done_set:
+                    body_queue.append(t)
+        elif body_node_type == "switch":
+            branch = body_output.get("matched_handle") or "default"
             for t in body_adj.get(branch, []):
                 if t not in body_executed and t not in done_set:
                     body_queue.append(t)
@@ -565,6 +599,7 @@ def _write_starter_log(
     starter_type: str,
     starter_label: str,
     trigger_data: dict,
+    starter_config: dict | None = None,
 ) -> None:
     """Persist a fuse_run_logs entry for the trigger/starter node."""
     started_at = ctx.triggered_at
@@ -597,6 +632,8 @@ def _write_starter_log(
             trigger_data.get("repo_name"),
         )
 
+    cfg = starter_config or {}
+    _, log_config, log_variables = _node_execution_snapshot(ctx, cfg)
     _write_node_log(
         db          = db,
         ctx         = ctx,
@@ -610,7 +647,20 @@ def _write_starter_log(
         output      = trigger_data,
         error       = None,
         error_type  = None,
+        config      = log_config,
+        input_snapshot = {},
+        variables   = log_variables,
     )
+
+
+def _node_execution_snapshot(ctx: ExecutionContext, config: dict) -> tuple[dict, dict, dict]:
+    """Upstream outputs, config copy, and resolved {{variables}} at execute time."""
+    from fuse.variable_resolver import resolve_variables_map  # noqa: PLC0415
+
+    cfg = copy.deepcopy(config or {})
+    inp = copy.deepcopy(ctx.node_outputs)
+    variables = resolve_variables_map(cfg, ctx.node_outputs)
+    return inp, cfg, variables
 
 
 def _write_node_log(
@@ -626,9 +676,20 @@ def _write_node_log(
     output: dict | None,
     error: str | None,
     error_type: str | None,
+    config: dict | None = None,
+    input_snapshot: dict | None = None,
+    variables: dict | None = None,
 ) -> None:
     """Write a fuse_run_logs document.  Silently swallows exceptions."""
     try:
+        if config is not None:
+            snap_input, snap_config, snap_vars = _node_execution_snapshot(ctx, config)
+            config = snap_config
+            if input_snapshot is None:
+                input_snapshot = snap_input
+            if variables is None:
+                variables = snap_vars
+
         log_id = db.workflow_run.write_node_log(
             run_id      = ctx.run_id,
             workflow_id = ctx.workflow_id,
@@ -641,6 +702,9 @@ def _write_node_log(
             finished_at = finished_at,
             duration_ms = duration_ms,
             output      = output,
+            input       = input_snapshot,
+            config      = config,
+            variables   = variables,
             error       = error,
             error_type  = error_type,
         )
@@ -661,6 +725,9 @@ def _write_node_log(
                 "finished_at": finished_at,
                 "duration_ms": duration_ms,
                 "output":      output,
+                "input":       input_snapshot,
+                "config":      config,
+                "variables":   variables,
                 "error":       error,
                 "error_type":  error_type,
             },

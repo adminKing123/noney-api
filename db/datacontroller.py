@@ -758,6 +758,9 @@ class WorkflowRun:
         finished_at     : ISO-8601 str
         duration_ms     : int
         output          : dict | None
+        input           : dict | None        ← upstream node_outputs snapshot at execute time
+        config          : dict | None        ← node config at execute time
+        variables       : dict | None        ← resolved {{token}} values referenced in config
         error           : str | None         ← exception message (if status == "error")
         error_type      : str | None         ← exception class name
     """
@@ -858,6 +861,9 @@ class WorkflowRun:
         finished_at: str,
         duration_ms: int,
         output: dict | None = None,
+        input: dict | None = None,
+        config: dict | None = None,
+        variables: dict | None = None,
         error: str | None = None,
         error_type: str | None = None,
     ) -> str:
@@ -881,6 +887,12 @@ class WorkflowRun:
             "error":       error,
             "error_type":  error_type,
         }
+        if input is not None:
+            data["input"] = input
+        if config is not None:
+            data["config"] = config
+        if variables is not None:
+            data["variables"] = variables
         doc_ref.set(data)
         return doc_ref.id
 

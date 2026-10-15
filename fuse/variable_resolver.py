@@ -18,6 +18,7 @@ resolve_variables(template, node_outputs)         -> str
 resolve_single_token(token_str, node_outputs)     -> Any
 """
 
+import json
 import re
 import logging
 from typing import Any
@@ -153,6 +154,27 @@ def resolve_single_token(token_str: str, node_outputs: dict) -> Any:
                 value = _resolve_path(body, path_str)
 
     return value
+
+
+def collect_tokens_from_value(value: Any) -> set[str]:
+    """Return unique inner paths for every ``{{...}}`` token in a config value."""
+    if isinstance(value, str):
+        text = value
+    else:
+        try:
+            text = json.dumps(value)
+        except (TypeError, ValueError):
+            text = str(value)
+    return {match.group(1).strip() for match in _TOKEN_RE.finditer(text)}
+
+
+def resolve_variables_map(config: Any, node_outputs: dict) -> dict[str, Any]:
+    """Resolve every ``{{...}}`` token referenced in ``config`` at execute time."""
+    tokens = collect_tokens_from_value(config)
+    resolved: dict[str, Any] = {}
+    for token in sorted(tokens):
+        resolved[token] = resolve_single_token(f"{{{{{token}}}}}", node_outputs)
+    return resolved
 
 
 def resolve_variables(template: str, node_outputs: dict) -> str:

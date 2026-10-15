@@ -41,7 +41,7 @@ class GeneratedEdge(BaseModel):
     target:        str = Field(description="Target node ref")
     source_handle: str = Field(
         default="default",
-        description="Edge handle: default, true, or false (if_else branches only)",
+        description="Edge handle: default, true, false, case_0… (switch), item/done (for_each)",
     )
 
 
@@ -204,7 +204,8 @@ def _plan_to_react_flow(
         if not source_id or not target_id:
             continue
         handle = gen_edge.source_handle or "default"
-        if handle not in ("default", "true", "false"):
+        allowed = ("default", "true", "false", "item", "done")
+        if handle not in allowed and not str(handle).startswith("case_"):
             handle = "default"
         react_edges.append({
             "id":           f"edge_{idx}_{uuid.uuid4().hex[:8]}",
