@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint, request, jsonify
 from middleware.auth import require_auth
 from db import db
@@ -10,6 +12,7 @@ from fuse.nodes.webhook import verify_webhook_request
 from datetime import datetime
 
 bp = Blueprint("fuse_workflows", __name__)
+logger = logging.getLogger(__name__)
 
 
 def _teardown_webhooks(workflow: dict) -> None:
