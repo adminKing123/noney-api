@@ -160,14 +160,14 @@ class Chat:
     def update_usage(self, chat_id: str, tokens: dict, cost_usd: float, model: str = None):
         """
         Atomically increment the chat document's aggregate token counters
-        and total cost. Optionally records the AURA model ID used so that
+        and total cost. Optionally records the Comet model ID used so that
         the analytics dashboard can group usage by model.
 
         Args:
             chat_id:  Firestore chat document ID.
             tokens:   dict with keys 'input', 'output', 'total' (int counts).
             cost_usd: Cost in USD for this generation call (float).
-            model:    AURA model ID string (e.g. 'noney-1.0-fast-20241001').
+            model:    Comet model ID string (e.g. 'noney-1.0-fast-20241001').
         """
         try:
             chat_ref = self.client.collection("chats").document(chat_id)
@@ -270,7 +270,7 @@ class Analytics:
       usage/                                â† collection
         {chat_id}                           â† document  (chat-level aggregate)
           chat_id      : str
-          model        : str                (AURA model ID of last generation)
+          model        : str                (Comet model ID of last generation)
           total_tokens : { input, output, total }
           total_cost_usd : float
           generation_count : int
@@ -324,7 +324,7 @@ class Analytics:
             message_id:       Firestore message document ID.
             tokens:           dict with keys 'input', 'output', 'total' (int).
             cost_usd:         Estimated USD cost for this generation call.
-            model_id:         AURA model ID string (e.g. 'noney-1.0-fast-20241001').
+            model_id:         Comet model ID string (e.g. 'noney-1.0-fast-20241001').
             now_iso:          UTC ISO-8601 timestamp string.
             images_generated: Number of images produced (0 for text models).
             generation_type:  'text' | 'image'  (default 'text').

@@ -6,12 +6,12 @@ from flask import jsonify, request
 from google.genai import types
 from langchain.messages import AIMessage, HumanMessage, SystemMessage
 
-from .config import AURA_PROMPT, RJ_MODES, AuraAISchema, ai, genai_client, songs_data
+from .config import COMET_PROMPT, RJ_MODES, CometAISchema, ai, genai_client, songs_data
 from .utils import nearest_15_min, wave_file, wav_to_base64
-from . import aura_rj_bp
+from . import comet_rj_bp
 
 # ---------------- ROUTE ----------------
-@aura_rj_bp.route("/get-track", methods=["POST"])
+@comet_rj_bp.route("/get-track", methods=["POST"])
 def get_track():
     payload = request.get_json(force=True)
     context = payload.get("context", [])
@@ -23,7 +23,7 @@ def get_track():
     mode = random.choice(RJ_MODES)
     time_now = nearest_15_min()
 
-    rebuilt_context = [SystemMessage(content=AURA_PROMPT)]
+    rebuilt_context = [SystemMessage(content=COMET_PROMPT)]
 
     for msg in context:
         if msg["type"] == "human":
@@ -46,7 +46,7 @@ Next Song You Playing {json.dumps(song)}
     rebuilt_context.append(HumanMessage(content=human_prompt))
 
     try:
-        response = ai.with_structured_output(AuraAISchema, method="json_schema").invoke(rebuilt_context)
+        response = ai.with_structured_output(CometAISchema, method="json_schema").invoke(rebuilt_context)
         speech = response.speech
     except Exception as e:
         return jsonify({"error": "AI generation failed"}), 500
@@ -58,7 +58,6 @@ Next Song You Playing {json.dumps(song)}
         for m in rebuilt_context if not isinstance(m, SystemMessage)
     ]
 
-    # ---------------- TTS + SAFE TEMP FILE ----------------
     temp_file = None
     try:
         tts = genai_client.models.generate_content(
@@ -68,7 +67,6 @@ Next Song You Playing {json.dumps(song)}
                 response_modalities=["AUDIO"],
                 speech_config=types.SpeechConfig(
                     voice_config=types.VoiceConfig(
-                        # prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
                         prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Laomedeia")
                     )
                 ),
@@ -77,7 +75,6 @@ Next Song You Playing {json.dumps(song)}
 
         audio_bytes = tts.candidates[0].content.parts[0].inline_data.data
 
-        # create temp file safely
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             temp_file = tmp.name
 
@@ -85,7 +82,6 @@ Next Song You Playing {json.dumps(song)}
         audio_b64 = wav_to_base64(temp_file)
 
     finally:
-        # ALWAYS delete file even if crash
         if temp_file and os.path.exists(temp_file):
             os.remove(temp_file)
 

@@ -4,7 +4,7 @@ from google import genai
 from pydantic import BaseModel, Field
 
 # ---------------- SCHEMA ----------------
-class AuraAISchema(BaseModel):
+class CometAISchema(BaseModel):
     speech: str = Field(...)
 
 # ---------------- AI CLIENTS ----------------
@@ -41,8 +41,8 @@ RJ_MODES = [
     "INDORE_NEWS_MODE",
 ]
 
-AURA_PROMPT = """
-You are Aura RJ — LIVE FM Radio Jockey from Indore.
+COMET_PROMPT = """
+You are Comet RJ — LIVE FM Radio Jockey from Indore.
 
 You are not a playlist announcer.
 You are a human moment.
