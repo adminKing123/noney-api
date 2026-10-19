@@ -36,7 +36,7 @@ all_models_data = {
             "models": [
                 {
                     "id": "noney-1.0-fast-20241001",
-                    "name": "AURA 1.0 Fast",
+                    "name": "Comet 1.0 Fast",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -44,7 +44,7 @@ all_models_data = {
                 },
                 {
                     "id": "noney-1.0-twinkle-20241001",
-                    "name": "AURA 1.0 Twinkle",
+                    "name": "Comet 1.0 Twinkle",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -52,7 +52,7 @@ all_models_data = {
                 },
                 {
                     "id": "noney-2.0-twinkle-20241001",
-                    "name": "AURA 2.0 Twinkle",
+                    "name": "Comet 2.0 Twinkle",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -61,7 +61,7 @@ all_models_data = {
             ],
             "default_model": {
                 "id": "noney-1.0-fast-20241001",
-                "name": "AURA 1.0 Fast",
+                "name": "Comet 1.0 Fast",
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
@@ -72,7 +72,7 @@ all_models_data = {
             "models": [
                 {
                     "id": "noney-code-gen-20241001",
-                    "name": "AURA Code Gen1.0",
+                    "name": "Comet Code Gen1.0",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -80,7 +80,7 @@ all_models_data = {
                 },
                 {
                     "id": "noney-code-gen-pro-20241001",
-                    "name": "AURA Code Gen Pro",
+                    "name": "Comet Code Gen Pro",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -89,7 +89,7 @@ all_models_data = {
             ],
             "default_model": {
                 "id": "noney-code-gen-20241001",
-                "name": "AURA Code Gen1.0",
+                "name": "Comet Code Gen1.0",
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
@@ -100,7 +100,7 @@ all_models_data = {
             "models": [
                 {
                     "id": "noney-image-gen-20241001",
-                    "name": "AURA Image Gen1.0",
+                    "name": "Comet Image Gen1.0",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -109,7 +109,7 @@ all_models_data = {
             ],
             "default_model": {
                 "id": "noney-image-gen-20241001",
-                "name": "AURA Image Gen1.0",
+                "name": "Comet Image Gen1.0",
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
@@ -175,7 +175,7 @@ data = {
             "models": [
                 {
                     "id": "noney-1.0-fast-20241001",
-                    "name": "AURA 1.0 Fast",
+                    "name": "Comet 1.0 Fast",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -183,7 +183,7 @@ data = {
                 },
                 {
                     "id": "noney-1.0-twinkle-20241001",
-                    "name": "AURA 1.0 Twinkle",
+                    "name": "Comet 1.0 Twinkle",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -191,7 +191,7 @@ data = {
                 },
                 {
                     "id": "noney-2.0-twinkle-20241001",
-                    "name": "AURA 2.0 Twinkle",
+                    "name": "Comet 2.0 Twinkle",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -200,7 +200,7 @@ data = {
             ],
             "default_model": {
                 "id": "noney-1.0-fast-20241001",
-                "name": "AURA 1.0 Fast",
+                "name": "Comet 1.0 Fast",
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
@@ -211,7 +211,7 @@ data = {
             "models": [
                 {
                     "id": "noney-code-gen-20241001",
-                    "name": "AURA Code Gen1.0",
+                    "name": "Comet Code Gen1.0",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -219,7 +219,7 @@ data = {
                 },
                 {
                     "id": "noney-code-gen-pro-20241001",
-                    "name": "AURA Code Gen Pro",
+                    "name": "Comet Code Gen Pro",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -228,7 +228,7 @@ data = {
             ],
             "default_model": {
                 "id": "noney-code-gen-20241001",
-                "name": "AURA Code Gen1.0",
+                "name": "Comet Code Gen1.0",
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
@@ -239,7 +239,7 @@ data = {
             "models": [
                 {
                     "id": "noney-image-gen-20241001",
-                    "name": "AURA Image Gen1.0",
+                    "name": "Comet Image Gen1.0",
                     "google_search": False,
                     "active": "True",
                     "from": "NONEY",
@@ -248,7 +248,7 @@ data = {
             ],
             "default_model": {
                 "id": "noney-image-gen-20241001",
-                "name": "AURA Image Gen1.0",
+                "name": "Comet Image Gen1.0",
                 "google_search": False,
                 "active": "True",
                 "from": "NONEY",
