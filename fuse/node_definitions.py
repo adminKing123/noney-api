@@ -290,6 +290,65 @@ ACTION_NODES = [
         },
     },
     {
+        "type": "get_notified_email",
+        "label": "Get Notified (Email)",
+        "icon": "TbMail",
+        "section": "Notifications",
+        "description": "Send an email when this step runs, using the app SMTP settings on the server.",
+        "defaults": {
+            "content_type": "text/plain",
+        },
+        "config_form": {
+            "sections": [
+                {
+                    "title": "Email",
+                    "fields": [
+                        {
+                            "key": "to",
+                            "label": "To",
+                            "type": "variable_text",
+                            "placeholder": "you@example.com",
+                            "required": True,
+                            "hint": "Recipient address. Use @ to insert a variable.",
+                        },
+                        {
+                            "key": "subject",
+                            "label": "Subject",
+                            "type": "variable_text",
+                            "placeholder": "e.g. Your workflow finished",
+                            "required": True,
+                            "hint": "Email subject line.",
+                        },
+                        {
+                            "key": "body",
+                            "label": "Body",
+                            "type": "variable_textarea",
+                            "placeholder": "Message content…",
+                            "required": True,
+                            "hint": "Your message only — a Comet AI signature is added automatically when sent.",
+                        },
+                        {
+                            "key": "cc",
+                            "label": "CC",
+                            "type": "variable_text",
+                            "placeholder": "optional@example.com",
+                            "hint": "Optional comma-separated CC addresses.",
+                        },
+                        {
+                            "key": "content_type",
+                            "label": "Content type",
+                            "type": "select",
+                            "options": [
+                                {"label": "Plain text", "value": "text/plain"},
+                                {"label": "HTML", "value": "text/html"},
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         "type": "send_webex_message",
         "label": "Send Message",
         "icon": "SiWebex",

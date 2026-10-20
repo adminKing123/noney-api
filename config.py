@@ -35,6 +35,17 @@ class Upload1:
     GITHUB_USERNAME = os.getenv("GITHUB1_USERNAME", "")
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 
+
+class Smtp:
+    """App SMTP (e.g. Gmail app password) for workflow email notifications."""
+
+    HOST = os.getenv("SMTP_HOST", "")
+    PORT = int(os.getenv("SMTP_PORT", "587"))
+    USER = os.getenv("SMTP_USER", "")
+    APP_PASSWORD = os.getenv("SMTP_APP_PASSWORD", "")
+    FROM = os.getenv("SMTP_FROM", "") or os.getenv("SMTP_USER", "")
+    USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
+
 class CryptoCompositeKey:
     SECRET_KEY = os.getenv("CRYPTO_SECRET_KEY", "").encode()
     SALT = os.getenv("CRYPTO_SALT", "").encode()
@@ -98,6 +109,7 @@ class CONFIG:
 
     MODELS = Models()
     UPLOAD1 = Upload1()
+    SMTP = Smtp()
     HRMS = Hrms()
 
     AI_MAPPINGS = {}

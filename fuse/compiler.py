@@ -31,6 +31,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     # method is intentionally excluded — the route handler defaults to "POST"
     "webhook":      [],
     "get_notified": ["title", "body"],
+    "get_notified_email": ["to", "subject", "body"],
     "if_else":      ["condition"],
     "ai_structured_output": ["prompt", "output_schema"],
     "ai_generate_text":     ["prompt"],

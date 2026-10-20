@@ -6,13 +6,13 @@ Handler for the "Send Gmail" action node.
 
 import logging
 import base64
-from email.message import EmailMessage
 import requests
 
 from .base import NodeHandler
 from ..executor import ExecutionContext
 from ..variable_resolver import resolve_variables
 from db import db
+from utils.email_service import build_email_message
 from utils.integrations.gmail_utils import refresh_gmail_access_token_if_expired
 
 logger = logging.getLogger(__name__)
@@ -52,17 +52,15 @@ class SendGmailHandler(NodeHandler):
 
         access_token = integration.get("access_token")
 
-        # Create the email message
-        message = EmailMessage()
-        content_subtype = "html" if sub_type == "text/html" else "plain"
-        message.set_content(body, subtype=content_subtype)
-        message["To"] = to_email
-        if cc_email:
-            message["Cc"] = cc_email
-        if bcc_email:
-            message["Bcc"] = bcc_email
-        message["From"] = integration.get("email", "")  # Or let Gmail default it
-        message["Subject"] = subject
+        message = build_email_message(
+            to=to_email,
+            subject=subject,
+            body=body,
+            from_addr=integration.get("email", "") or None,
+            cc=cc_email or None,
+            bcc=bcc_email or None,
+            content_subtype=sub_type,
+        )
 
         # Encode the message as base64url, which is required by Gmail API
         encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()

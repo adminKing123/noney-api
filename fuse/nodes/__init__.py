@@ -14,6 +14,7 @@ from .schedule                 import ScheduleHandler
 from .if_else                  import IfElseHandler
 from .switch                   import SwitchHandler
 from .get_notified             import GetNotifiedHandler
+from .get_notified_email       import GetNotifiedEmailHandler
 from .ai_structured_output     import AIStructuredOutputHandler
 from .ai_generate_text         import AIGenerateTextHandler
 from .http_request             import HttpRequestHandler
@@ -36,6 +37,7 @@ HANDLERS: dict = {
     "if_else":                  IfElseHandler(),
     "switch":                   SwitchHandler(),
     "get_notified":             GetNotifiedHandler(),
+    "get_notified_email":       GetNotifiedEmailHandler(),
     "ai_structured_output":     AIStructuredOutputHandler(),
     "ai_generate_text":         AIGenerateTextHandler(),
     "http_request":             HttpRequestHandler(),
