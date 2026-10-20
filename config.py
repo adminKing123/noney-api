@@ -56,7 +56,6 @@ class Smtp:
     USER = _env_strip("SMTP_USER")
     APP_PASSWORD = _env_strip("SMTP_APP_PASSWORD")
     FROM = _env_strip("SMTP_FROM") or _env_strip("SMTP_USER")
-    USE_TLS = _env_strip("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
 
 class CryptoCompositeKey:
     SECRET_KEY = os.getenv("CRYPTO_SECRET_KEY", "").encode()
