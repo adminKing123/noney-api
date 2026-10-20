@@ -6,13 +6,14 @@ Best-effort email to the workflow owner when a run fails.
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 from typing import Any
 
 from config import CONFIG
 from db import db
-from utils.email_service import is_smtp_configured, send_email
+from utils.email_service import is_smtp_configured, send_email as send_smtp_email
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +115,20 @@ def send_workflow_failure_email(
     body_parts.extend(["Metadata (JSON):", meta_lines])
 
     subject = f'Workflow failed: {workflow_name}'
+    plain = "\n".join(body_parts)
+    html_body = (
+        '<pre style="font-family: sans-serif; white-space: pre-wrap;">'
+        f"{html.escape(plain)}"
+        "</pre>"
+    )
     try:
-        send_email(to=to_addr, subject=subject, body="\n".join(body_parts))
+        if not send_smtp_email(to_addr, subject, html_body, text_body=plain):
+            logger.error(
+                "[FUSE] Failure email not sent (SMTP returned false) — workflow=%s run=%s",
+                workflow_id,
+                run_id,
+            )
+            return
         logger.info(
             "[FUSE] Failure notification sent to owner — workflow=%s run=%s",
             workflow_id,

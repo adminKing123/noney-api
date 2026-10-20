@@ -12,7 +12,7 @@ from ..variable_resolver import resolve_variables
 from utils.email_service import (
     apply_get_notified_email_signature,
     is_smtp_configured,
-    send_email,
+    send_fuse_smtp_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,10 +54,9 @@ class GetNotifiedEmailHandler(NodeHandler):
             subject,
         )
 
-        meta = send_email(
-            to=to_addr,
-            subject=subject,
-            body=body,
+        return send_fuse_smtp_email(
+            to_addr,
+            subject,
+            body,
             content_subtype=sub_type,
         )
-        return meta
