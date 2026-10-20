@@ -866,9 +866,11 @@ class WorkflowRun:
         variables: dict | None = None,
         error: str | None = None,
         error_type: str | None = None,
-    ) -> str:
+    ) -> tuple[str, dict]:
         """
-        Write a node execution log document.  Returns the generated log_id.
+        Write a node execution log document.
+
+        Returns ``(log_id, stored_document)`` after size limiting / CDN offload.
         """
         doc_ref = self._logs().document()
         data = {
@@ -893,8 +895,41 @@ class WorkflowRun:
             data["config"] = config
         if variables is not None:
             data["variables"] = variables
-        doc_ref.set(data)
-        return doc_ref.id
+
+        from fuse.run_log_storage import prepare_run_log_document  # noqa: PLC0415
+
+        from fuse.run_log_sanitize import (  # noqa: PLC0415
+            is_firestore_document_too_large,
+            prepare_node_log_payload,
+        )
+
+        data = prepare_run_log_document(
+            data,
+            owner_id=owner_id,
+            run_id=run_id,
+            node_id=node_id,
+            node_type=node_type,
+        )
+        try:
+            doc_ref.set(data)
+        except Exception as exc:
+            if not is_firestore_document_too_large(exc):
+                raise
+            out, inp, cfg, vars_ = prepare_node_log_payload(
+                node_type,
+                output=data.get("output"),
+                input_snapshot=data.get("input"),
+                config=data.get("config"),
+                variables=data.get("variables"),
+                minimal=True,
+            )
+            data["output"] = out
+            data["input"] = inp
+            data["config"] = cfg
+            data["variables"] = vars_
+            data["_log_storage_fallback"] = "minimal_after_size_error"
+            doc_ref.set(data)
+        return doc_ref.id, data
 
     # ── Queries ────────────────────────────────────────────────────────────────
 

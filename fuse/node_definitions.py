@@ -839,4 +839,44 @@ ACTION_NODES = [
             ],
         },
     },
+    {
+        "type": "create_json_file",
+        "label": "Create JSON",
+        "icon": "TbFileCode",
+        "section": "Handle Files",
+        "description": "Paste or build JSON in the editor (use @ for variables). The workflow validates it, uploads the file to CDN storage, and returns the download URL and file metadata.",
+        "defaults": {
+            "filename": "export.json",
+        },
+        "config_form": {
+            "sections": [
+                {
+                    "title": "File",
+                    "fields": [
+                        {
+                            "key": "filename",
+                            "label": "File name",
+                            "type": "variable_text",
+                            "placeholder": "export.json",
+                            "required": True,
+                            "hint": "Name for the .json file (a unique prefix is added on upload). Use @ to insert variables.",
+                        },
+                    ],
+                },
+                {
+                    "title": "JSON content",
+                    "fields": [
+                        {
+                            "key": "json_content",
+                            "label": "JSON",
+                            "type": "variable_textarea",
+                            "placeholder": "{\n  \"key\": \"value\"\n}",
+                            "required": True,
+                            "hint": "Valid JSON object or array. Use @ to insert values from previous steps before upload.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 ]

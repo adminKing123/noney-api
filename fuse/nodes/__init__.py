@@ -26,6 +26,7 @@ from .for_each                 import ForEachHandler
 from .fork                     import ForkHandler
 from .join                     import JoinHandler
 from .google_sheets_add_row    import GoogleSheetsAddRowHandler
+from .create_json_file         import CreateJsonFileHandler
 
 # Maps the node_type string (from compiled_graph["nodes"][id]["node_type"])
 # to the singleton handler that executes it.
@@ -47,4 +48,5 @@ HANDLERS: dict = {
     "fork":                     ForkHandler(),
     "join":                     JoinHandler(),
     "google_sheets_add_row":    GoogleSheetsAddRowHandler(),
+    "create_json_file":         CreateJsonFileHandler(),
 }

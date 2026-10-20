@@ -959,11 +959,15 @@ def _node_execution_snapshot(ctx: ExecutionContext, config: dict) -> tuple[dict,
     return inp, cfg, variables
 
 
-def _should_persist_output(config: dict | None) -> bool:
-    """When save_output is false, node output is omitted from fuse_run_logs only."""
+def _should_persist_log_field(config: dict | None, field: str) -> bool:
+    """Run-log save toggles on node config (default on when unset)."""
     if not config:
         return True
-    return config.get("save_output", True) is not False
+    return config.get(field, True) is not False
+
+
+def _should_persist_output(config: dict | None) -> bool:
+    return _should_persist_log_field(config, "save_output")
 
 
 def _output_for_log(config: dict | None, output: dict | None) -> dict | None:
@@ -1000,8 +1004,21 @@ def _write_node_log(
                 variables = snap_vars
 
         log_output = _output_for_log(config, output)
+        log_input = (
+            input_snapshot
+            if _should_persist_log_field(config, "save_input")
+            else None
+        )
+        log_config = (
+            config if _should_persist_log_field(config, "save_config") else None
+        )
+        log_variables = (
+            variables
+            if _should_persist_log_field(config, "save_variables")
+            else None
+        )
 
-        log_id = db.workflow_run.write_node_log(
+        log_id, stored_log = db.workflow_run.write_node_log(
             run_id      = ctx.run_id,
             workflow_id = ctx.workflow_id,
             owner_id    = ctx.owner_id,
@@ -1013,36 +1030,15 @@ def _write_node_log(
             finished_at = finished_at,
             duration_ms = duration_ms,
             output      = log_output,
-            input       = input_snapshot,
-            config      = config,
-            variables   = variables,
+            input       = log_input,
+            config      = log_config,
+            variables   = log_variables,
             error       = error,
             error_type  = error_type,
         )
         from fuse.run_events import emit_node_log  # noqa: PLC0415
 
-        emit_node_log(
-            ctx.run_id,
-            {
-                "log_id":      log_id,
-                "run_id":      ctx.run_id,
-                "workflow_id": ctx.workflow_id,
-                "owner_id":    ctx.owner_id,
-                "node_id":     node_id,
-                "node_type":   node_type,
-                "node_label":  node_label,
-                "status":      status,
-                "started_at":  started_at,
-                "finished_at": finished_at,
-                "duration_ms": duration_ms,
-                "output":      log_output,
-                "input":       input_snapshot,
-                "config":      config,
-                "variables":   variables,
-                "error":       error,
-                "error_type":  error_type,
-            },
-        )
+        emit_node_log(ctx.run_id, stored_log)
     except Exception:
         logger.exception(
             "[FUSE] Failed to write node log — run=%s node=%s",

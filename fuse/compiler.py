@@ -43,6 +43,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "github_pull_request": ["watch_target"],
     "set_variables":    [],
     "for_each":         ["array_variable"],
+    "create_json_file": ["filename", "json_content"],
 }
 
 
@@ -162,7 +163,12 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
         if not fields:
             errors.append("You must define at least one variable.")
 
+    if node_type == "create_json_file":
+        if not (config.get("json_content") or "").strip():
+            errors.append("JSON content is required.")
+
     return errors
+
 
 
 def _is_valid_time(time_str: str) -> bool:
