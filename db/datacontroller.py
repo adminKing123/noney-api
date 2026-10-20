@@ -896,11 +896,10 @@ class WorkflowRun:
         if variables is not None:
             data["variables"] = variables
 
-        from fuse.run_log_storage import prepare_run_log_document  # noqa: PLC0415
-
-        from fuse.run_log_sanitize import (  # noqa: PLC0415
+        from fuse.run_log_storage import (  # noqa: PLC0415
+            emergency_minimal_run_log,
             is_firestore_document_too_large,
-            prepare_node_log_payload,
+            prepare_run_log_document,
         )
 
         data = prepare_run_log_document(
@@ -915,19 +914,7 @@ class WorkflowRun:
         except Exception as exc:
             if not is_firestore_document_too_large(exc):
                 raise
-            out, inp, cfg, vars_ = prepare_node_log_payload(
-                node_type,
-                output=data.get("output"),
-                input_snapshot=data.get("input"),
-                config=data.get("config"),
-                variables=data.get("variables"),
-                minimal=True,
-            )
-            data["output"] = out
-            data["input"] = inp
-            data["config"] = cfg
-            data["variables"] = vars_
-            data["_log_storage_fallback"] = "minimal_after_size_error"
+            data = emergency_minimal_run_log(data, node_type)
             doc_ref.set(data)
         return doc_ref.id, data
 

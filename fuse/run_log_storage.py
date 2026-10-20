@@ -16,9 +16,7 @@ from fuse.cdn_upload import upload_bytes_to_cdn
 
 logger = logging.getLogger(__name__)
 
-# Firestore document size limit (bytes)
-FIRESTORE_MAX_DOC_BYTES = 1_048_576
-# Target max serialized document size (headroom for encoding overhead)
+# Target max serialized document size (headroom under Firestore 1 MiB cap)
 SAFE_DOC_BYTES = 850_000
 # Inline field budget before offloading to CDN
 MAX_INLINE_FIELD_BYTES = 120_000
@@ -188,4 +186,35 @@ def prepare_run_log_document(
             )
             break
 
+    return doc
+
+
+def is_firestore_document_too_large(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return "exceeds the maximum allowed size" in msg or "maximum allowed size" in msg
+
+
+def emergency_minimal_run_log(data: dict, node_type: str = "") -> dict:
+    """
+    Last-resort shrink when Firestore still rejects the document after CDN offload.
+    Keeps status, timing, errors, and small output metadata only.
+    """
+    doc = copy.deepcopy(data)
+    doc.pop("input", None)
+    doc.pop("config", None)
+    doc.pop("variables", None)
+    if node_type == "create_json_file":
+        _sanitize_create_json_file_log(doc)
+    out = doc.get("output")
+    if out is not None and not _is_offloaded_ref(out):
+        if _serialized_size(out) > MAX_INLINE_FIELD_BYTES:
+            doc["output"] = {
+                "_note": "Output omitted after Firestore size limit.",
+                **(
+                    {k: out[k] for k in ("success", "url", "error") if k in out}
+                    if isinstance(out, dict)
+                    else {}
+                ),
+            }
+    doc["_log_storage_fallback"] = "minimal_after_size_error"
     return doc

@@ -966,12 +966,8 @@ def _should_persist_log_field(config: dict | None, field: str) -> bool:
     return config.get(field, True) is not False
 
 
-def _should_persist_output(config: dict | None) -> bool:
-    return _should_persist_log_field(config, "save_output")
-
-
 def _output_for_log(config: dict | None, output: dict | None) -> dict | None:
-    if output is None or not _should_persist_output(config):
+    if output is None or not _should_persist_log_field(config, "save_output"):
         return None
     return output
 
