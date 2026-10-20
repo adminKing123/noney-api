@@ -10,6 +10,8 @@ import logging
 import os
 import smtplib
 from email.message import EmailMessage
+from email.utils import formataddr, parseaddr
+
 from config import CONFIG
 
 logger = logging.getLogger(__name__)
@@ -73,6 +75,33 @@ def is_smtp_configured() -> bool:
     return bool(smtp["host"] and smtp["user"] and smtp["password"])
 
 
+def _format_from_header(from_addr: str | None) -> str:
+    """
+    Build a single RFC-compliant ``From`` value.
+
+    * App SMTP (``from_addr`` omitted): ``Comet AI <smtp-user@…>``
+    * Caller-supplied address (e.g. Gmail integration): use as-is / bare address
+    * Already formatted ``Name <email>``: preserved unchanged
+    """
+    smtp = _smtp_runtime()
+    raw = (from_addr or smtp["from_addr"] or smtp["user"]).strip()
+    if not raw:
+        raise ValueError("Missing From address for email.")
+
+    if "<" in raw and ">" in raw:
+        return raw
+
+    _name, addr = parseaddr(raw)
+    address = (addr or raw).strip()
+    if not address:
+        raise ValueError("Missing From address for email.")
+
+    if from_addr is not None:
+        return address
+
+    return formataddr(("Comet AI", address))
+
+
 def build_email_message(
     *,
     to: str,
@@ -96,8 +125,7 @@ def build_email_message(
     message.set_content(body, subtype=subtype)
     message["To"] = to.strip()
     message["Subject"] = subject.strip()
-    smtp = _smtp_runtime()
-    message["From"] = (from_addr or smtp["from_addr"] or smtp["user"]).strip()
+    message["From"] = _format_from_header(from_addr)
     if cc and cc.strip():
         message["Cc"] = cc.strip()
     if bcc and bcc.strip():
@@ -127,10 +155,8 @@ def send_email_via_smtp(message: EmailMessage) -> None:
     if not recipients:
         raise ValueError("No recipients on email message.")
 
-    from_header = (message.get("From") or smtp["user"]).strip()
-    if from_header and "<" not in from_header and "@" in from_header:
-        from_header = f"Comet AI <{from_header}>"
-    message["From"] = from_header
+    if not message.get("From"):
+        raise ValueError("Email message is missing a From header.")
 
     try:
         with smtplib.SMTP(smtp["host"], smtp["port"], timeout=30) as server:
