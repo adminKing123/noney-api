@@ -6,6 +6,7 @@ Send an email notification via app SMTP when a workflow step runs.
 
 import logging
 
+from db import db
 from .base import NodeHandler
 from ..variable_resolver import resolve_variables
 from utils.email_service import (
@@ -23,10 +24,19 @@ class GetNotifiedEmailHandler(NodeHandler):
     def execute(self, config: dict, context) -> dict:
         outputs = context.node_outputs
 
-        to_addr = resolve_variables(config.get("to", ""), outputs)
+        if not context.owner_id:
+            raise RuntimeError(
+                "Cannot send email notification: workflow owner is unknown."
+            )
+
+        to_addr = db.user.get_email(context.owner_id)
+        if not to_addr:
+            raise RuntimeError(
+                "Cannot send email notification: no email on file for the workflow owner."
+            )
+
         subject = resolve_variables(config.get("subject", ""), outputs)
         body = resolve_variables(config.get("body", ""), outputs)
-        cc = resolve_variables(config.get("cc", ""), outputs)
         sub_type = config.get("content_type", "text/plain")
 
         if not is_smtp_configured():
@@ -48,7 +58,6 @@ class GetNotifiedEmailHandler(NodeHandler):
             to=to_addr,
             subject=subject,
             body=body,
-            cc=cc or None,
             content_subtype=sub_type,
         )
         return meta

@@ -36,15 +36,27 @@ class Upload1:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 
 
+def _env_strip(key: str, default: str = "") -> str:
+    return (os.getenv(key, default) or default).strip()
+
+
+def _env_port(key: str, default: int = 587) -> int:
+    raw = _env_strip(key, str(default))
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 class Smtp:
     """App SMTP (e.g. Gmail app password) for workflow email notifications."""
 
-    HOST = os.getenv("SMTP_HOST", "")
-    PORT = int(os.getenv("SMTP_PORT", "587"))
-    USER = os.getenv("SMTP_USER", "")
-    APP_PASSWORD = os.getenv("SMTP_APP_PASSWORD", "")
-    FROM = os.getenv("SMTP_FROM", "") or os.getenv("SMTP_USER", "")
-    USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
+    HOST = _env_strip("SMTP_HOST", "smtp.gmail.com")
+    PORT = _env_port("SMTP_PORT", 587)
+    USER = _env_strip("SMTP_USER")
+    APP_PASSWORD = _env_strip("SMTP_APP_PASSWORD")
+    FROM = _env_strip("SMTP_FROM") or _env_strip("SMTP_USER")
+    USE_TLS = _env_strip("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
 
 class CryptoCompositeKey:
     SECRET_KEY = os.getenv("CRYPTO_SECRET_KEY", "").encode()

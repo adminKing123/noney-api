@@ -294,7 +294,7 @@ ACTION_NODES = [
         "label": "Get Notified (Email)",
         "icon": "TbMail",
         "section": "Notifications",
-        "description": "Send an email when this step runs, using the app SMTP settings on the server.",
+        "description": "Send an email to your account address when this step runs.",
         "defaults": {
             "content_type": "text/plain",
         },
@@ -303,14 +303,6 @@ ACTION_NODES = [
                 {
                     "title": "Email",
                     "fields": [
-                        {
-                            "key": "to",
-                            "label": "To",
-                            "type": "variable_text",
-                            "placeholder": "you@example.com",
-                            "required": True,
-                            "hint": "Recipient address. Use @ to insert a variable.",
-                        },
                         {
                             "key": "subject",
                             "label": "Subject",
@@ -326,13 +318,6 @@ ACTION_NODES = [
                             "placeholder": "Message content…",
                             "required": True,
                             "hint": "Your message only — a Comet AI signature is added automatically when sent.",
-                        },
-                        {
-                            "key": "cc",
-                            "label": "CC",
-                            "type": "variable_text",
-                            "placeholder": "optional@example.com",
-                            "hint": "Optional comma-separated CC addresses.",
                         },
                         {
                             "key": "content_type",

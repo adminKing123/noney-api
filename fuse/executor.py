@@ -18,8 +18,9 @@ Execution model
    thread pool (true parallel I/O).  A single outgoing edge stays on the
    main queue (no thread overhead).
 6. For all other nodes, every outgoing edge's targets are enqueued.
-7. Errors in individual nodes are caught, logged, and stored in the node's
-   output — they do NOT abort the remaining workflow.
+7. When a node raises an error, downstream nodes on that path are not run.
+   The run is marked failed and the owner receives an automatic email (if SMTP
+   is configured).
 
 Persistence
 -----------
@@ -206,6 +207,30 @@ def run_workflow(
     executed: set[str] = set()
     nodes_failed    = 0
     run_error: str | None = None
+    first_failure: dict | None = None
+    failure_lock = threading.Lock()
+
+    def _note_node_failure(
+        node_id: str,
+        node_label: str,
+        node_type: str,
+        error: str | None,
+        error_type: str | None,
+    ) -> None:
+        nonlocal run_error, first_failure
+        if not error:
+            return
+        with failure_lock:
+            if run_error is None:
+                run_error = f"{node_label}: {error}"
+            if first_failure is None:
+                first_failure = {
+                    "node_id": node_id,
+                    "node_label": node_label,
+                    "node_type": node_type,
+                    "error": error,
+                    "error_type": error_type,
+                }
 
     # Calculate in-degree for join nodes based on compiled graph adjacency
     in_degrees: dict[str, int] = {}
@@ -311,6 +336,9 @@ def run_workflow(
             node_error    = str(exc)
             node_error_type = type(exc).__name__
             nodes_failed  += 1
+            _note_node_failure(
+                node_id, node_label, node_type, node_error, node_error_type
+            )
 
         node_finished  = _now_iso()
         node_duration  = _duration_ms(node_started)
@@ -335,7 +363,10 @@ def run_workflow(
             variables   = log_variables,
         )
 
-        # ── Determine outgoing edges ──────────────────────────────────────────
+        # ── Determine outgoing edges (stop this path on failure) ─────────────
+        if node_status == "error":
+            continue
+
         adj = adjacency.get(node_id, {})
         if node_type == "if_else":
             branch = "true" if output.get("result") else "false"
@@ -354,7 +385,10 @@ def run_workflow(
             # Guard set: body BFS must not cross into the done branch or loop back
             done_set     = set(done_targets) | {node_id}
 
+            foreach_failed = False
             for loop_idx, loop_item in enumerate(items):
+                if foreach_failed:
+                    break
                 # Expose the current element to downstream body nodes
                 ctx.node_outputs[node_id]["current_item"]  = loop_item
                 ctx.node_outputs[node_id]["current_index"] = loop_idx
@@ -364,7 +398,7 @@ def run_workflow(
                     loop_idx + 1, len(items), workflow_id, ctx.run_id,
                 )
 
-                ns, nf = _run_for_each_body(
+                ns, nf, loop_failure = _run_for_each_body(
                     item_targets   = item_targets,
                     adjacency      = adjacency,
                     nodes          = nodes,
@@ -373,13 +407,17 @@ def run_workflow(
                     HANDLERS       = HANDLERS,
                     db             = db,
                     workflow_id    = workflow_id,
+                    on_failure     = _note_node_failure,
                 )
                 nodes_succeeded += ns
                 nodes_failed    += nf
+                if nf > 0 or loop_failure:
+                    foreach_failed = True
 
-            for target in done_targets:
-                if target not in executed:
-                    queue.append(target)
+            if not foreach_failed:
+                for target in done_targets:
+                    if target not in executed:
+                        queue.append(target)
         elif node_type == "fork":
             fork_targets = [t for tgts in adj.values() for t in tgts]
             if len(fork_targets) > 1:
@@ -393,6 +431,7 @@ def run_workflow(
                     handlers=HANDLERS,
                     db=db,
                     workflow_id=workflow_id,
+                    on_failure=_note_node_failure,
                 )
                 nodes_succeeded += ns
                 nodes_failed += nf
@@ -409,6 +448,8 @@ def run_workflow(
     # ── Finalise the run record ───────────────────────────────────────────────
     run_status = "failed" if nodes_failed > 0 else "success"
     node_count = len(executed) + 1  # include the starter trigger node
+    finished_at = _now_iso()
+    run_duration_ms = _duration_ms(ctx.triggered_at)
 
     logger.info(
         "[FUSE] Execution finished — workflow=%s run=%s status=%s "
@@ -436,6 +477,24 @@ def run_workflow(
         logger.exception(
             "[FUSE] Failed to finalise run record — workflow=%s run=%s",
             workflow_id, ctx.run_id,
+        )
+
+    if run_status == "failed":
+        from fuse.workflow_failure_email import send_workflow_failure_email  # noqa: PLC0415
+
+        send_workflow_failure_email(
+            owner_id=owner_id,
+            workflow_id=workflow_id,
+            run_id=ctx.run_id,
+            trigger_type=trigger_type,
+            triggered_at=ctx.triggered_at,
+            finished_at=finished_at,
+            duration_ms=run_duration_ms,
+            node_count=node_count,
+            nodes_succeeded=nodes_succeeded,
+            nodes_failed=nodes_failed,
+            failure=first_failure,
+            run_error=run_error,
         )
 
     return ctx
@@ -495,6 +554,7 @@ def _run_parallel_fork_branches(
     handlers: dict,
     db,
     workflow_id: str,
+    on_failure=None,
 ) -> tuple[int, int]:
     """Run each fork branch in a worker thread; return (succeeded, failed) counts."""
     if not branch_starts:
@@ -523,6 +583,7 @@ def _run_parallel_fork_branches(
                 handlers,
                 db,
                 workflow_id,
+                on_failure,
             )
             for start_id in branch_starts
         ]
@@ -543,6 +604,7 @@ def _run_fork_branch_worker(
     handlers: dict,
     db,
     workflow_id: str,
+    on_failure=None,
 ) -> tuple[int, int]:
     """BFS from one fork outlet until the branch queue is drained."""
     branch_queue: list[str] = [start_id]
@@ -637,6 +699,10 @@ def _run_fork_branch_worker(
             node_error = str(exc)
             node_error_type = type(exc).__name__
             nodes_failed += 1
+            if on_failure:
+                on_failure(
+                    node_id, node_label, node_type, node_error, node_error_type
+                )
 
         node_finished = _now_iso()
         ctx.set_output(node_id, output)
@@ -658,6 +724,9 @@ def _run_fork_branch_worker(
             variables=log_variables,
         )
 
+        if node_status == "error":
+            continue
+
         adj = adjacency.get(node_id, {})
         if node_type == "if_else":
             branch = "true" if output.get("result") else "false"
@@ -672,10 +741,13 @@ def _run_fork_branch_worker(
             item_targets = list(adj.get("item", []))
             done_targets = list(adj.get("done", []))
             done_set = set(done_targets) | {node_id}
+            foreach_failed = False
             for loop_idx, loop_item in enumerate(items):
+                if foreach_failed:
+                    break
                 ctx.node_outputs[node_id]["current_item"] = loop_item
                 ctx.node_outputs[node_id]["current_index"] = loop_idx
-                ns, nf = _run_for_each_body(
+                ns, nf, loop_failure = _run_for_each_body(
                     item_targets=item_targets,
                     adjacency=adjacency,
                     nodes=nodes,
@@ -684,11 +756,15 @@ def _run_fork_branch_worker(
                     HANDLERS=handlers,
                     db=db,
                     workflow_id=workflow_id,
+                    on_failure=on_failure,
                 )
                 nodes_succeeded += ns
                 nodes_failed += nf
-            for target in done_targets:
-                branch_queue.append(target)
+                if nf > 0 or loop_failure:
+                    foreach_failed = True
+            if not foreach_failed:
+                for target in done_targets:
+                    branch_queue.append(target)
         elif node_type == "fork":
             nested = _fork_outgoing_targets(adjacency, node_id)
             if len(nested) > 1:
@@ -701,6 +777,7 @@ def _run_fork_branch_worker(
                     handlers=handlers,
                     db=db,
                     workflow_id=workflow_id,
+                    on_failure=on_failure,
                 )
                 nodes_succeeded += ns
                 nodes_failed += nf
@@ -722,7 +799,8 @@ def _run_for_each_body(
     HANDLERS: dict,
     db,
     workflow_id: str,
-) -> tuple[int, int]:
+    on_failure=None,
+) -> tuple[int, int, bool]:
     """
     Execute the body sub-graph of a ``for_each`` node once (one iteration).
 
@@ -735,13 +813,14 @@ def _run_for_each_body(
     ``ctx.node_outputs[for_each_node_id]["current_item"]`` and
     ``ctx.node_outputs[for_each_node_id]["current_index"]`` before calling.
 
-    Returns ``(nodes_succeeded, nodes_failed)`` for the iteration.
+    Returns ``(nodes_succeeded, nodes_failed, had_failure)`` for the iteration.
     """
     body_queue: list[str] = list(item_targets)
     body_executed: set[str] = set()
     body_join_visits: dict[str, int] = {}
     nodes_succeeded = 0
     nodes_failed    = 0
+    had_failure     = False
 
     while body_queue:
         body_nid = body_queue.pop(0)
@@ -845,6 +924,15 @@ def _run_for_each_body(
             body_error       = str(exc)
             body_error_type  = type(exc).__name__
             nodes_failed    += 1
+            had_failure      = True
+            if on_failure:
+                on_failure(
+                    body_nid,
+                    body_node_label,
+                    body_node_type,
+                    body_error,
+                    body_error_type,
+                )
 
         body_finished = _now_iso()
         ctx.set_output(body_nid, body_output)
@@ -867,6 +955,9 @@ def _run_for_each_body(
             variables   = body_log_variables,
         )
 
+        if body_status == "error":
+            break
+
         # Enqueue next body nodes (respecting if_else branching within the body)
         body_adj = adjacency.get(body_nid, {})
         if body_node_type == "if_else":
@@ -885,7 +976,7 @@ def _run_for_each_body(
                     if t not in body_executed and t not in done_set:
                         body_queue.append(t)
 
-    return nodes_succeeded, nodes_failed
+    return nodes_succeeded, nodes_failed, had_failure
 
 
 def _write_starter_log(

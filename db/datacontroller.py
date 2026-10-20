@@ -1,8 +1,13 @@
-﻿import firebase_admin
+import logging
+
+import firebase_admin
 from firebase_admin import credentials, firestore, auth
 import json
 from config import CONFIG
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
 
 class User:
     def __init__(self, client):
@@ -11,6 +16,18 @@ class User:
     def authenticate(self, token):
         decoded = auth.verify_id_token(token, clock_skew_seconds=60)
         return decoded
+
+    def get_email(self, uid: str) -> str | None:
+        """Primary email for a Firebase user (workflow owner notifications)."""
+        if not uid:
+            return None
+        try:
+            record = auth.get_user(uid)
+            email = (record.email or "").strip()
+            return email or None
+        except Exception:
+            logger.exception("[user] Failed to load email for uid=%s", uid)
+            return None
 
     # ── Web Push subscription ─────────────────────────────────────────────────
 
