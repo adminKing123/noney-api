@@ -959,6 +959,19 @@ def _node_execution_snapshot(ctx: ExecutionContext, config: dict) -> tuple[dict,
     return inp, cfg, variables
 
 
+def _should_persist_output(config: dict | None) -> bool:
+    """When save_output is false, node output is omitted from fuse_run_logs only."""
+    if not config:
+        return True
+    return config.get("save_output", True) is not False
+
+
+def _output_for_log(config: dict | None, output: dict | None) -> dict | None:
+    if output is None or not _should_persist_output(config):
+        return None
+    return output
+
+
 def _write_node_log(
     db,
     ctx: ExecutionContext,
@@ -986,6 +999,8 @@ def _write_node_log(
             if variables is None:
                 variables = snap_vars
 
+        log_output = _output_for_log(config, output)
+
         log_id = db.workflow_run.write_node_log(
             run_id      = ctx.run_id,
             workflow_id = ctx.workflow_id,
@@ -997,7 +1012,7 @@ def _write_node_log(
             started_at  = started_at,
             finished_at = finished_at,
             duration_ms = duration_ms,
-            output      = output,
+            output      = log_output,
             input       = input_snapshot,
             config      = config,
             variables   = variables,
@@ -1020,7 +1035,7 @@ def _write_node_log(
                 "started_at":  started_at,
                 "finished_at": finished_at,
                 "duration_ms": duration_ms,
-                "output":      output,
+                "output":      log_output,
                 "input":       input_snapshot,
                 "config":      config,
                 "variables":   variables,
