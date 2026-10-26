@@ -48,14 +48,12 @@ def _env_port(key: str, default: int = 587) -> int:
         return default
 
 
-class Smtp:
-    """App SMTP (e.g. Gmail app password) for workflow email notifications."""
+class EmailService:
+    """External HTTP email service for workflow notifications."""
 
-    HOST = _env_strip("SMTP_HOST", "smtp.gmail.com")
-    PORT = _env_port("SMTP_PORT", 587)
-    USER = _env_strip("SMTP_USER")
-    APP_PASSWORD = _env_strip("SMTP_APP_PASSWORD")
-    FROM = _env_strip("SMTP_FROM") or _env_strip("SMTP_USER")
+    HOST = _env_strip("EMAIL_SERVICE_HOST")
+    API_KEY = _env_strip("EMAIL_SERVICE_API_KEY")
+    FROM_NAME = _env_strip("EMAIL_SERVICE_FROM_NAME", "Comet AI")
 
 class CryptoCompositeKey:
     SECRET_KEY = os.getenv("CRYPTO_SECRET_KEY", "").encode()
@@ -120,7 +118,7 @@ class CONFIG:
 
     MODELS = Models()
     UPLOAD1 = Upload1()
-    SMTP = Smtp()
+    EMAIL_SERVICE = EmailService()
     HRMS = Hrms()
 
     AI_MAPPINGS = {}

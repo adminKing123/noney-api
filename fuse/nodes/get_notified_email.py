@@ -1,7 +1,7 @@
 """
 fuse/nodes/get_notified_email.py
 ================================
-Send an email notification via app SMTP when a workflow step runs.
+Send an email notification via the app email service when a workflow step runs.
 """
 
 import logging
@@ -11,8 +11,8 @@ from .base import NodeHandler
 from ..variable_resolver import resolve_variables
 from utils.email_service import (
     apply_get_notified_email_signature,
-    is_smtp_configured,
-    send_fuse_smtp_email,
+    is_email_service_configured,
+    send_fuse_workflow_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,9 +39,10 @@ class GetNotifiedEmailHandler(NodeHandler):
         body = resolve_variables(config.get("body", ""), outputs)
         sub_type = config.get("content_type", "text/plain")
 
-        if not is_smtp_configured():
+        if not is_email_service_configured():
             raise RuntimeError(
-                "SMTP is not configured on the server (SMTP_HOST / SMTP_USER / SMTP_APP_PASSWORD)."
+                "Email service is not configured on the server "
+                "(EMAIL_SERVICE_HOST / EMAIL_SERVICE_API_KEY)."
             )
 
         body = apply_get_notified_email_signature(body, sub_type)
@@ -54,7 +55,7 @@ class GetNotifiedEmailHandler(NodeHandler):
             subject,
         )
 
-        return send_fuse_smtp_email(
+        return send_fuse_workflow_email(
             to_addr,
             subject,
             body,

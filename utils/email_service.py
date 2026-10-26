@@ -1,23 +1,18 @@
 """
 utils/email_service.py
 ----------------------
-SMTP email delivery using Python's built-in smtplib over STARTTLS (port 587).
-
-Mirrors Bridger: app/services/email_service.py
+Email delivery via the external Email Service HTTP API.
 """
 
-import html
 import logging
-import smtplib
 from email.message import EmailMessage
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
+import requests
 
 from config import CONFIG
 
 logger = logging.getLogger(__name__)
 
-# Appended to every Get Notified (Email) node message (server-side only).
 GET_NOTIFIED_EMAIL_SIGNATURE_PLAIN = (
     "\n\n---\n"
     "Comet AI\n"
@@ -42,69 +37,60 @@ def apply_get_notified_email_signature(body: str, content_subtype: str) -> str:
     return f"{text}{GET_NOTIFIED_EMAIL_SIGNATURE_PLAIN}"
 
 
-def is_smtp_configured() -> bool:
-    smtp_user = CONFIG.SMTP.USER
-    smtp_password = CONFIG.SMTP.APP_PASSWORD
-    return bool(smtp_user and smtp_password)
+def is_email_service_configured() -> bool:
+    host = CONFIG.EMAIL_SERVICE.HOST
+    api_key = CONFIG.EMAIL_SERVICE.API_KEY
+    return bool(host and api_key)
 
 
 def send_email(
     to_email: str,
     subject: str,
-    html_body: str,
-    text_body: str | None = None,
+    body: str,
+    *,
+    send_as_html: bool = False,
 ) -> bool:
     """
-    Send an email via SMTP with STARTTLS.
+    Send an email via the Email Service API.
 
-    Args:
-        to_email:  Recipient email address.
-        subject:   Email subject line.
-        html_body: HTML version of the body.
-        text_body: Plain-text fallback (optional).
-
-    Returns:
-        True on success, False on any SMTP / connection failure.
+    Returns True on success, False on validation, auth, or transport failure.
     """
-    smtp_host: str = CONFIG.SMTP.HOST
-    smtp_port: int = CONFIG.SMTP.PORT
-    smtp_user: str = CONFIG.SMTP.USER
-    smtp_password: str = CONFIG.SMTP.APP_PASSWORD
-
-    if not smtp_user or not smtp_password:
-        logger.error("SMTP credentials are not configured.")
+    if not is_email_service_configured():
+        logger.error("Email service is not configured (EMAIL_SERVICE_HOST / EMAIL_SERVICE_API_KEY).")
         return False
 
-    # Build multipart/alternative message
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"Comet AI <{smtp_user}>"
-    msg["To"] = to_email
-
-    if text_body:
-        msg.attach(MIMEText(text_body, "plain", "utf-8"))
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    base = CONFIG.EMAIL_SERVICE.HOST.rstrip("/")
+    url = f"{base}/api/send-email"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {CONFIG.EMAIL_SERVICE.API_KEY}",
+    }
+    payload = {
+        "to": to_email,
+        "subject": subject,
+        "body": body,
+        "send_as_html": send_as_html,
+        "from_name": CONFIG.EMAIL_SERVICE.FROM_NAME,
+    }
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, to_email, msg.as_string())
-        logger.info("Email sent to %s — subject: %s", to_email, subject)
-        return True
-
-    except smtplib.SMTPAuthenticationError:
-        logger.error("SMTP authentication failed. Check SMTP_USER and SMTP_APP_PASSWORD.")
-    except smtplib.SMTPException as exc:
-        logger.error("SMTP error sending to %s: %s", to_email, exc)
-    except OSError as exc:
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        if response.status_code == 200:
+            logger.info("Email sent to %s — subject: %s", to_email, subject)
+            return True
+        logger.error(
+            "Email service error sending to %s (status=%s): %s",
+            to_email,
+            response.status_code,
+            response.text,
+        )
+    except requests.RequestException as exc:
         logger.error("Network error sending email to %s: %s", to_email, exc)
 
     return False
 
 
-def send_fuse_smtp_email(
+def send_fuse_workflow_email(
     to_email: str,
     subject: str,
     body: str,
@@ -112,26 +98,22 @@ def send_fuse_smtp_email(
     content_subtype: str = "text/plain",
 ) -> dict:
     """
-    Send workflow email using ``send_email`` (Bridger transport).
+    Send workflow email via the Email Service API.
 
-    Raises ``RuntimeError`` when SMTP send returns False (Fuse node errors).
+    Raises ``RuntimeError`` when send returns False (Fuse node errors).
     """
-    if content_subtype == "text/html":
-        html_body = body
-        text_body = None
-    else:
-        text_body = body
-        html_body = f"<pre style=\"font-family: sans-serif; white-space: pre-wrap;\">{html.escape(body)}</pre>"
-
-    ok = send_email(to_email, subject, html_body, text_body)
+    send_as_html = content_subtype == "text/html"
+    ok = send_email(to_email, subject, body, send_as_html=send_as_html)
     if not ok:
-        raise RuntimeError("SMTP send failed. Check server logs and SMTP settings.")
+        raise RuntimeError(
+            "Email send failed. Check server logs and EMAIL_SERVICE_HOST / EMAIL_SERVICE_API_KEY."
+        )
 
-    smtp_user = CONFIG.SMTP.USER
+    from_name = CONFIG.EMAIL_SERVICE.FROM_NAME
     return {
         "success": True,
         "to": to_email,
-        "from": f"Comet AI <{smtp_user}>",
+        "from": from_name,
         "subject": subject,
     }
 
@@ -146,7 +128,7 @@ def build_email_message(
     bcc: str | None = None,
     content_subtype: str = "plain",
 ) -> EmailMessage:
-    """Build ``EmailMessage`` for Gmail API (Send Gmail node — not SMTP)."""
+    """Build ``EmailMessage`` for Gmail API (Send Gmail node — not app email service)."""
     if not to.strip():
         raise ValueError("Missing recipient email address.")
     if not subject.strip():
@@ -159,7 +141,7 @@ def build_email_message(
     message.set_content(body, subtype=subtype)
     message["To"] = to.strip()
     message["Subject"] = subject.strip()
-    message["From"] = (from_addr or CONFIG.SMTP.USER or "").strip()
+    message["From"] = (from_addr or "").strip()
 
     if cc and cc.strip():
         message["Cc"] = cc.strip()

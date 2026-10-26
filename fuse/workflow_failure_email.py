@@ -13,7 +13,7 @@ from typing import Any
 
 from config import CONFIG
 from db import db
-from utils.email_service import is_smtp_configured, send_email as send_smtp_email
+from utils.email_service import is_email_service_configured, send_email
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,8 @@ def send_workflow_failure_email(
     run_error: str | None,
 ) -> None:
     """Notify the workflow owner; never raises."""
-    if not is_smtp_configured():
-        logger.warning("[FUSE] Skipping failure email — SMTP not configured.")
+    if not is_email_service_configured():
+        logger.warning("[FUSE] Skipping failure email — email service not configured.")
         return
 
     to_addr = db.user.get_email(owner_id)
@@ -122,9 +122,9 @@ def send_workflow_failure_email(
         "</pre>"
     )
     try:
-        if not send_smtp_email(to_addr, subject, html_body, text_body=plain):
+        if not send_email(to_addr, subject, html_body, send_as_html=True):
             logger.error(
-                "[FUSE] Failure email not sent (SMTP returned false) — workflow=%s run=%s",
+                "[FUSE] Failure email not sent (email service returned false) — workflow=%s run=%s",
                 workflow_id,
                 run_id,
             )

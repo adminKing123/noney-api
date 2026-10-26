@@ -19,8 +19,8 @@ Execution model
    main queue (no thread overhead).
 6. For all other nodes, every outgoing edge's targets are enqueued.
 7. When a node raises an error, downstream nodes on that path are not run.
-   The run is marked failed and the owner receives an automatic email (if SMTP
-   is configured).
+   The run is marked failed and the owner receives an automatic email (if the
+   email service is configured).
 
 Persistence
 -----------
