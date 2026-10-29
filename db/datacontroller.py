@@ -17,17 +17,32 @@ class User:
         decoded = auth.verify_id_token(token, clock_skew_seconds=60)
         return decoded
 
-    def get_email(self, uid: str) -> str | None:
-        """Primary email for a Firebase user (workflow owner notifications)."""
+    def _auth_user_record(self, uid: str):
         if not uid:
             return None
         try:
-            record = auth.get_user(uid)
-            email = (record.email or "").strip()
-            return email or None
+            return auth.get_user(uid)
         except Exception:
-            logger.exception("[user] Failed to load email for uid=%s", uid)
+            logger.exception("[user] Failed to load user uid=%s", uid)
             return None
+
+    def get_email(self, uid: str) -> str | None:
+        """Primary email for a Firebase user (workflow owner notifications)."""
+        record = self._auth_user_record(uid)
+        if not record:
+            return None
+        email = (record.email or "").strip()
+        return email or None
+
+    def get_email_recipient(self, uid: str) -> tuple[str | None, str]:
+        """Email address and first-name greeting (one Auth lookup)."""
+        record = self._auth_user_record(uid)
+        if not record:
+            return None, "there"
+        email = (record.email or "").strip() or None
+        display = (record.display_name or "").strip()
+        greeting = display.split()[0] if display else "there"
+        return email, greeting
 
     # ── Web Push subscription ─────────────────────────────────────────────────
 
