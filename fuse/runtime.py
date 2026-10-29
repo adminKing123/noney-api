@@ -243,12 +243,17 @@ class ScheduleExecution:
     def _job_func(self) -> None:
         """Called by APScheduler when the scheduled time arrives."""
         from .executor import run_workflow  # lazy import
+        from .graph_resolve import resolve_compiled_graph_for_run
 
         trigger_data = {"fired_at": datetime.utcnow().isoformat() + "Z"}
         logger.info("[FUSE] Schedule fired for workflow '%s'.", self.workflow_id)
 
         try:
-            run_workflow(self.compiled_graph, trigger_data, trigger_type="schedule")
+            run_workflow(
+                resolve_compiled_graph_for_run(self),
+                trigger_data,
+                trigger_type="schedule",
+            )
         except Exception:
             logger.exception(
                 "[FUSE] Schedule execution failed for workflow '%s'.", self.workflow_id
@@ -414,15 +419,20 @@ class RuntimeManager:
         if workflow is None:
             return None
 
-        compiled_graph = workflow.get("compiled_graph")
+        from .workflow_graph import load_execution_graph_for_workflow
+
+        compiled_graph = load_execution_graph_for_workflow(workflow)
         if not compiled_graph:
             logger.warning(
-                "[FUSE] Active workflow '%s' has no compiled_graph — cannot resolve.",
+                "[FUSE] Active workflow '%s' has no version/graph — cannot resolve.",
                 workflow_id,
             )
             return None
 
-        starter_type = compiled_graph.get("starter", {}).get("node_type", "")
+        starter_type = (
+            workflow.get("starter_type")
+            or compiled_graph.get("starter", {}).get("node_type", "")
+        )
         if starter_type == "schedule":
             return None
 
@@ -450,16 +460,18 @@ class RuntimeManager:
         """
         Re-register active workflow executions on server startup.
 
-        Each item in ``active_workflows`` must be a Firestore workflow document
-        dict with a ``compiled_graph`` field populated.
+        Each item must be an active workflow document with ``version_id`` (or legacy
+        ``compiled_graph``).
         """
+        from .workflow_graph import load_execution_graph_for_workflow
+
         for wf in active_workflows:
             workflow_id    = wf.get("id", "")
-            compiled_graph = wf.get("compiled_graph")
+            compiled_graph = load_execution_graph_for_workflow(wf)
 
             if not compiled_graph:
                 logger.warning(
-                    "[FUSE] Active workflow '%s' has no compiled_graph — skipping restore.",
+                    "[FUSE] Active workflow '%s' has no execution graph — skipping restore.",
                     workflow_id,
                 )
                 continue

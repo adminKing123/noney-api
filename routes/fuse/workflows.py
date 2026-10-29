@@ -8,6 +8,8 @@ from fuse.runtime import runtime
 from fuse.workflow_generator import generate_workflow_from_prompt
 from config import CONFIG
 from fuse.executor import run_workflow_async
+from fuse.graph_resolve import resolve_compiled_graph_for_run
+from fuse.workflow_graph import extract_fuse_runtime, webhook_cleanup_graph
 from fuse.nodes.webhook import verify_webhook_request
 from datetime import datetime
 
@@ -21,14 +23,13 @@ def _teardown_webhooks(workflow: dict) -> None:
     from utils.integrations.github_utils import cleanup_github_workflow_webhook
 
     owner_id = workflow.get("owner_id", "")
-    compiled_graph = workflow.get("compiled_graph") or {}
-    
-    starter_type = compiled_graph.get("starter", {}).get("node_type")
-    
+    cleanup_graph = webhook_cleanup_graph(workflow)
+    starter_type = cleanup_graph.get("starter", {}).get("node_type")
+
     if starter_type == "webex_message":
-        cleanup_webex_workflow_webhook(owner_id, compiled_graph)
+        cleanup_webex_workflow_webhook(owner_id, cleanup_graph)
     elif starter_type == "github_pull_request":
-        cleanup_github_workflow_webhook(owner_id, compiled_graph)
+        cleanup_github_workflow_webhook(owner_id, cleanup_graph)
 
 # ─── Workflows ────────────────────────────────────────────────────────────────
 
@@ -229,6 +230,7 @@ def activate_workflow(workflow_id):
 
     nodes = workflow.get("nodes", []) or []
     edges = workflow.get("edges", []) or []
+    blocks = workflow.get("blocks", []) or []
 
     # ── 1. Compile ────────────────────────────────────────────────────────────
     compiled_graph, errors = compile_workflow_graph(nodes, edges, workflow_id, owner_id)
@@ -241,6 +243,9 @@ def activate_workflow(workflow_id):
         owner_id       = owner_id,
         graph_hash     = compiled_graph["graph_hash"],
         compiled_graph = compiled_graph,
+        studio_nodes   = nodes,
+        studio_edges   = edges,
+        studio_blocks  = blocks,
     )
     # Embed the version_id so the executor can link each run to this version
     compiled_graph["version_id"] = version["version_id"]
@@ -256,11 +261,13 @@ def activate_workflow(workflow_id):
 
     # ── 4. Persist compilation state on the workflow doc ──────────────────────
     updated = db.workflow.save_compilation(
-        workflow_id    = workflow_id,
-        owner_id       = owner_id,
-        compiled_graph = compiled_graph,
-        graph_hash     = compiled_graph["graph_hash"],
-        compiled_at    = compiled_graph["compiled_at"],
+        workflow_id  = workflow_id,
+        owner_id     = owner_id,
+        fuse_runtime = extract_fuse_runtime(compiled_graph),
+        graph_hash   = compiled_graph["graph_hash"],
+        compiled_at  = compiled_graph["compiled_at"],
+        version_id   = version["version_id"],
+        starter_type = compiled_graph["starter"]["node_type"],
     )
 
     # ── 5. Build webhook URL (only relevant for webhook-triggered workflows) ──
@@ -299,15 +306,17 @@ def deactivate_workflow(workflow_id):
     _teardown_webhooks(workflow)
     runtime.deactivate(workflow_id)
     
-    starter_type = (workflow.get("compiled_graph") or {}).get("starter", {}).get("node_type")
+    starter_type = workflow.get("starter_type") or webhook_cleanup_graph(workflow).get(
+        "starter", {}
+    ).get("node_type")
     if starter_type == "webex_message":
-        db.workflow.clear_compiled_webex_webhook(workflow_id, owner_id)
-    # For Github we pop it in runtime.deactivate already but we can also do it in DB
+        db.workflow.clear_fuse_runtime_webex_webhook(workflow_id, owner_id)
     if starter_type == "github_pull_request":
-        compiled = workflow.get("compiled_graph") or {}
-        if "github_webhook" in compiled:
-            compiled.pop("github_webhook")
-            db.workflow.save_compilation(workflow_id, owner_id, compiled, compiled.get("graph_hash"), compiled.get("compiled_at"))
+        fuse_runtime = dict(workflow.get("fuse_runtime") or {})
+        if fuse_runtime.pop("github_webhook", None) is not None or (
+            workflow.get("compiled_graph") or {}
+        ).get("github_webhook"):
+            db.workflow.update_fuse_runtime(workflow_id, owner_id, fuse_runtime)
     updated = db.workflow.update_status(workflow_id, owner_id, "inactive")
     return jsonify({"success": True, "workflow": updated})
 
@@ -415,15 +424,11 @@ def trigger_webhook(workflow_id):
     }
 
     # ── Execute asynchronously ────────────────────────────────────────────────
-    run_workflow_async(compiled_graph, trigger_data)
+    run_workflow_async(resolve_compiled_graph_for_run(execution), trigger_data)
 
     response_code = int(starter_config.get("response_code") or 202)
     return jsonify({"status": "accepted", "workflow_id": workflow_id}), response_code
 
-
-# ─── Webex message webhook trigger ────────────────────────────────────────────
-
-# ─── GitHub webhook trigger ───────────────────────────────────────────────────
 
 @bp.route("/github/webhook/<workflow_id>", methods=["POST"])
 def trigger_github_webhook(workflow_id):
@@ -467,7 +472,11 @@ def trigger_github_webhook(workflow_id):
     if trigger_data is None:
         return jsonify({"status": "ignored"}), 200
 
-    run_workflow_async(compiled_graph, trigger_data, trigger_type="github_pull_request")
+    run_workflow_async(
+        resolve_compiled_graph_for_run(execution),
+        trigger_data,
+        trigger_type="github_pull_request",
+    )
     return jsonify({"status": "accepted", "workflow_id": workflow_id}), 202
 
 @bp.route("/webex/webhook/<workflow_id>", methods=["POST"])
@@ -547,5 +556,9 @@ def trigger_webex_message(workflow_id):
     if trigger_data is None:
         return jsonify({"status": "ignored"}), 200
 
-    run_workflow_async(compiled_graph, trigger_data, trigger_type="webex_message")
+    run_workflow_async(
+        resolve_compiled_graph_for_run(execution),
+        trigger_data,
+        trigger_type="webex_message",
+    )
     return jsonify({"status": "accepted", "workflow_id": workflow_id}), 202

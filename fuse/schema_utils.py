@@ -267,7 +267,7 @@ def normalize_json_value_builder(value: Any) -> dict:
 def _merge_schema_fields(existing: dict, inferred: list[dict]) -> dict:
     """Merge inferred fields into a normalized schema without duplicating keys."""
     schema = normalize_body_builder(existing)
-    present = {(f.get("key") or "").strip() for f in schema["fields"]}
+    present = {(f.get("key") or "").strip() for f in schema.get("fields") or []}
 
     for field in inferred:
         key = (field.get("key") or "").strip()

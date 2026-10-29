@@ -185,8 +185,13 @@ def sync_github_workflows_after_webhook_removal(owner_id: str, webhook_id: str) 
 
         page = db.workflow.list_for_owner(owner_id, **kwargs)
         for wf in page.get("items") or []:
-            compiled = wf.get("compiled_graph") or {}
-            stored_id = str((compiled.get("github_webhook") or {}).get("id"))
+            runtime = wf.get("fuse_runtime") or {}
+            legacy = wf.get("compiled_graph") or {}
+            stored_id = str(
+                (runtime.get("github_webhook") or legacy.get("github_webhook") or {}).get(
+                    "id"
+                )
+            )
             if stored_id != str(webhook_id):
                 continue
 
@@ -195,12 +200,11 @@ def sync_github_workflows_after_webhook_removal(owner_id: str, webhook_id: str) 
                 continue
 
             runtime.deactivate(workflow_id)
-            if "github_webhook" in compiled:
-                compiled.pop("github_webhook")
-                db.workflow.save_compilation(
-                    workflow_id, owner_id, compiled, 
-                    compiled.get("graph_hash"), compiled.get("compiled_at")
-                )
+            fuse_runtime = dict(wf.get("fuse_runtime") or {})
+            if fuse_runtime.pop("github_webhook", None) is not None or legacy.get(
+                "github_webhook"
+            ):
+                db.workflow.update_fuse_runtime(workflow_id, owner_id, fuse_runtime)
             if wf.get("status") == "active":
                 db.workflow.update_status(workflow_id, owner_id, "inactive")
             logger.info(

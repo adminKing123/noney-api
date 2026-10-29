@@ -337,8 +337,11 @@ def sync_fuse_workflows_after_webhook_removal(owner_id: str, webhook_id: str) ->
 
         page = db.workflow.list_for_owner(owner_id, **kwargs)
         for wf in page.get("items") or []:
-            compiled = wf.get("compiled_graph") or {}
-            stored_id = (compiled.get("webex_webhook") or {}).get("id")
+            runtime = wf.get("fuse_runtime") or {}
+            legacy = wf.get("compiled_graph") or {}
+            stored_id = (runtime.get("webex_webhook") or legacy.get("webex_webhook") or {}).get(
+                "id"
+            )
             if stored_id != webhook_id:
                 continue
 
@@ -347,7 +350,7 @@ def sync_fuse_workflows_after_webhook_removal(owner_id: str, webhook_id: str) ->
                 continue
 
             runtime.deactivate(workflow_id)
-            db.workflow.clear_compiled_webex_webhook(workflow_id, owner_id)
+            db.workflow.clear_fuse_runtime_webex_webhook(workflow_id, owner_id)
             if wf.get("status") == "active":
                 db.workflow.update_status(workflow_id, owner_id, "inactive")
             logger.info(

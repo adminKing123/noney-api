@@ -459,14 +459,21 @@ class Workflow:
     Firestore layout
     ----------------
     fuse/{workflow_id}          <- document
-        id           : str
-        owner_id     : str      Firebase UID of the creator
-        name         : str
-        status       : "active" | "inactive"
-        nodes        : list     React Flow node list
-        edges        : list     React Flow edge list
-        created_at   : ISO-8601 str
-        updated_at   : ISO-8601 str
+        id               : str
+        owner_id         : str      Firebase UID of the creator
+        name             : str
+        status           : "active" | "inactive"
+        nodes            : list     React Flow logic nodes (draft)
+        edges            : list     React Flow edges (draft)
+        blocks           : list     Visual block overlays (not compiled)
+        version_id       : str|null Active fuse_versions id (set on activate)
+        graph_hash       : str|null Hash of last successful compile
+        compiled_at      : str|null ISO-8601 of last successful compile
+        fuse_runtime     : dict|null Webhook metadata only (webex_webhook, github_webhook)
+        starter_type     : str|null Starter node type from last activate (schedule restore)
+        compiled_graph   : dict|null Legacy full graph (migrated away; read fallback only)
+        created_at       : ISO-8601 str
+        updated_at       : ISO-8601 str
     """
 
     COLLECTION = "fuse"
@@ -492,7 +499,9 @@ class Workflow:
             # Compilation state — populated on first activation.
             "compiled_at":    None,
             "graph_hash":     None,
-            "compiled_graph": None,
+            "version_id":     None,
+            "fuse_runtime":   None,
+            "starter_type":   None,
             "created_at":     now,
             "updated_at":     now,
         }
@@ -591,35 +600,41 @@ class Workflow:
         self._col().document(workflow_id).update({"status": status, "updated_at": now})
         return {**existing, "status": status, "updated_at": now}
 
-    def clear_compiled_webex_webhook(self, workflow_id: str, owner_id: str) -> dict | None:
-        """Remove webex_webhook metadata from the stored compiled_graph."""
+    def clear_fuse_runtime_webex_webhook(self, workflow_id: str, owner_id: str) -> dict | None:
+        """Remove webex_webhook from ``fuse_runtime``."""
         existing = self.get(workflow_id, owner_id)
         if existing is None:
             return None
 
-        compiled_graph = existing.get("compiled_graph") or {}
-        if "webex_webhook" not in compiled_graph:
+        fuse_runtime = dict(existing.get("fuse_runtime") or {})
+        legacy = existing.get("compiled_graph") or {}
+        if "webex_webhook" not in fuse_runtime and "webex_webhook" not in legacy:
             return existing
 
-        updated_graph = dict(compiled_graph)
-        updated_graph.pop("webex_webhook", None)
+        fuse_runtime.pop("webex_webhook", None)
         now = datetime.utcnow().isoformat() + "Z"
-        self._col().document(workflow_id).update({
-            "compiled_graph": updated_graph,
-            "updated_at":     now,
-        })
-        return {**existing, "compiled_graph": updated_graph, "updated_at": now}
+        update: dict = {"fuse_runtime": fuse_runtime or None, "updated_at": now}
+        if legacy.get("webex_webhook"):
+            updated_legacy = dict(legacy)
+            updated_legacy.pop("webex_webhook", None)
+            update["compiled_graph"] = updated_legacy
+        self._col().document(workflow_id).update(update)
+        return {**existing, **update}
 
     def save_compilation(
         self,
         workflow_id: str,
         owner_id: str,
-        compiled_graph: dict,
+        fuse_runtime: dict,
         graph_hash: str,
         compiled_at: str,
+        version_id: str,
+        starter_type: str,
     ) -> dict | None:
         """
-        Persist the compiled execution plan and set status to 'active'.
+        Persist active compilation pointers and runtime webhook state.
+
+        Full compile plan lives in ``fuse_versions/{version_id}`` only.
 
         Returns the updated workflow dict, or None if not found / not authorised.
         """
@@ -628,14 +643,39 @@ class Workflow:
             return None
         now = datetime.utcnow().isoformat() + "Z"
         update = {
-            "compiled_graph": compiled_graph,
             "graph_hash":     graph_hash,
             "compiled_at":    compiled_at,
+            "version_id":     version_id,
+            "starter_type":   starter_type,
+            "fuse_runtime":   fuse_runtime or None,
             "status":         "active",
             "updated_at":     now,
+            "compiled_graph": firestore.DELETE_FIELD,
         }
         self._col().document(workflow_id).update(update)
-        return {**existing, **update}
+        merged = {**existing, **update}
+        merged.pop("compiled_graph", None)
+        return merged
+
+    def update_fuse_runtime(
+        self,
+        workflow_id: str,
+        owner_id: str,
+        fuse_runtime: dict,
+    ) -> dict | None:
+        """Update integration webhook metadata without changing ``version_id``."""
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return None
+        now = datetime.utcnow().isoformat() + "Z"
+        self._col().document(workflow_id).update({
+            "fuse_runtime": fuse_runtime or None,
+            "updated_at":   now,
+            "compiled_graph": firestore.DELETE_FIELD,
+        })
+        merged = {**existing, "fuse_runtime": fuse_runtime or None, "updated_at": now}
+        merged.pop("compiled_graph", None)
+        return merged
 
     def list_active(self) -> list:
         """
@@ -704,12 +744,18 @@ class WorkflowVersion:
         owner_id: str,
         graph_hash: str,
         compiled_graph: dict,
+        studio_nodes: list | None = None,
+        studio_edges: list | None = None,
+        studio_blocks: list | None = None,
     ) -> dict:
         """
         Persist a new compiled graph version and return the saved document.
 
         If an identical graph_hash already exists for this workflow, the
         existing version document is returned without creating a duplicate.
+
+        ``studio_*`` fields capture the React Flow canvas at activation time so
+        historical runs can render the graph that actually executed.
         """
         # Deduplicate: if the same graph_hash already exists, reuse it.
         existing = (
@@ -720,7 +766,16 @@ class WorkflowVersion:
             .stream()
         )
         for doc in existing:
-            return doc.to_dict()
+            data = doc.to_dict()
+            if studio_nodes is not None:
+                patch = {
+                    "studio_nodes":  studio_nodes,
+                    "studio_edges":  studio_edges if studio_edges is not None else [],
+                    "studio_blocks": studio_blocks if studio_blocks is not None else [],
+                }
+                doc.reference.update(patch)
+                data.update(patch)
+            return data
 
         now = datetime.utcnow().isoformat() + "Z"
         doc_ref = self._col().document()
@@ -731,6 +786,9 @@ class WorkflowVersion:
             "graph_hash":     graph_hash,
             "compiled_graph": compiled_graph,
             "created_at":     now,
+            "studio_nodes":   studio_nodes if studio_nodes is not None else [],
+            "studio_edges":   studio_edges if studio_edges is not None else [],
+            "studio_blocks":  studio_blocks if studio_blocks is not None else [],
         }
         doc_ref.set(data)
         return data

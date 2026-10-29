@@ -157,12 +157,14 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
         if time_str and not _is_valid_time(time_str):
             errors.append(f"Schedule time '{time_str}' is not a valid HH:MM value.")
 
-    # Set Variables: must have at least one variable
+    # Set Variables: object root needs at least one keyed field
     if node_type == "set_variables":
-        variables = config.get("variables", {})
-        fields = variables.get("fields", [])
-        if not fields:
-            errors.append("You must define at least one variable.")
+        variables = config.get("variables") or {}
+        root = str(variables.get("rootType") or "object").lower()
+        if root == "object":
+            fields = variables.get("fields") or []
+            if not any(str(f.get("key") or "").strip() for f in fields if isinstance(f, dict)):
+                errors.append("You must define at least one variable with a key.")
 
     if node_type == "create_json_file":
         if not (config.get("json_content") or "").strip():

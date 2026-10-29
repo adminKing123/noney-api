@@ -44,8 +44,11 @@ def _restore_scheduled_workflows() -> None:
 
         active = db.workflow.list_active()
         scheduled = [
-            wf for wf in active
-            if (wf.get("compiled_graph") or {}).get("starter", {}).get("node_type") == "schedule"
+            wf
+            for wf in active
+            if wf.get("starter_type") == "schedule"
+            or (wf.get("compiled_graph") or {}).get("starter", {}).get("node_type")
+            == "schedule"
         ]
         if scheduled:
             logging.getLogger(__name__).info(
