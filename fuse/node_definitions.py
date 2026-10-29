@@ -717,7 +717,7 @@ ACTION_NODES = [
                             "key": "payload",
                             "label": "Body Fields",
                             "type": "json_value_builder",
-                            "hint": "Define the JSON body to send (POST, PUT, PATCH). Set key, type and value for each field use @ to insert variables.",
+                            "hint": "Choose the JSON root type (object, array, or a primitive). For objects, set key, type, and value per field; use @ to insert variables.",
                         },
                     ],
                 },

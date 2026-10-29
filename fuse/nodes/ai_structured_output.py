@@ -6,10 +6,11 @@ Node handler for generating structured AI output with optional web search.
 
 from typing import Any, Dict, List, Type, Literal
 
-from pydantic import create_model, Field, BaseModel
+from pydantic import RootModel, create_model, Field, BaseModel
 
 from fuse.nodes.base import NodeHandler
 from fuse.nodes.ai_helpers import create_gemini_model, is_web_search_enabled
+from fuse.schema_utils import normalize_body_builder
 from fuse.variable_resolver import resolve_variables
 
 
@@ -62,18 +63,53 @@ def _build_pydantic_model(model_name: str, fields: List[Dict[str, Any]]) -> Type
     return create_model(model_name, **annotations)
 
 
+def _build_output_model_from_schema(schema: dict) -> Type[BaseModel]:
+    """Build the Pydantic model for structured output from a normalized body_builder envelope."""
+    root = schema.get("rootType") or "object"
+
+    if root == "object":
+        fields = schema.get("fields", [])
+        if not fields:
+            raise ValueError("No output schema defined")
+        return _build_pydantic_model("DynamicStructuredOutput", fields)
+
+    if root == "string":
+        return RootModel[str]
+    if root == "number":
+        return RootModel[float]
+    if root == "boolean":
+        return RootModel[bool]
+
+    if root == "array":
+        items = schema.get("items") or {}
+        item_type = items.get("type", "string")
+        if item_type == "string":
+            return RootModel[List[str]]
+        if item_type == "number":
+            return RootModel[List[float]]
+        if item_type == "boolean":
+            return RootModel[List[bool]]
+        if item_type == "object":
+            sub_fields = items.get("fields", [])
+            item_model = _build_pydantic_model("DynamicStructuredOutputItem", sub_fields)
+            return RootModel[List[item_model]]
+        return RootModel[List[Any]]
+
+    raise ValueError(f"Unsupported output schema root type: {root}")
+
+
 class AIStructuredOutputHandler(NodeHandler):
     def execute(self, config: dict, ctx) -> dict:
         prompt_template = config.get("prompt", "")
         resolved_prompt = resolve_variables(prompt_template, ctx.node_outputs)
 
         output_schema_config = config.get("output_schema", {})
-        schema_fields = output_schema_config.get("fields", [])
+        normalized_schema = normalize_body_builder(output_schema_config or {})
 
-        if not schema_fields:
-            return {"error": "No output schema defined", "success": False}
-
-        DynamicModel = _build_pydantic_model("DynamicStructuredOutput", schema_fields)
+        try:
+            DynamicModel = _build_output_model_from_schema(normalized_schema)
+        except ValueError as exc:
+            return {"error": str(exc), "success": False}
         use_web_search = is_web_search_enabled(config)
 
         try:
@@ -104,11 +140,19 @@ class AIStructuredOutputHandler(NodeHandler):
                     method="json_schema",
                 ).invoke(resolved_prompt)
 
-            result_dict = (
-                structured.model_dump()
-                if hasattr(structured, "model_dump")
-                else structured.dict()
-            )
-            return {"result": result_dict, "success": True}
+            if hasattr(structured, "model_dump"):
+                dumped = structured.model_dump()
+            else:
+                dumped = structured.dict()
+
+            root = normalized_schema.get("rootType") or "object"
+            if root == "object":
+                result_payload = dumped
+            elif isinstance(dumped, dict) and "root" in dumped:
+                result_payload = dumped["root"]
+            else:
+                result_payload = dumped
+
+            return {"result": result_payload, "success": True}
         except Exception as exc:
             return {"error": str(exc), "success": False}

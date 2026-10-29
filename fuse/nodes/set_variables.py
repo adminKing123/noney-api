@@ -21,9 +21,15 @@ class SetVariablesHandler(NodeHandler):
         
         # Resolves dynamic variables from the json_value_builder
         # flat=False ensures that we build a fully typed nested JSON dictionary.
-        variables_dict = _resolve_field_config(
+        resolved = _resolve_field_config(
             config.get("variables"), outputs, flat=False
         )
+        if isinstance(resolved, dict):
+            variables_dict = resolved
+        elif resolved is None:
+            variables_dict = {}
+        else:
+            variables_dict = {"value": resolved}
 
         logger.info(
             "[FUSE] set_variables executed — workflow=%s run=%s  vars_set=%d",

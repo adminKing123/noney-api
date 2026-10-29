@@ -5,7 +5,14 @@ Normalize and enrich body_builder / response_schema / output_schema configs
 produced by AI workflow generation.
 
 The FormBuilder BodyBuilderField expects:
-    { "mode": "visual", "fields": [{ "key": str, "type": str, ... }] }
+    {
+        "mode": "visual",
+        "rootType": "object|array|string|number|boolean",  # default object
+        "fields": [...],       # when rootType === object
+        "items": {...},        # when rootType === array (schema)
+        "elements": [...],     # when rootType === array (json_value_builder)
+        "value": str,          # primitive roots (json_value_builder)
+    }
 """
 
 from __future__ import annotations
@@ -47,6 +54,48 @@ def coerce_field_type(raw_type: Any) -> str:
     t = str(raw_type).lower().strip()
     t = _TYPE_ALIASES.get(t, t)
     return t if t in VALID_FIELD_TYPES else "string"
+
+
+def coerce_root_type(raw_type: Any) -> str:
+    """JSON root type for body_builder / json_value_builder envelopes."""
+    t = coerce_field_type(raw_type or "object")
+    return t if t in VALID_FIELD_TYPES else "object"
+
+
+def _normalize_array_items(raw_items: Any) -> dict:
+    items = raw_items if isinstance(raw_items, dict) else {}
+    item_type = coerce_field_type(items.get("type"))
+    normalized: dict[str, Any] = {"type": item_type}
+    if item_type == "object":
+        nested = items.get("fields") or items.get("properties")
+        if isinstance(nested, list):
+            normalized["fields"] = [
+                f for item in nested
+                if (f := normalize_field_node(item)) is not None
+            ]
+        elif isinstance(nested, dict):
+            normalized["fields"] = [
+                normalized
+                for k, v in nested.items()
+                if (normalized := normalize_field_node(
+                    v if isinstance(v, dict) else {"type": v},
+                    fallback_key=k,
+                )) is not None
+            ]
+        else:
+            normalized["fields"] = []
+    return normalized
+
+
+def _attach_root_type(envelope: dict, raw: dict | None) -> dict:
+    root = coerce_root_type((raw or {}).get("rootType"))
+    envelope["rootType"] = root
+    if root == "array":
+        envelope["items"] = _normalize_array_items((raw or {}).get("items"))
+    elif root in ("string", "number", "boolean"):
+        if isinstance(raw, dict) and raw.get("value") is not None:
+            envelope["value"] = str(raw.get("value"))
+    return envelope
 
 
 def normalize_field_node(raw: Any, *, fallback_key: str = "") -> dict | None:
@@ -104,15 +153,7 @@ def normalize_field_node(raw: Any, *, fallback_key: str = "") -> dict | None:
             ]
 
     if field_type == "array":
-        items = raw.get("items") or {}
-        if isinstance(items, dict):
-            item_type = coerce_field_type(items.get("type"))
-            field["items"] = {"type": item_type}
-            if item_type == "object" and items.get("fields"):
-                field["items"]["fields"] = [
-                    f for item in items["fields"]
-                    if (f := normalize_field_node(item)) is not None
-                ]
+        field["items"] = _normalize_array_items(raw.get("items"))
 
     return field
 
@@ -122,37 +163,43 @@ def normalize_body_builder(value: Any) -> dict:
     Coerce any AI-produced schema value into BodyBuilderField storage shape.
     """
     if value is None or value == "":
-        return {"mode": "visual", "fields": []}
+        return {"mode": "visual", "rootType": "object", "fields": []}
 
     if isinstance(value, list):
         fields = [
             f for item in value
             if (f := normalize_field_node(item)) is not None
         ]
-        return {"mode": "visual", "fields": fields}
+        return _attach_root_type({"mode": "visual", "fields": fields}, None)
 
     if not isinstance(value, dict):
-        return {"mode": "visual", "fields": []}
+        return {"mode": "visual", "rootType": "object", "fields": []}
+
+    raw_root = value.get("rootType")
 
     if "fields" in value:
         fields = [
             f for item in (value.get("fields") or [])
             if (f := normalize_field_node(item)) is not None
         ]
-        return {"mode": "visual", "fields": fields}
+        return _attach_root_type({"mode": "visual", "fields": fields}, value)
 
     if "properties" in value and isinstance(value["properties"], dict):
         fields = [
             normalize_field_node(prop, fallback_key=key)
             for key, prop in value["properties"].items()
         ]
-        return {
+        envelope = {
             "mode": "visual",
             "fields": [f for f in fields if f is not None],
         }
+        return _attach_root_type(envelope, value)
 
     # Flat map: { "email": "string", "count": { "type": "number" } }
-    skip_keys = frozenset({"mode", "presets", "sections", "type", "properties"})
+    skip_keys = frozenset({
+        "mode", "presets", "sections", "type", "properties",
+        "rootType", "items", "elements", "value",
+    })
     fields: list[dict] = []
     for key, val in value.items():
         if key in skip_keys:
@@ -164,7 +211,57 @@ def normalize_body_builder(value: Any) -> dict:
             if normalized:
                 fields.append(normalized)
 
-    return {"mode": "visual", "fields": fields}
+    envelope = {"mode": "visual", "fields": fields}
+    if raw_root is None and not fields and value.get("items"):
+        envelope = _attach_root_type({"mode": "visual", "fields": []}, {**value, "rootType": "array"})
+    else:
+        envelope = _attach_root_type(envelope, value)
+    return envelope
+
+
+def _empty_json_value_envelope(root: str = "object") -> dict:
+    root = coerce_root_type(root)
+    envelope: dict[str, Any] = {"mode": "visual", "rootType": root}
+    if root == "object":
+        envelope["fields"] = []
+    elif root == "array":
+        envelope["elements"] = []
+    else:
+        envelope["value"] = ""
+    return envelope
+
+
+def normalize_json_value_builder(value: Any) -> dict:
+    """Coerce json_value_builder config; defaults rootType to object."""
+    if value is None or value == "":
+        return _empty_json_value_envelope("object")
+
+    if isinstance(value, list):
+        return {
+            "mode": "visual",
+            "rootType": "object",
+            "fields": [
+                {"key": (row.get("key") or "").strip(), "type": "string", "value": str(row.get("value") or "")}
+                for row in value
+                if isinstance(row, dict) and (row.get("key") or "").strip()
+            ],
+        }
+
+    if not isinstance(value, dict):
+        return _empty_json_value_envelope("object")
+
+    root = coerce_root_type(value.get("rootType"))
+    envelope = _empty_json_value_envelope(root)
+    if root == "object":
+        fields = value.get("fields") or []
+        envelope["fields"] = fields if isinstance(fields, list) else []
+    elif root == "array":
+        elements = value.get("elements") or []
+        envelope["elements"] = elements if isinstance(elements, list) else []
+    else:
+        envelope["value"] = str(value.get("value") or "")
+
+    return envelope
 
 
 def _merge_schema_fields(existing: dict, inferred: list[dict]) -> dict:
@@ -400,7 +497,7 @@ def _set_schema_fields(config: dict, schema_key: str, fields: list[dict]) -> Non
         f for field in fields
         if (f := normalize_field_node(field)) is not None
     ]
-    config[schema_key] = {"mode": "visual", "fields": normalized}
+    config[schema_key] = {"mode": "visual", "rootType": "object", "fields": normalized}
 
 
 def apply_user_prompt_hints(user_prompt: str, nodes: list) -> list[dict]:
@@ -484,6 +581,9 @@ def build_prompt_extras(user_prompt: str) -> str:
 
 def schema_has_valid_fields(config: dict, schema_key: str) -> bool:
     schema = normalize_body_builder(config.get(schema_key))
+    root = schema.get("rootType") or "object"
+    if root != "object":
+        return True
     return any(
         (f.get("key") or "").strip() and f.get("type")
         for f in schema.get("fields") or []

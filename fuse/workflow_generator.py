@@ -96,9 +96,9 @@ def _apply_defaults(node_type: str, config: dict, node_def: dict | None) -> dict
                 "conditions": [{"variable": "", "operator": "is", "value": ""}],
             }
         elif ftype in ("json_value_builder", "key_value_builder"):
-            config[fkey] = {"mode": "visual", "fields": []}
+            config[fkey] = {"mode": "visual", "rootType": "object", "fields": []}
         elif ftype == "body_builder":
-            config[fkey] = {"mode": "visual", "fields": []}
+            config[fkey] = {"mode": "visual", "rootType": "object", "fields": []}
         elif ftype == "select" and field.get("options"):
             config[fkey] = field["options"][0].get("value")
 

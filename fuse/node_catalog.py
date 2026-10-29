@@ -19,14 +19,18 @@ BUILDER_FIELD_TYPES = frozenset({
 
 BUILDER_FORMAT_HINTS: dict[str, str] = {
     "body_builder": (
-        '{"mode": "visual", "fields": [{"key": "field_name", "type": "string|number|boolean|array|object", '
-        '"items": {"type": "..."}, "fields": [...]}]}'
+        '{"mode": "visual", "rootType": "object|array|string|number|boolean", '
+        '"fields": [{"key": "field_name", "type": "string|number|boolean|array|object", '
+        '"items": {"type": "..."}, "fields": [...]}], '
+        '"items": {"type": "string|number|boolean|array|object", "fields": [...]}}'
     ),
     "condition_builder": (
         '{"combinator": "and|or", "conditions": [{"variable": "{{ref.field}}", "operator": "is", "value": "..."}]}'
     ),
     "json_value_builder": (
-        '{"mode": "visual", "fields": [{"key": "...", "type": "string", "value": "..."}]}'
+        '{"mode": "visual", "rootType": "object|array|string|number|boolean", '
+        '"fields": [{"key": "...", "type": "string", "value": "..."}], '
+        '"elements": [...], "value": "..."}'
     ),
     "key_value_builder": (
         '{"mode": "visual", "fields": [{"key": "...", "type": "string", "value": "..."}]}'

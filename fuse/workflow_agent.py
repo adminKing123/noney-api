@@ -48,7 +48,7 @@ Workflow rules:
 - Exactly one starter node; all action nodes reachable from it.
 - Use logical refs (starter, step_1, ai_1, …) — not UUIDs.
 - Variables: {{node_ref.field}} or {{node_ref.body.fieldName}} for webhook body fields.
-- body_builder fields: preserve exact types (string, number, boolean, array, object) — never default all to string.
+- body_builder / json_value_builder: set rootType (object|array|string|number|boolean; default object) and preserve exact field types — never default all to string.
 - For branch_handles nodes, use source_handle on outgoing edges.
 - Fill all required_fields with realistic values from the user's goal.
 """

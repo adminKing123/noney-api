@@ -19,7 +19,13 @@ Config schema (driven by the form definition in routes/fuse.py)
 }
 
 JsonValueBuilderEnvelope:
-    { "mode": "visual", "fields": [{ "key", "type", "value", "fields?" }] }
+    {
+        "mode": "visual",
+        "rootType": "object|array|string|number|boolean",  # default object
+        "fields": [...],     # object root
+        "elements": [...],   # array root
+        "value": str,        # primitive root
+    }
 
 Output (stored in context.node_outputs[node_id])
 -------------------------------------------------
@@ -45,6 +51,7 @@ from typing import Any
 import httpx
 
 from .base import NodeHandler
+from ..schema_utils import normalize_json_value_builder
 from ..variable_resolver import resolve_variables
 
 logger = logging.getLogger(__name__)
@@ -160,27 +167,74 @@ def _to_flat_string_dict(fields: list, node_outputs: dict) -> dict[str, str]:
     return result
 
 
+def _resolve_visual_json_value(
+    raw_config: dict,
+    node_outputs: dict,
+    *,
+    flat: bool = False,
+) -> Any:
+    """Resolve a json_value_builder envelope to a Python value."""
+    cfg = normalize_json_value_builder(raw_config)
+    root = cfg.get("rootType") or "object"
+
+    if root == "object":
+        built = _build_json_from_value_fields(cfg.get("fields", []), node_outputs)
+        if flat:
+            return _to_flat_string_dict(cfg.get("fields", []), node_outputs)
+        return built
+
+    if flat:
+        # Query params / headers are flat string maps — only object roots apply.
+        logger.warning(
+            "[FUSE] json_value_builder rootType=%s ignored for flat field; use object",
+            root,
+        )
+        return _to_flat_string_dict(cfg.get("fields", []), node_outputs)
+
+    if root == "array":
+        return [
+            _resolve_element_value(e, node_outputs)
+            for e in (cfg.get("elements") or [])
+        ]
+
+    return _resolve_element_value(
+        {"type": root, "value": cfg.get("value") or ""},
+        node_outputs,
+    )
+
+
+def _payload_has_content(raw_config: Any, payload: Any) -> bool:
+    """Whether the visual payload builder should be sent on POST/PUT/PATCH."""
+    if not isinstance(raw_config, dict) or raw_config.get("mode") != "visual":
+        return bool(payload)
+
+    cfg = normalize_json_value_builder(raw_config)
+    root = cfg.get("rootType") or "object"
+    if root == "object":
+        return bool(payload) if isinstance(payload, dict) else bool(payload)
+    if root == "array":
+        return bool(cfg.get("elements"))
+    return bool(str(cfg.get("value") or "").strip())
+
+
 def _resolve_field_config(
     raw_config: Any,
     node_outputs: dict,
     flat: bool = False,
-) -> dict:
+) -> Any:
     """
     Normalise a field config value from either supported format:
 
     • Old KV list (backward compat): ``[{"key": str, "value": str}]``
-    • New JsonValueBuilder envelope: ``{"mode": "visual", "fields": [...]}``
+    • New JsonValueBuilder envelope: ``{"mode": "visual", "rootType": ..., ...}``
 
     When ``flat=True`` (query params, headers) the result is always a
     ``dict[str, str]`` where every value is a plain string.
-    When ``flat=False`` (payload body) the result is a fully-typed nested dict.
+    When ``flat=False`` (payload body) the result may be dict, list, or scalar.
     """
     # ── New JsonValueBuilder format ────────────────────────────────────────────
     if isinstance(raw_config, dict) and raw_config.get("mode") == "visual":
-        fields = raw_config.get("fields", [])
-        if flat:
-            return _to_flat_string_dict(fields, node_outputs)
-        return _build_json_from_value_fields(fields, node_outputs)
+        return _resolve_visual_json_value(raw_config, node_outputs, flat=flat)
 
     # ── Legacy KV list format (backward compat) ────────────────────────────────
     if isinstance(raw_config, list):
@@ -193,7 +247,7 @@ def _resolve_field_config(
             result[key] = resolve_variables(val, node_outputs)
         return result
 
-    return {}
+    return {} if flat else None
 
 
 # ─── Handler ──────────────────────────────────────────────────────────────────
@@ -235,7 +289,7 @@ class HttpRequestHandler(NodeHandler):
         )
 
         # ── Payload body (full typed JSON dict) ───────────────────────────────
-        payload_dict = _resolve_field_config(
+        payload_body = _resolve_field_config(
             config.get("payload"), outputs, flat=False
         )
 
@@ -257,13 +311,16 @@ class HttpRequestHandler(NodeHandler):
         # ── Execute request ────────────────────────────────────────────────────
         try:
             with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-                send_body = method in ("POST", "PUT", "PATCH") and payload_dict
+                send_body = (
+                    method in ("POST", "PUT", "PATCH")
+                    and _payload_has_content(config.get("payload"), payload_body)
+                )
                 resp = client.request(
                     method,
                     url,
                     params=params or None,
                     headers=headers or None,
-                    json=payload_dict if send_body else None,
+                    json=payload_body if send_body else None,
                 )
         except httpx.TimeoutException as exc:
             logger.warning(
