@@ -725,10 +725,24 @@ ACTION_NODES = [
                     "title": "Response",
                     "fields": [
                         {
+                            "key": "validate_status_code",
+                            "label": "Validate status code",
+                            "type": "checkbox",
+                            "hint": "When enabled, the node fails unless the HTTP response status matches one of the expected codes below.",
+                        },
+                        {
+                            "key": "expected_status_codes",
+                            "label": "Expected status codes",
+                            "type": "text",
+                            "placeholder": "200",
+                            "visibleWhen": {"key": "validate_status_code", "value": True},
+                            "hint": "Comma-separated status codes to accept (e.g. 200,201). Default is 200 when empty.",
+                        },
+                        {
                             "key": "response_schema",
                             "label": "Expected Response Fields",
                             "type": "body_builder",
-                            "hint": "Declare the fields you expect in the JSON response. Each field becomes a variable: {{node_id.body.fieldName}}.",
+                            "hint": "Declare fields from the JSON response body only. Each becomes {{node_id.body.fieldName}}. status_code and success are always available at the node root — do not re-declare them here.",
                         },
                         {
                             "key": "timeout",

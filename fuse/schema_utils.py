@@ -41,6 +41,9 @@ _BODY_PATH_RE = re.compile(r"\{\{([^.}]+)\.body\.([a-zA-Z_][\w]*)\}\}")
 # {{ref.fieldName}} — flattened output from http / ai nodes (first segment after ref)
 _DIRECT_FIELD_RE = re.compile(r"\{\{([^.}]+)\.([a-zA-Z_][\w]*)\}\}")
 
+# http_request node-root outputs — do not infer into response_schema
+_HTTP_REQUEST_ROOT_OUTPUT_KEYS = frozenset({"status_code", "success", "error"})
+
 _SCHEMA_KEYS_BY_NODE_TYPE = {
     "webhook":              "body_schema",
     "http_request":         "response_schema",
@@ -316,6 +319,8 @@ def infer_schema_fields_for_node(
                 continue
             # Skip paths handled by body.* or known top-level webhook keys
             if field_name in ("body", "headers", "query_params", "method", "triggered_at"):
+                continue
+            if node_type == "http_request" and field_name in _HTTP_REQUEST_ROOT_OUTPUT_KEYS:
                 continue
             if node_type == "webhook":
                 continue

@@ -15,7 +15,9 @@ Config schema (driven by the form definition in routes/fuse.py)
     "headers":         JsonValueBuilderEnvelope,   # json_value_builder (flat after resolve)
     "payload":         JsonValueBuilderEnvelope,   # json_value_builder (full nested JSON)
     "response_schema": {"mode": "visual", "fields": [...]},  # body_builder
-    "timeout":         str | int,                  # seconds, default 30
+    "timeout":                 str | int,   # seconds, default 30
+    "validate_status_code":    bool,        # when True, fail unless status is listed
+    "expected_status_codes":   str,         # comma-separated codes, default "200"
 }
 
 JsonValueBuilderEnvelope:
@@ -31,7 +33,7 @@ Output (stored in context.node_outputs[node_id])
 -------------------------------------------------
 {
     "status_code": int,   — HTTP response status code
-    "success":     bool,  — True when status is 2xx
+    "success":     bool,  — 2xx by default; when validate_status_code is on, True only if status is allowed
     "body":        Any,   — parsed JSON body (dict/list) or raw text string
     "error":       str,   — only present when the request fails entirely
 }
@@ -61,6 +63,27 @@ _MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 
 # Default request timeout in seconds
 _DEFAULT_TIMEOUT = 30.0
+
+
+def _parse_expected_status_codes(raw: Any) -> set[int]:
+    """Parse comma-separated HTTP status codes; default {200} when empty or invalid."""
+    if raw is None:
+        return {200}
+    text = str(raw).strip()
+    if not text:
+        return {200}
+    codes: set[int] = set()
+    for part in text.replace(";", ",").split(","):
+        piece = part.strip()
+        if not piece:
+            continue
+        try:
+            code = int(piece)
+        except (ValueError, TypeError):
+            continue
+        if 100 <= code <= 599:
+            codes.add(code)
+    return codes if codes else {200}
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -348,7 +371,23 @@ class HttpRequestHandler(NodeHandler):
             }
 
         status_code = resp.status_code
-        success     = 200 <= status_code < 300
+        validate_status = bool(config.get("validate_status_code"))
+
+        if validate_status:
+            allowed = _parse_expected_status_codes(
+                resolve_variables(
+                    str(config.get("expected_status_codes") or "200"),
+                    outputs,
+                )
+            )
+            if status_code not in allowed:
+                allowed_str = ", ".join(str(c) for c in sorted(allowed))
+                raise RuntimeError(
+                    f"HTTP status {status_code} is not in expected codes: {allowed_str}"
+                )
+            success = True
+        else:
+            success = 200 <= status_code < 300
 
         # ── Parse response body ────────────────────────────────────────────────
         raw = resp.content[:_MAX_RESPONSE_BYTES]
