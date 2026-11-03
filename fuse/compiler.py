@@ -27,7 +27,7 @@ from fuse.node_definitions import ACTION_NODES, STARTER_NODES
 MAX_NODE_LABEL_LENGTH = 40
 
 _REQUIRED_FIELDS: dict[str, list[str]] = {
-    "schedule":     ["date", "time"],
+    "schedule":     ["schedule_mode", "timezone"],
     # method is intentionally excluded — the route handler defaults to "POST"
     "webhook":      [],
     "get_notified": ["title", "body"],
@@ -151,11 +151,32 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
         elif not (config.get("destination") or "").strip():
             errors.append("Destination is required.")
 
-    # Schedule: time must be parseable
     if node_type == "schedule":
-        time_str = config.get("time", "")
-        if time_str and not _is_valid_time(time_str):
-            errors.append(f"Schedule time '{time_str}' is not a valid HH:MM value.")
+        mode = (config.get("schedule_mode") or "").lower()
+        if mode == "interval":
+            try:
+                step = int(config.get("interval_minutes") or 0)
+                if step < 1 or step > 60:
+                    errors.append("Interval must be between 1 and 60 minutes.")
+            except (TypeError, ValueError):
+                errors.append("Interval minutes must be a number.")
+        elif mode in ("daily", "monthly", "yearly"):
+            if not _is_valid_schedule_hm(config.get("hour"), config.get("minute")):
+                errors.append("Schedule hour/minute must be valid (0–23 / 0–59).")
+            if mode in ("monthly", "yearly"):
+                try:
+                    dom = int(config.get("day_of_month") or 0)
+                    if dom < 1 or dom > 31:
+                        errors.append("Day of month must be between 1 and 31.")
+                except (TypeError, ValueError):
+                    errors.append("Day of month must be a number.")
+            if mode == "yearly":
+                try:
+                    mo = int(config.get("month") or 0)
+                    if mo < 1 or mo > 12:
+                        errors.append("Month must be between 1 and 12.")
+                except (TypeError, ValueError):
+                    errors.append("Month must be a number.")
 
     # Set Variables: object root needs at least one keyed field
     if node_type == "set_variables":
@@ -174,21 +195,11 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
 
 
 
-def _is_valid_time(time_str: str) -> bool:
-    """Return True if `time_str` is HH:MM or a relative offset like '+5min'."""
-    if time_str.startswith("+") and time_str.endswith("min"):
-        try:
-            int(time_str[1:-3])
-            return True
-        except ValueError:
-            return False
-    parts = time_str.split(":")
-    if len(parts) != 2:
-        return False
+def _is_valid_schedule_hm(hour, minute) -> bool:
     try:
-        h, m = int(parts[0]), int(parts[1])
+        h, m = int(hour), int(minute)
         return 0 <= h <= 23 and 0 <= m <= 59
-    except ValueError:
+    except (TypeError, ValueError):
         return False
 
 

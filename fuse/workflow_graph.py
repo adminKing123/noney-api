@@ -13,7 +13,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-RUNTIME_WEBHOOK_KEYS = ("webex_webhook", "github_webhook")
+RUNTIME_WEBHOOK_KEYS = ("webex_webhook", "github_webhook", "cron_schedule")
 
 
 def extract_fuse_runtime(compiled_graph: dict) -> dict:

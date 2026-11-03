@@ -469,7 +469,7 @@ class Workflow:
         version_id       : str|null Active fuse_versions id (set on activate)
         graph_hash       : str|null Hash of last successful compile
         compiled_at      : str|null ISO-8601 of last successful compile
-        fuse_runtime     : dict|null Webhook metadata only (webex_webhook, github_webhook)
+        fuse_runtime     : dict|null Runtime metadata (webex_webhook, github_webhook, cron_schedule)
         starter_type     : str|null Starter node type from last activate (schedule restore)
         compiled_graph   : dict|null Legacy full graph (migrated away; read fallback only)
         created_at       : ISO-8601 str
@@ -599,6 +599,21 @@ class Workflow:
         now = datetime.utcnow().isoformat() + "Z"
         self._col().document(workflow_id).update({"status": status, "updated_at": now})
         return {**existing, "status": status, "updated_at": now}
+
+    def clear_fuse_runtime_cron_schedule(self, workflow_id: str, owner_id: str) -> dict | None:
+        """Remove cron_schedule from ``fuse_runtime``."""
+        existing = self.get(workflow_id, owner_id)
+        if existing is None:
+            return None
+        fuse_runtime = dict(existing.get("fuse_runtime") or {})
+        if "cron_schedule" not in fuse_runtime:
+            return existing
+        fuse_runtime.pop("cron_schedule", None)
+        now = datetime.utcnow().isoformat() + "Z"
+        self._col().document(workflow_id).update(
+            {"fuse_runtime": fuse_runtime or None, "updated_at": now}
+        )
+        return {**existing, "fuse_runtime": fuse_runtime or None, "updated_at": now}
 
     def clear_fuse_runtime_webex_webhook(self, workflow_id: str, owner_id: str) -> dict | None:
         """Remove webex_webhook from ``fuse_runtime``."""

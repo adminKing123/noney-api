@@ -17,48 +17,38 @@ STARTER_NODES = [
         "label": "On a Schedule",
         "icon": "TbCalendarTime",
         "section": "General",
-        "description": "Start at a set date and time. Have it run once or repeat on a schedule.",
+        "description": "Run this workflow on a repeating schedule. Choose a preset interval or build a custom crontab.",
+        "defaults": {
+            "schedule_mode": "interval",
+            "interval_minutes": "15",
+            "hour": "0",
+            "minute": "0",
+            "day_of_month": "1",
+            "month": "1",
+            "custom": {
+                "minutes": [],
+                "hours": [],
+                "days_of_month": [],
+                "months": [],
+                "days_of_week": [],
+            },
+            "cron_expression": "*/15 * * * *",
+        },
         "config_form": {
-            "presets": [
-                {"label": "Monday at 8 AM",  "values": {"date": "next-monday", "time": "08:00", "repeat": "weekly_monday", "ends": "1y"}},
-                {"label": "Weekdays at 8 AM", "values": {"date": "today",       "time": "08:00", "repeat": "weekdays",      "ends": "1y"}},
-                {"label": "In 5 minutes",     "values": {"date": "today",       "time": "+5min", "repeat": "none",          "ends": "1y"}},
-            ],
             "sections": [
                 {
-                    "title": "Start date and time",
-                    "layout": "grid-2",
-                    "fields": [
-                        {"key": "date", "label": "Date", "type": "date", "required": True, "hint": "MM/DD/YYYY"},
-                        {"key": "time", "label": "Time", "type": "time", "required": True},
-                    ],
-                },
-                {
                     "fields": [
                         {
-                            "key": "repeat", "label": "Repeat", "type": "select", "required": True,
-                            "options": [
-                                {"label": "Does not repeat",       "value": "none"},
-                                {"label": "Hourly",                "value": "hourly"},
-                                {"label": "Daily",                 "value": "daily"},
-                                {"label": "Weekly on Monday",      "value": "weekly_monday"},
-                                {"label": "Weekdays (Mon - Fri)", "value": "weekdays"},
-                                {"label": "Monthly",               "value": "monthly"},
-                                {"label": "Annually",              "value": "annually"},
-                            ],
-                            "after_hint": "For daily and less frequent repeats, runs start within 3 minutes of the set time",
+                            "type": "schedule_builder",
+                            "hideLabel": True,
                         },
                         {
-                            "key": "ends", "label": "Ends", "type": "select",
-                            "options": [
-                                {"label": "1 year",  "value": "1y"},
-                                {"label": "6 months","value": "6m"},
-                                {"label": "3 months","value": "3m"},
-                                {"label": "1 month", "value": "1m"},
-                                {"label": "Never",   "value": "never"},
-                            ],
+                            "key": "timezone",
+                            "label": "Time zone",
+                            "type": "timezone_select",
+                            "required": True,
+                            "hint": "All schedule times above are interpreted in this time zone.",
                         },
-                        {"key": "timezone", "label": "Time zone", "type": "timezone_select", "required": True},
                     ],
                 },
             ],

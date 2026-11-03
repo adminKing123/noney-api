@@ -1,4 +1,5 @@
 import logging
+import secrets
 
 from flask import Blueprint, request, jsonify
 from middleware.auth import require_auth
@@ -18,11 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 def _teardown_webhooks(workflow: dict) -> None:
-    """Delete the Webhooks for workflow, if registered."""
+    """Delete external triggers (Webex, GitHub, Cron Service) for a workflow."""
     from utils.integrations.webex_utils import cleanup_webex_workflow_webhook
     from utils.integrations.github_utils import cleanup_github_workflow_webhook
+    from utils.integrations.cron_schedule_utils import cleanup_cron_schedule_workflow
 
     owner_id = workflow.get("owner_id", "")
+    workflow_id = workflow.get("id", "")
     cleanup_graph = webhook_cleanup_graph(workflow)
     starter_type = cleanup_graph.get("starter", {}).get("node_type")
 
@@ -30,6 +33,8 @@ def _teardown_webhooks(workflow: dict) -> None:
         cleanup_webex_workflow_webhook(owner_id, cleanup_graph)
     elif starter_type == "github_pull_request":
         cleanup_github_workflow_webhook(owner_id, cleanup_graph)
+    elif starter_type == "schedule" and workflow_id:
+        cleanup_cron_schedule_workflow(workflow_id)
 
 # ─── Workflows ────────────────────────────────────────────────────────────────
 
@@ -256,7 +261,7 @@ def activate_workflow(workflow_id):
     except Exception as exc:
         return jsonify({"success": False, "errors": [str(exc)]}), 500
 
-    # WebexMessageExecution.start() may attach webhook metadata to compiled_graph.
+    # Starters may attach runtime metadata (webhooks, cron schedule) to compiled_graph.
     compiled_graph = runtime.get_execution(workflow_id).compiled_graph  # type: ignore[union-attr]
 
     # ── 4. Persist compilation state on the workflow doc ──────────────────────
@@ -317,6 +322,8 @@ def deactivate_workflow(workflow_id):
             workflow.get("compiled_graph") or {}
         ).get("github_webhook"):
             db.workflow.update_fuse_runtime(workflow_id, owner_id, fuse_runtime)
+    if starter_type == "schedule":
+        db.workflow.clear_fuse_runtime_cron_schedule(workflow_id, owner_id)
     updated = db.workflow.update_status(workflow_id, owner_id, "inactive")
     return jsonify({"success": True, "workflow": updated})
 
@@ -340,6 +347,49 @@ def delete_workflow(workflow_id):
     if not success:
         return jsonify({"error": "Workflow not found"}), 404
     return jsonify({"success": True, "id": workflow_id})
+
+
+# ─── Schedule trigger (Cron Service → noney-api) ───────────────────────────────
+
+def _schedule_bearer_secret() -> str | None:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:].strip() or None
+    return None
+
+
+@bp.route("/schedule/webhook/<workflow_id>", methods=["POST"])
+def trigger_schedule(workflow_id):
+    """
+    POST /fuse/schedule/webhook/<workflow_id>
+    Called by Cron Service when cron-job.org fires. Bearer auth uses per-workflow secret.
+    """
+    execution = runtime.resolve_execution(workflow_id)
+    if execution is None:
+        return jsonify({"error": "Workflow not found or not active."}), 404
+
+    compiled_graph = execution.compiled_graph
+    starter = compiled_graph.get("starter", {})
+    if starter.get("node_type") != "schedule":
+        return jsonify({"error": "This workflow is not schedule-triggered."}), 400
+
+    expected = (compiled_graph.get("cron_schedule") or {}).get("secret", "")
+    provided = _schedule_bearer_secret()
+    if not expected or not provided or not secrets.compare_digest(provided, expected):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(force=True, silent=True) or {}
+    trigger_data = {
+        "fired_at": body.get("fired_at") or datetime.utcnow().isoformat() + "Z",
+        "triggered_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+    run_workflow_async(
+        resolve_compiled_graph_for_run(execution),
+        trigger_data,
+        trigger_type="schedule",
+    )
+    return jsonify({"ok": True}), 202
 
 
 # ─── Public webhook trigger ───────────────────────────────────────────────────

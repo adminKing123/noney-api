@@ -55,6 +55,13 @@ class EmailService:
     API_KEY = _env_strip("EMAIL_SERVICE_API_KEY")
     FROM_NAME = _env_strip("EMAIL_SERVICE_FROM_NAME", "Comet AI")
 
+
+class CronService:
+    """External HTTP cron service (cron-job.org registration + trigger forwarding)."""
+
+    HOST = _env_strip("CRON_SERVICE_HOST")
+    API_KEY = _env_strip("CRON_SERVICE_API_KEY")
+
 class CryptoCompositeKey:
     SECRET_KEY = os.getenv("CRYPTO_SECRET_KEY", "").encode()
     SALT = os.getenv("CRYPTO_SALT", "").encode()
@@ -119,6 +126,7 @@ class CONFIG:
     MODELS = Models()
     UPLOAD1 = Upload1()
     EMAIL_SERVICE = EmailService()
+    CRON_SERVICE = CronService()
     HRMS = Hrms()
 
     AI_MAPPINGS = {}

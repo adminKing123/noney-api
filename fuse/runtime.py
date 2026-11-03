@@ -3,53 +3,21 @@ fuse/runtime.py
 ===============
 Singleton RuntimeManager that owns every active Fuse workflow execution.
 
-Design
-------
-* One ``RuntimeManager`` instance per process (``runtime`` module-level object).
-* Webhook workflows: no persistent daemon; each incoming HTTP request triggers
-  a new ``ExecutionContext`` via ``run_workflow_async()``.  The manager just
-  holds the compiled graph so the route handler can look it up.
-* Schedule workflows: an APScheduler ``BackgroundScheduler`` manages cron /
-  interval / date jobs.  The scheduler is started once and runs for the
-  lifetime of the process.
-* Thread safety: ``_active`` dict mutations are protected by ``_active_lock``.
-
-Server-restart recovery
------------------------
-Webhook, Webex message, and GitHub PR workflows are resolved lazily from
-Firestore on the first incoming trigger (``resolve_execution()``).  Their
-compiled graph and external webhook metadata are persisted at activation time.
-
-``restore_from_db(active_workflows)`` is only needed for **schedule** workflows
-because APScheduler jobs are process-local and must be re-registered at startup.
-
-One-shot schedules
-------------------
-When a schedule with ``repeat == "none"`` fires, the job automatically removes
-itself from APScheduler (DateTrigger behaviour).  The ``_job_func`` callback
-then calls ``_deactivate_after_one_shot()`` to mark the workflow as inactive in
-Firestore so the frontend reflects the correct state.
+Webhook, schedule, Webex, and GitHub workflows persist their compiled graph in
+Firestore; triggers resolve lazily via ``resolve_execution()`` after restart.
+Schedule firing is delegated to Cron Service (cron-job.org → cron-service → noney webhook).
 """
 
 import logging
+import secrets
 import threading
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
-# ─── Execution wrappers ────────────────────────────────────────────────────────
-
 class WebhookExecution:
-    """
-    Represents an active webhook-triggered workflow.
-
-    No daemon is needed — the compiled graph is held here so that the route
-    handler can look it up by ``workflow_id`` and run the graph in a thread.
-    """
-
     def __init__(self, workflow_id: str, compiled_graph: dict) -> None:
-        self.workflow_id   = workflow_id
+        self.workflow_id = workflow_id
         self.compiled_graph = compiled_graph
 
     def start(self) -> None:
@@ -59,9 +27,80 @@ class WebhookExecution:
         logger.info("[FUSE] Webhook workflow '%s' deactivated.", self.workflow_id)
 
 
+class ScheduleExecution:
+    """
+    Active schedule workflow — registers with Cron Service on start, removes on stop.
+    """
+
+    def __init__(self, workflow_id: str, compiled_graph: dict) -> None:
+        self.workflow_id = workflow_id
+        self.compiled_graph = compiled_graph
+
+    def start(self) -> None:
+        from db import db
+        from utils.cron_service import is_cron_service_configured, upsert_workflow_schedule
+
+        if not is_cron_service_configured():
+            raise RuntimeError(
+                "Cron service is not configured (CRON_SERVICE_HOST / CRON_SERVICE_API_KEY)."
+            )
+
+        owner_id = self.compiled_graph.get("owner_id", "")
+        starter_config = dict(self.compiled_graph["starter"].get("config") or {})
+
+        existing = self.compiled_graph.get("cron_schedule") or {}
+        secret = existing.get("secret") or secrets.token_urlsafe(32)
+
+        workflow_doc = db.workflow.get(self.workflow_id, owner_id) if owner_id else None
+        workflow_name = (workflow_doc or {}).get("name") or ""
+        owner_email = db.user.get_email(owner_id) if owner_id else None
+
+        base = self._webhook_base_url()
+        noney_trigger_url = f"{base}/fuse/schedule/webhook/{self.workflow_id}"
+
+        result = upsert_workflow_schedule(
+            {
+                "workflow_id": self.workflow_id,
+                "workflow_name": workflow_name,
+                "owner_id": owner_id,
+                "owner_email": owner_email or "",
+                "schedule_config": starter_config,
+                "timezone": starter_config.get("timezone") or "UTC",
+                "noney_trigger_url": noney_trigger_url,
+                "noney_trigger_secret": secret,
+            }
+        )
+        if not result:
+            raise RuntimeError("Failed to register schedule with Cron Service.")
+
+        self.compiled_graph["cron_schedule"] = {
+            "secret": secret,
+            "cron_org_job_id": result.get("cron_org_job_id"),
+            "public_webhook_url": result.get("public_webhook_url"),
+        }
+        logger.info(
+            "[FUSE] Schedule workflow '%s' registered (cron-job.org id=%s).",
+            self.workflow_id,
+            result.get("cron_org_job_id"),
+        )
+
+    def stop(self) -> None:
+        from utils.integrations.cron_schedule_utils import cleanup_cron_schedule_workflow
+
+        cleanup_cron_schedule_workflow(self.workflow_id)
+        self.compiled_graph.pop("cron_schedule", None)
+        logger.info("[FUSE] Schedule workflow '%s' deactivated.", self.workflow_id)
+
+    @staticmethod
+    def _webhook_base_url() -> str:
+        from config import CONFIG
+
+        return CONFIG.HOST.rstrip("/")
+
+
 class GithubPullRequestExecution:
     def __init__(self, workflow_id: str, compiled_graph: dict) -> None:
-        self.workflow_id    = workflow_id
+        self.workflow_id = workflow_id
         self.compiled_graph = compiled_graph
 
     def start(self) -> None:
@@ -89,7 +128,7 @@ class GithubPullRequestExecution:
 
         base = self._webhook_base_url()
         target_url = f"{base}/fuse/github/webhook/{self.workflow_id}"
-        
+
         repo_name = starter_config.get("repo_name", "").strip()
         if not repo_name:
             raise RuntimeError("Repository name is required for GitHub PR Trigger.")
@@ -103,7 +142,7 @@ class GithubPullRequestExecution:
             )
             webhook_id = webhook["id"]
             self.compiled_graph["github_webhook"] = {
-                "id":     webhook_id,
+                "id": webhook_id,
                 "secret": webhook["secret"],
                 "repo_name": repo_name,
             }
@@ -124,25 +163,18 @@ class GithubPullRequestExecution:
         owner_id = self.compiled_graph.get("owner_id", "")
         cleanup_github_workflow_webhook(owner_id, self.compiled_graph)
         self.compiled_graph.pop("github_webhook", None)
-
         logger.info("[FUSE] Github PR workflow '%s' deactivated.", self.workflow_id)
 
     @staticmethod
     def _webhook_base_url() -> str:
         from config import CONFIG
+
         return CONFIG.HOST.rstrip("/")
 
 
 class WebexMessageExecution:
-    """
-    Represents an active Webex message-triggered workflow.
-
-    On activation, registers a Webex webhook pointing at our public endpoint.
-    On deactivation, deletes that webhook from Webex.
-    """
-
     def __init__(self, workflow_id: str, compiled_graph: dict) -> None:
-        self.workflow_id    = workflow_id
+        self.workflow_id = workflow_id
         self.compiled_graph = compiled_graph
 
     def start(self) -> None:
@@ -191,7 +223,7 @@ class WebexMessageExecution:
             )
             webhook_id = webhook["id"]
             self.compiled_graph["webex_webhook"] = {
-                "id":     webhook_id,
+                "id": webhook_id,
                 "secret": webhook["secret"],
             }
         except Exception:
@@ -211,129 +243,16 @@ class WebexMessageExecution:
         owner_id = self.compiled_graph.get("owner_id", "")
         cleanup_webex_workflow_webhook(owner_id, self.compiled_graph)
         self.compiled_graph.pop("webex_webhook", None)
-
         logger.info("[FUSE] Webex message workflow '%s' deactivated.", self.workflow_id)
 
     @staticmethod
     def _webhook_base_url() -> str:
         from config import CONFIG
+
         return CONFIG.HOST.rstrip("/")
 
 
-class ScheduleExecution:
-    """
-    Represents an active scheduled workflow.
-
-    Manages a single APScheduler job whose ID is ``fuse_schedule_<workflow_id>``.
-    """
-
-    def __init__(
-        self,
-        workflow_id: str,
-        compiled_graph: dict,
-        scheduler,
-    ) -> None:
-        self.workflow_id    = workflow_id
-        self.compiled_graph = compiled_graph
-        self._scheduler     = scheduler
-        self._job_id        = f"fuse_schedule_{workflow_id}"
-
-    # -- APScheduler callback --------------------------------------------------
-
-    def _job_func(self) -> None:
-        """Called by APScheduler when the scheduled time arrives."""
-        from .executor import run_workflow  # lazy import
-        from .graph_resolve import resolve_compiled_graph_for_run
-
-        trigger_data = {"fired_at": datetime.utcnow().isoformat() + "Z"}
-        logger.info("[FUSE] Schedule fired for workflow '%s'.", self.workflow_id)
-
-        try:
-            run_workflow(
-                resolve_compiled_graph_for_run(self),
-                trigger_data,
-                trigger_type="schedule",
-            )
-        except Exception:
-            logger.exception(
-                "[FUSE] Schedule execution failed for workflow '%s'.", self.workflow_id
-            )
-
-        # DateTrigger jobs fire exactly once and are auto-removed by APScheduler.
-        # Update Firestore status to inactive so the UI reflects this.
-        repeat = self.compiled_graph["starter"]["config"].get("repeat", "none")
-        if repeat == "none":
-            _deactivate_after_one_shot(self.workflow_id)
-
-    # -- Lifecycle -------------------------------------------------------------
-
-    def start(self) -> None:
-        from .nodes.schedule import build_aps_trigger, compute_end_date  # lazy
-
-        config   = self.compiled_graph["starter"]["config"]
-        trigger  = build_aps_trigger(config)
-        end_date = compute_end_date(config.get("ends", "1y"))
-
-        self._scheduler.add_job(
-            func=self._job_func,
-            trigger=trigger,
-            id=self._job_id,
-            end_date=end_date,
-            replace_existing=True,
-            misfire_grace_time=300,  # tolerate up to 5 min late firing (e.g. after restart)
-        )
-        logger.info("[FUSE] Schedule job registered for workflow '%s'.", self.workflow_id)
-
-    def stop(self) -> None:
-        try:
-            self._scheduler.remove_job(self._job_id)
-            logger.info("[FUSE] Schedule job removed for workflow '%s'.", self.workflow_id)
-        except Exception:
-            pass  # Job may have already been removed (e.g., one-shot that already fired)
-
-
-# ─── Helpers ───────────────────────────────────────────────────────────────────
-
-def _deactivate_after_one_shot(workflow_id: str) -> None:
-    """
-    Mark a one-shot workflow as inactive in Firestore after it fires.
-
-    Runs in the APScheduler thread; errors are logged but never re-raised.
-    """
-    try:
-        from db import db  # late import to avoid circular dep at module load
-
-        now = datetime.utcnow().isoformat() + "Z"
-        db.workflow._col().document(workflow_id).update({
-            "status":     "inactive",
-            "updated_at": now,
-        })
-        logger.info(
-            "[FUSE] One-shot workflow '%s' set to inactive after firing.", workflow_id
-        )
-    except Exception:
-        logger.exception(
-            "[FUSE] Failed to deactivate one-shot workflow '%s' in Firestore.", workflow_id
-        )
-
-
-# ─── RuntimeManager ────────────────────────────────────────────────────────────
-
 class RuntimeManager:
-    """
-    Process-wide singleton that manages all active Fuse workflow executions.
-
-    Usage
-    -----
-    ::
-
-        from fuse.runtime import runtime
-
-        runtime.activate(workflow_id, compiled_graph)   # start
-        runtime.deactivate(workflow_id)                 # stop
-        execution = runtime.get_execution(workflow_id)  # look up
-    """
-
     _instance: "RuntimeManager | None" = None
     _class_lock = threading.Lock()
 
@@ -341,39 +260,30 @@ class RuntimeManager:
         with cls._class_lock:
             if cls._instance is None:
                 inst = super().__new__(cls)
-                inst._active: dict[str, WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution] = {}
+                inst._active: dict[
+                    str,
+                    WebhookExecution
+                    | ScheduleExecution
+                    | WebexMessageExecution
+                    | GithubPullRequestExecution,
+                ] = {}
                 inst._active_lock = threading.Lock()
-
-                from apscheduler.schedulers.background import BackgroundScheduler
-                inst._scheduler = BackgroundScheduler(daemon=True)
-                inst._scheduler.start()
-
                 cls._instance = inst
         return cls._instance
 
-    # -- Public API ------------------------------------------------------------
-
     def activate(self, workflow_id: str, compiled_graph: dict) -> None:
-        """
-        Register and start a workflow execution.
-
-        If an execution already exists for ``workflow_id`` it is stopped first,
-        ensuring a clean handover when recompiling a running workflow.
-        """
-        self.deactivate(workflow_id)  # idempotent — no-op if not active
+        self.deactivate(workflow_id)
 
         starter_type = compiled_graph["starter"]["node_type"]
 
         if starter_type == "webhook":
-            execution: WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution = WebhookExecution(
-                workflow_id, compiled_graph
-            )
+            execution = WebhookExecution(workflow_id, compiled_graph)
         elif starter_type == "webex_message":
             execution = WebexMessageExecution(workflow_id, compiled_graph)
         elif starter_type == "github_pull_request":
             execution = GithubPullRequestExecution(workflow_id, compiled_graph)
         elif starter_type == "schedule":
-            execution = ScheduleExecution(workflow_id, compiled_graph, self._scheduler)
+            execution = ScheduleExecution(workflow_id, compiled_graph)
         else:
             raise ValueError(f"Unknown starter node type: '{starter_type}'")
 
@@ -383,43 +293,43 @@ class RuntimeManager:
             self._active[workflow_id] = execution
 
     def deactivate(self, workflow_id: str) -> None:
-        """Stop and remove the execution for ``workflow_id`` (no-op if not active)."""
         with self._active_lock:
             execution = self._active.pop(workflow_id, None)
-
         if execution is not None:
             execution.stop()
 
-    def get_execution(self, workflow_id: str) -> WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution | None:
-        """Return the active execution for a workflow, or None if inactive."""
+    def get_execution(
+        self, workflow_id: str
+    ) -> (
+        WebhookExecution
+        | ScheduleExecution
+        | WebexMessageExecution
+        | GithubPullRequestExecution
+        | None
+    ):
         with self._active_lock:
             return self._active.get(workflow_id)
 
     def resolve_execution(
         self, workflow_id: str
-    ) -> WebhookExecution | ScheduleExecution | WebexMessageExecution | GithubPullRequestExecution | None:
-        """
-        Return the active execution, loading from Firestore on demand when needed.
-
-        Webhook, Webex message, and GitHub PR workflows persist their compiled
-        graph (and external webhook metadata) in Firestore on activation, so they
-        do not require a startup restore — the first incoming webhook call
-        registers them in memory without recreating external webhooks.
-
-        Schedule workflows still require ``restore_from_db()`` at startup because
-        APScheduler jobs are process-local.
-        """
+    ) -> (
+        WebhookExecution
+        | ScheduleExecution
+        | WebexMessageExecution
+        | GithubPullRequestExecution
+        | None
+    ):
         execution = self.get_execution(workflow_id)
         if execution is not None:
             return execution
 
-        from db import db  # noqa: PLC0415 — lazy to avoid circular import
+        from db import db
 
         workflow = db.workflow.get_active_by_id(workflow_id)
         if workflow is None:
             return None
 
-        from .workflow_graph import load_execution_graph_for_workflow
+        from fuse.workflow_graph import load_execution_graph_for_workflow
 
         compiled_graph = load_execution_graph_for_workflow(workflow)
         if not compiled_graph:
@@ -433,11 +343,19 @@ class RuntimeManager:
             workflow.get("starter_type")
             or compiled_graph.get("starter", {}).get("node_type", "")
         )
-        if starter_type == "schedule":
-            return None
+
+        fuse_runtime = workflow.get("fuse_runtime") or {}
+        for key in ("webex_webhook", "github_webhook", "cron_schedule"):
+            if fuse_runtime.get(key):
+                compiled_graph[key] = fuse_runtime[key]
 
         try:
-            self.activate(workflow_id, compiled_graph)
+            if starter_type == "schedule":
+                execution = ScheduleExecution(workflow_id, compiled_graph)
+                with self._active_lock:
+                    self._active[workflow_id] = execution
+            else:
+                self.activate(workflow_id, compiled_graph)
             logger.info(
                 "[FUSE] Lazy-loaded active workflow '%s' from Firestore (starter=%s).",
                 workflow_id,
@@ -452,50 +370,36 @@ class RuntimeManager:
         return self.get_execution(workflow_id)
 
     def is_active(self, workflow_id: str) -> bool:
-        """Return True if the workflow currently has a registered execution."""
         with self._active_lock:
             return workflow_id in self._active
 
-    def restore_from_db(self, active_workflows: list) -> None:
-        """
-        Re-register active workflow executions on server startup.
-
-        Each item must be an active workflow document with ``version_id`` (or legacy
-        ``compiled_graph``).
-        """
-        from .workflow_graph import load_execution_graph_for_workflow
+    def resync_schedules(self, active_workflows: list) -> None:
+        """Re-upsert active schedule workflows with Cron Service after deploy."""
+        from fuse.workflow_graph import load_execution_graph_for_workflow
 
         for wf in active_workflows:
-            workflow_id    = wf.get("id", "")
+            workflow_id = wf.get("id", "")
             compiled_graph = load_execution_graph_for_workflow(wf)
-
             if not compiled_graph:
-                logger.warning(
-                    "[FUSE] Active workflow '%s' has no execution graph — skipping restore.",
-                    workflow_id,
-                )
                 continue
-
+            if (
+                wf.get("starter_type")
+                or compiled_graph.get("starter", {}).get("node_type", "")
+            ) != "schedule":
+                continue
             try:
                 self.activate(workflow_id, compiled_graph)
-                logger.info("[FUSE] Restored active workflow '%s' from DB.", workflow_id)
+                logger.info("[FUSE] Re-synced schedule workflow '%s' with Cron Service.", workflow_id)
             except Exception:
                 logger.exception(
-                    "[FUSE] Failed to restore workflow '%s' on startup.", workflow_id
+                    "[FUSE] Failed to re-sync schedule '%s' on startup.", workflow_id
                 )
 
     def shutdown(self) -> None:
-        """Gracefully stop all executions and the scheduler (call from atexit)."""
         with self._active_lock:
             for execution in self._active.values():
                 execution.stop()
             self._active.clear()
-        try:
-            self._scheduler.shutdown(wait=False)
-        except Exception:
-            pass
 
-
-# ─── Module-level singleton ────────────────────────────────────────────────────
 
 runtime = RuntimeManager()

@@ -27,43 +27,27 @@ except Exception:
     )
 
 
-def _restore_scheduled_workflows() -> None:
-    """
-    Re-register scheduled Fuse workflows from Firestore after startup.
-
-    Webhook, Webex message, and GitHub PR workflows resolve lazily on the first
-    incoming trigger via ``runtime.resolve_execution()`` — they do not need a
-    startup restore because their compiled graph and external webhook metadata
-    are already persisted in Firestore.
-
-    Schedule workflows still need this because APScheduler jobs are process-local.
-    """
+def _resync_cron_schedules() -> None:
+    """Re-upsert active schedule workflows with Cron Service after deploy."""
     try:
         from db import db
         from fuse.runtime import runtime
 
         active = db.workflow.list_active()
-        scheduled = [
-            wf
-            for wf in active
-            if wf.get("starter_type") == "schedule"
-            or (wf.get("compiled_graph") or {}).get("starter", {}).get("node_type")
-            == "schedule"
-        ]
+        scheduled = [wf for wf in active if wf.get("starter_type") == "schedule"]
         if scheduled:
             logging.getLogger(__name__).info(
-                "[FUSE] Restoring %d scheduled workflow(s) from Firestore.", len(scheduled)
+                "[FUSE] Re-syncing %d schedule workflow(s) with Cron Service.", len(scheduled)
             )
-            runtime.restore_from_db(scheduled)
+            runtime.resync_schedules(scheduled)
     except Exception:
         logging.getLogger(__name__).warning(
-            "[FUSE] Could not restore scheduled workflows on startup (non-fatal).",
+            "[FUSE] Could not re-sync schedules on startup (non-fatal).",
             exc_info=True,
         )
 
 
-# Uncomment when schedule nodes are in use:
-# _restore_scheduled_workflows()
+_resync_cron_schedules()
 
 
 if __name__ == "__main__":

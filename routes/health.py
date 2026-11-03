@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify
 from db.datacontroller import db
 from utils.email_service import is_email_service_configured
+from utils.cron_service import is_cron_service_configured
 
 health_bp = Blueprint('health', __name__)
 
@@ -18,4 +19,5 @@ def health_check():
         "status": "ok",
         "database": db_status,
         "email_service_configured": is_email_service_configured(),
+        "cron_service_configured": is_cron_service_configured(),
     }), status_code
