@@ -38,9 +38,6 @@ def get_action_nodes():
 @require_auth
 def get_system_variables():
     """GET /fuse/nodes/system-variables — returns available runtime system variables."""
-    import pytz
-    timezones = list(pytz.common_timezones)
-
     return jsonify({
         "variables": [
             {"token": "system.workflow_id", "label": "Workflow ID", "group": "Metadata"},
@@ -48,8 +45,17 @@ def get_system_variables():
             {"token": "system.triggered_at", "label": "Triggered At", "group": "Metadata"},
             {"token": "system.trigger_type", "label": "Trigger Type", "group": "Metadata"},
         ],
-        "timezones": timezones
     })
+
+
+@bp.route("/nodes/schedule-timezones", methods=["GET"])
+@require_auth
+def get_schedule_timezones():
+    """GET /fuse/nodes/schedule-timezones — cron-job.org allowed IANA time zones."""
+    from fuse.schedule_timezones import load_schedule_timezones
+
+    zones = load_schedule_timezones()
+    return jsonify({"count": len(zones), "timezones": zones})
 
 
 @bp.route("/nodes/<node_type>", methods=["GET"])

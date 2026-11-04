@@ -154,12 +154,21 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
     if node_type == "schedule":
         from zoneinfo import ZoneInfo
 
+        from fuse.schedule_timezones import is_allowed_schedule_timezone
+
         tz_name = (config.get("timezone") or "").strip() or "UTC"
-        try:
-            tz = ZoneInfo(tz_name)
-        except Exception:
-            errors.append(f"Time zone is not valid: {tz_name!r}")
+        if not is_allowed_schedule_timezone(tz_name):
+            errors.append(
+                f"Time zone is not supported for schedules: {tz_name!r}. "
+                "Choose a value from the schedule time zone list."
+            )
             tz = None
+        else:
+            try:
+                tz = ZoneInfo(tz_name)
+            except Exception:
+                errors.append(f"Time zone is not valid: {tz_name!r}")
+                tz = None
 
         expires_on = config.get("schedule_expires_enabled") in (
             True,
