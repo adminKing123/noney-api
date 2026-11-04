@@ -152,6 +152,34 @@ def _validate_node_config(node_type: str, config: dict) -> list[str]:
             errors.append("Destination is required.")
 
     if node_type == "schedule":
+        from zoneinfo import ZoneInfo
+
+        tz_name = (config.get("timezone") or "").strip() or "UTC"
+        try:
+            tz = ZoneInfo(tz_name)
+        except Exception:
+            errors.append(f"Time zone is not valid: {tz_name!r}")
+            tz = None
+
+        expires_on = config.get("schedule_expires_enabled") in (
+            True,
+            "true",
+            "1",
+            1,
+        )
+        if expires_on and tz is not None:
+            try:
+                year = int(config.get("schedule_expires_year"))
+                month = int(config.get("schedule_expires_month"))
+                day = int(config.get("schedule_expires_day"))
+                hour = int(config.get("schedule_expires_hour") or 0)
+                minute = int(config.get("schedule_expires_minute") or 0)
+                exp_dt = datetime(year, month, day, hour, minute, tzinfo=tz)
+                if exp_dt <= datetime.now(tz):
+                    errors.append("Schedule expiry must be a future date and time.")
+            except (TypeError, ValueError):
+                errors.append("Schedule expiry date/time is invalid.")
+
         mode = (config.get("schedule_mode") or "").lower()
         if mode == "interval":
             try:

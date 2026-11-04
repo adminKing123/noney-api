@@ -32,7 +32,13 @@ STARTER_NODES = [
                 "months": [],
                 "days_of_week": [],
             },
-            "cron_expression": "*/15 * * * *",
+            "timezone": "UTC",
+            "schedule_expires_enabled": False,
+            "schedule_expires_day": "1",
+            "schedule_expires_month": "1",
+            "schedule_expires_year": "2027",
+            "schedule_expires_hour": "0",
+            "schedule_expires_minute": "0",
         },
         "config_form": {
             "sections": [
