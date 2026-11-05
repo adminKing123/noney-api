@@ -3,15 +3,10 @@ from middleware.auth import require_auth
 from fuse.node_catalog_browse import (
     list_catalog_sections,
     list_nodes_in_section,
+    listings_for_role,
     search_catalog_listings,
 )
-from fuse.node_definitions import ACTION_NODES, STARTER_NODES
-from fuse.node_listing import (
-    filter_nodes_for_user,
-    find_node_definition,
-    node_available_for_user,
-    node_to_listing_metadata,
-)
+from fuse.node_listing import find_node_definition, node_available_for_user
 from db import db
 
 bp = Blueprint("fuse_nodes", __name__)
@@ -94,19 +89,17 @@ def get_catalog_search():
 @bp.route("/nodes/starter", methods=["GET"])
 @require_auth
 def get_starter_nodes():
-    """GET /fuse/nodes/starter — listing metadata for starter nodes (no config_form)."""
+    """GET /fuse/nodes/starter — full starter listing (prefer /nodes/catalog/* for UI)."""
     user_id = request.user["uid"]
-    filtered = filter_nodes_for_user(STARTER_NODES, _user_integrations(user_id))
-    return jsonify([node_to_listing_metadata(n) for n in filtered])
+    return jsonify(listings_for_role("starter", _user_integrations(user_id)))
 
 
 @bp.route("/nodes/actions", methods=["GET"])
 @require_auth
 def get_action_nodes():
-    """GET /fuse/nodes/actions — listing metadata for action nodes (no config_form)."""
+    """GET /fuse/nodes/actions — full action listing (prefer /nodes/catalog/* for UI)."""
     user_id = request.user["uid"]
-    filtered = filter_nodes_for_user(ACTION_NODES, _user_integrations(user_id))
-    return jsonify([node_to_listing_metadata(n) for n in filtered])
+    return jsonify(listings_for_role("action", _user_integrations(user_id)))
 
 
 @bp.route("/nodes/system-variables", methods=["GET"])

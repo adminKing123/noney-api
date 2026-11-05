@@ -97,14 +97,15 @@ def _nodes_for_role(role: str) -> list[dict]:
     raise ValueError(f"Invalid role {role!r}; expected 'starter' or 'action'.")
 
 
-def _available_listings(role: str, user_integrations: dict) -> list[dict]:
+def listings_for_role(role: str, user_integrations: dict) -> list[dict]:
+    """Listing metadata for one role, filtered by configured integrations."""
     nodes = filter_nodes_for_user(_nodes_for_role(role), user_integrations)
     return [node_to_listing_metadata(n) for n in nodes]
 
 
 def list_catalog_sections(role: str, user_integrations: dict) -> list[dict]:
     """Section summaries for the picker root view."""
-    listings = _available_listings(role, user_integrations)
+    listings = listings_for_role(role, user_integrations)
     counts: dict[str, int] = defaultdict(int)
     icons: dict[str, str | None] = {}
 
@@ -141,7 +142,7 @@ def list_nodes_in_section(
 ) -> dict:
     """Listing metadata for one section (lazy-loaded when user opens a category)."""
     section = (section or "General").strip()
-    listings = _available_listings(role, user_integrations)
+    listings = listings_for_role(role, user_integrations)
     matched = [
         n for n in listings if (n.get("section") or "General") == section
     ]
@@ -178,7 +179,7 @@ def search_catalog_listings(
 
     roles = ("starter", "action") if not role else (role,)
     for r in roles:
-        for item in _available_listings(r, user_integrations):
+        for item in listings_for_role(r, user_integrations):
             blob = " ".join(
                 [
                     item.get("type") or "",
