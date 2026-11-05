@@ -5,8 +5,12 @@ Central registry that maps ``node_type`` strings (as stored in the compiled
 graph) to their handler instances.
 
 To add a new node type:
-  1. Create ``fuse/nodes/my_type.py`` with a class that inherits NodeHandler.
-  2. Import it here and add an entry to ``HANDLERS``.
+  1. Create ``fuse/nodes/my_type.py`` with NodeHandler, ``NODE_DEFINITION``, and
+     ``NODE_ROLE`` (``"starter"`` or ``"action"``).
+  2. Import the handler here and add an entry to ``HANDLERS``.
+
+Catalog entries co-located on the module are merged via ``fuse/node_registry.py``.
+During migration, definitions may still live in ``fuse/node_definitions.py``.
 """
 
 from .webhook                  import WebhookHandler

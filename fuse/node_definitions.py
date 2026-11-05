@@ -1,14 +1,21 @@
 """
 fuse/node_definitions.py
 ========================
-Static Fuse node type definitions (starter + action nodes).
+Bundled Fuse node definitions (starter + action nodes).
 
-Single source of truth used by:
+Prefer co-located catalog entries on handler modules (n8n-style):
+  - ``NODE_DEFINITION`` dict + ``NODE_ROLE`` (``"starter"`` | ``"action"``)
+  - ``fuse/node_registry.py`` merges those with the bundled lists below.
+
+Exported ``STARTER_NODES`` / ``ACTION_NODES`` are the merged catalog used by:
   - routes/fuse/nodes.py  (API endpoints)
   - fuse/node_catalog.py  (AI workflow generation)
+  - fuse/compiler.py
 
-To add a new node type, append its definition here and register a handler in
-fuse/nodes/__init__.py.
+To add a new node type:
+  1. Create ``fuse/nodes/my_type.py`` with handler, NODE_DEFINITION, NODE_ROLE.
+  2. Register the handler in ``fuse/nodes/__init__.py``.
+  3. Or, during migration, append here until the definition is moved co-located.
 """
 
 STARTER_NODES = [
@@ -467,7 +474,7 @@ ACTION_NODES = [
         "type": "send_gmail",
         "label": "Send Gmail",
         "icon": "SiGmail",
-        "section": "Google",
+        "section": "Gmail",
         "required_integration": "gmail",
         "description": "Send an email using your configured Gmail integration.",
         "config_form": {
@@ -779,38 +786,6 @@ ACTION_NODES = [
         },
     },
     {
-        "type": "fork",
-        "label": "Fork (Parallel)",
-        "icon": "TbGitFork",
-        "section": "Logic",
-        "description": "Run multiple branches in parallel. Connect multiple action nodes to this node's output.",
-        "config_form": {
-            "sections": [
-                {
-                    "fields": [
-                        {"key": "info", "label": "Info", "type": "text", "hint": "Connect multiple nodes to the output of this node. They will be executed in parallel.", "disabled": True}
-                    ]
-                }
-            ]
-        }
-    },
-    {
-        "type": "join",
-        "label": "Wait (Join)",
-        "icon": "TbGitMerge",
-        "section": "Logic",
-        "description": "Wait until all incoming parallel branches have completed before proceeding.",
-        "config_form": {
-            "sections": [
-                {
-                    "fields": [
-                        {"key": "info", "label": "Info", "type": "text", "hint": "Connect multiple parallel branches to this node. It will wait for all of them to finish.", "disabled": True}
-                    ]
-                }
-            ]
-        }
-    },
-    {
         "type": "set_variables",
         "label": "Set Variables",
         "icon": "VscVariableGroup",
@@ -836,7 +811,7 @@ ACTION_NODES = [
         "type": "google_sheets_add_row",
         "label": "Add Row",
         "icon": "SiGooglesheets",
-        "section": "Google",
+        "section": "Google Sheets",
         "required_integration": "google_sheets",
         "description": "Add a new row to a Google Sheets spreadsheet. Pick the sheet, choose where to insert the row, then map each column to a value or variable.",
         "defaults": {
@@ -934,3 +909,7 @@ ACTION_NODES = [
         },
     },
 ]
+
+from fuse.node_registry import build_node_catalog
+
+STARTER_NODES, ACTION_NODES = build_node_catalog(STARTER_NODES, ACTION_NODES)

@@ -34,10 +34,26 @@ def filter_nodes_for_user(nodes: list[dict], user_integrations: dict) -> list[di
     return [n for n in nodes if node_available_for_user(n, user_integrations)]
 
 
-def find_node_definition(node_type: str) -> dict | None:
+_TYPE_INDEX: dict[str, dict] | None = None
+
+
+def _build_type_index() -> dict[str, dict]:
+    index: dict[str, dict] = {}
     for node in (*STARTER_NODES, *ACTION_NODES):
-        if node.get("type") == node_type:
-            return node
-    return None
+        node_type = node.get("type")
+        if node_type:
+            index[node_type] = node
+    return index
+
+
+def get_type_index() -> dict[str, dict]:
+    global _TYPE_INDEX
+    if _TYPE_INDEX is None:
+        _TYPE_INDEX = _build_type_index()
+    return _TYPE_INDEX
+
+
+def find_node_definition(node_type: str) -> dict | None:
+    return get_type_index().get(node_type)
 
 
